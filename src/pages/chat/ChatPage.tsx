@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { io } from "socket.io-client";
-import { api, API_URL } from "../../lib/api";
+import { api } from "../../lib/api";
 import { useAuth } from "../../context/AuthContext";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { AppButton } from "../../components/ui/AppButton";
-
-const socketUrl = API_URL.replace(/\/api$/, "");
-const socket = io(socketUrl, { autoConnect: false });
+import { useSocket } from "../../hooks/useSocket";
 const stunUrl = import.meta.env.VITE_WEBRTC_STUN_URL || "stun:stun.l.google.com:19302";
 const turnUrl = import.meta.env.VITE_WEBRTC_TURN_URL;
 const turnUsername = import.meta.env.VITE_WEBRTC_TURN_USERNAME;
@@ -64,6 +61,7 @@ function VideoTile({ title, stream, muted }: { title: string; stream: MediaStrea
 
 export function ChatPage() {
   const { user } = useAuth();
+  const { socket, status, errorMessage } = useSocket();
   const queryClient = useQueryClient();
   const [activeRoom, setActiveRoom] = useState<string>("company-announcements");
   const [message, setMessage] = useState("");
@@ -352,6 +350,14 @@ export function ChatPage() {
           <div>
             <h2 className="font-serif text-2xl text-white">{activeRoom}</h2>
             <p className="mt-1 text-xs text-slate-300">Realtime messaging, typing indicators, and group video meetings.</p>
+            {status === "connected" ? (
+              <p className="mt-1 text-xs text-emerald-400">● Connected</p>
+            ) : status === "connecting" ? (
+              <p className="mt-1 text-xs text-amber-400">⟳ Reconnecting...</p>
+            ) : (
+              <p className="mt-1 text-xs text-red-400">● Disconnected</p>
+            )}
+            {errorMessage && <p className="text-xs text-red-300">{errorMessage}</p>}
             <p className="text-xs text-slate-400">Participants in room: {participantCount}</p>
           </div>
           <div className="w-40">
