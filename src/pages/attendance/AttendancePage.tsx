@@ -14,6 +14,25 @@ type AttendanceRecord = {
   overtime: boolean;
 };
 
+type DailyReport = {
+  total: number;
+  late: number;
+  overtime: number;
+  gpsAttendance: number;
+  qrAttendance: number;
+  averageWorkHours: number;
+};
+
+type AttendanceAnalytics = {
+  totalRecords: number;
+  lateCount: number;
+  overtimeCount: number;
+  qrCount: number;
+  gpsCount: number;
+  averageWorkHours: number;
+  departmentAttendance: Array<{ department: string; totalRecords: number }>;
+};
+
 export function AttendancePage() {
   const queryClient = useQueryClient();
   const [qrToken, setQrToken] = useState("");
@@ -24,6 +43,30 @@ export function AttendancePage() {
     queryFn: async () => {
       const response = await api.get("/attendance/my-report");
       return response.data.data as AttendanceRecord[];
+    },
+  });
+
+  const dailyQuery = useQuery({
+    queryKey: ["attendance-daily-report"],
+    queryFn: async () => {
+      const response = await api.get("/attendance/daily-report");
+      return response.data.data as DailyReport;
+    },
+  });
+
+  const analyticsQuery = useQuery({
+    queryKey: ["attendance-analytics"],
+    queryFn: async () => {
+      const response = await api.get("/attendance/analytics");
+      return response.data.data as AttendanceAnalytics;
+    },
+  });
+
+  const faceRecognitionQuery = useQuery({
+    queryKey: ["attendance-face-recognition"],
+    queryFn: async () => {
+      const response = await api.get("/attendance/face-recognition-status");
+      return response.data.data as { enabled: boolean; status: string; message: string };
     },
   });
 
@@ -52,6 +95,8 @@ export function AttendancePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance-my-report"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-daily-report"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-analytics"] });
       setQrToken("");
     },
   });
@@ -62,6 +107,8 @@ export function AttendancePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance-my-report"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-daily-report"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance-analytics"] });
     },
   });
 
@@ -78,8 +125,8 @@ export function AttendancePage() {
   return (
     <div className="space-y-4">
       <GlassCard>
-        <h1 className="font-serif text-3xl text-white">Attendance GPS/QR</h1>
-        <p className="mt-1 text-sm text-slate-300">Clock in with live GPS and optional QR token validation.</p>
+        <h1 className="font-serif text-3xl text-white">Attendance & Time Tracking</h1>
+        <p className="mt-1 text-sm text-slate-300">Clock in/out, GPS attendance, QR attendance, late/overtime and work-hour analytics.</p>
 
         <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_auto]">
           <AppInput label="QR token (optional)" value={qrToken} onChange={(event) => setQrToken(event.target.value)} />
@@ -95,6 +142,30 @@ export function AttendancePage() {
           </div>
         </div>
       </GlassCard>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <GlassCard>
+          <p className="text-xs uppercase tracking-wider text-slate-300">Daily Attendance Reports</p>
+          <p className="mt-2 text-sm text-slate-100">Total: {dailyQuery.data?.total || 0}</p>
+          <p className="text-sm text-slate-100">Late: {dailyQuery.data?.late || 0}</p>
+          <p className="text-sm text-slate-100">Overtime: {dailyQuery.data?.overtime || 0}</p>
+          <p className="text-sm text-slate-100">Avg Hours: {dailyQuery.data?.averageWorkHours || 0}</p>
+        </GlassCard>
+
+        <GlassCard>
+          <p className="text-xs uppercase tracking-wider text-slate-300">Attendance Analytics</p>
+          <p className="mt-2 text-sm text-slate-100">Weekly Records: {analyticsQuery.data?.totalRecords || 0}</p>
+          <p className="text-sm text-slate-100">GPS: {analyticsQuery.data?.gpsCount || 0}</p>
+          <p className="text-sm text-slate-100">QR: {analyticsQuery.data?.qrCount || 0}</p>
+          <p className="text-sm text-slate-100">Late: {analyticsQuery.data?.lateCount || 0}</p>
+        </GlassCard>
+
+        <GlassCard>
+          <p className="text-xs uppercase tracking-wider text-slate-300">Face Recognition</p>
+          <p className="mt-2 text-sm text-amber-200">{faceRecognitionQuery.data?.message || "Planned for future release."}</p>
+          <p className="text-xs text-slate-300">Status: {faceRecognitionQuery.data?.status || "planned"}</p>
+        </GlassCard>
+      </div>
 
       <GlassCard>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -129,6 +200,7 @@ export function AttendancePage() {
               <p className="text-slate-200">In: {new Date(item.clockIn).toLocaleString()}</p>
               <p className="text-slate-200">Out: {item.clockOut ? new Date(item.clockOut).toLocaleString() : "Active"}</p>
               <p className="text-slate-200">Hours: {item.workHours}</p>
+              <p className="text-xs text-slate-300">Late: {item.late ? "Yes" : "No"} | Overtime: {item.overtime ? "Yes" : "No"}</p>
             </div>
           ))}
         </div>

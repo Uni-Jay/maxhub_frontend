@@ -16,6 +16,18 @@ type User = {
   role: string;
   department: string;
   employeeId: string;
+  position?: string;
+  phoneNumber?: string;
+  address?: string;
+  avatar?: string;
+  emergencyContacts?: string[];
+  salaryGrade?: string;
+  employmentDate?: string;
+  documents?: string[];
+  socialLinks?: string[];
+  skills?: string[];
+  bio?: string;
+  performanceScore?: number;
   isActive?: boolean;
   twoFAEnabled: boolean;
 };

@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import { AppShell } from "../components/layout/AppShell";
 import { useAuth } from "../context/AuthContext";
 import { DashboardPage } from "../pages/dashboard/DashboardPage";
+import { DepartmentsPage } from "../pages/departments/DepartmentsPage";
 import { ModulesPage } from "../pages/modules/ModulesPage";
 import { ProfilePage } from "../pages/profile/ProfilePage";
 import { ChatPage } from "../pages/chat/ChatPage";
@@ -97,6 +98,7 @@ const router = createBrowserRouter([
     children: [
       { path: "", element: <Navigate to="/app/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
+      { path: "departments", element: <DepartmentsPage /> },
       { path: "chat", element: <ChatPage /> },
       { path: "attendance", element: <AttendancePage /> },
       { path: "modules", element: <ModulesPage /> },
