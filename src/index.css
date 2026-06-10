@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@import "@fontsource/montserrat";
+@import "@fontsource/playfair-display";
+@import "@fontsource/cinzel";
+
+:root {
+  --app-surface: #081a2f;
+  --app-surface-soft: #102947;
+  --text-primary: #f3f7ff;
+}
+
+@theme {
+  --font-sans: "Montserrat", sans-serif;
+  --font-serif: "Playfair Display", serif;
+  --font-display: "Cinzel", serif;
+}
+
+@utility bg-brand-gradient {
+  background-image:
+    radial-gradient(circle at 12% 9%, rgba(55, 198, 96, 0.26), transparent 32%),
+    radial-gradient(circle at 83% 14%, rgba(39, 109, 193, 0.35), transparent 35%),
+    linear-gradient(160deg, #061428 0%, #0d2f57 46%, #15518f 100%);
+}
+
+@utility bg-app-surface {
+  background-image:
+    radial-gradient(circle at 8% 7%, rgba(65, 196, 95, 0.18), transparent 34%),
+    radial-gradient(circle at 92% 0%, rgba(41, 132, 220, 0.22), transparent 36%),
+    linear-gradient(180deg, #08192f 0%, #0b223f 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--app-surface);
+}
+
+#root {
+  min-height: 100vh;
+}
