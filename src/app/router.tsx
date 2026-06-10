@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import { DashboardPage } from "../pages/dashboard/DashboardPage";
 import { ModulesPage } from "../pages/modules/ModulesPage";
 import { ProfilePage } from "../pages/profile/ProfilePage";
+import { ChatPage } from "../pages/chat/ChatPage";
+import { AttendancePage } from "../pages/attendance/AttendancePage";
 import { LoginPage } from "../pages/auth/LoginPage";
 import { RegisterPage } from "../pages/auth/RegisterPage";
 import { ForgotPasswordPage } from "../pages/auth/ForgotPasswordPage";
@@ -95,6 +97,8 @@ const router = createBrowserRouter([
     children: [
       { path: "", element: <Navigate to="/app/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
+      { path: "chat", element: <ChatPage /> },
+      { path: "attendance", element: <AttendancePage /> },
       { path: "modules", element: <ModulesPage /> },
       { path: "profile", element: <ProfilePage /> },
     ],

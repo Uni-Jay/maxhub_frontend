@@ -5,6 +5,8 @@ import { api } from "../../lib/api";
 import { GlassCard } from "../../components/ui/GlassCard";
 import { AppButton } from "../../components/ui/AppButton";
 import { AppInput } from "../../components/ui/AppInput";
+import { useAuth } from "../../context/AuthContext";
+import { StaffControlPanel } from "./StaffControlPanel";
 
 type ModuleRecord = {
   id: string;
@@ -15,6 +17,7 @@ type ModuleRecord = {
 };
 
 export function ModulesPage() {
+  const { user } = useAuth();
   const [selectedModule, setSelectedModule] = useState("task-project-management");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -68,6 +71,8 @@ export function ModulesPage() {
       </GlassCard>
 
       <div className="space-y-4">
+        {user?.role === "Super Admin" ? <StaffControlPanel /> : null}
+
         <GlassCard>
           <h2 className="font-serif text-2xl text-white">{selectedModule}</h2>
           <p className="mt-1 text-sm text-slate-200/70">

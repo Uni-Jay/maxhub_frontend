@@ -16,6 +16,7 @@ type User = {
   role: string;
   department: string;
   employeeId: string;
+  isActive?: boolean;
   twoFAEnabled: boolean;
 };
 
