@@ -184,8 +184,8 @@ const fmtN = (n: number) => `₦${Number(n).toLocaleString('en-NG')}`;
 export default function CustomerReportList() {
   const { user } = useAuthStore();
   const qc = useQueryClient();
-  const isCEO = user?.roles?.includes('SUPER_ADMIN') ?? false;
-  const isManager = isCEO || (user?.roles?.some(r => ['HR', 'HOD', 'HEAD_OF_ADMIN'].includes(r)) ?? false);
+  const isCEO = user?.roles?.includes('superadmin') ?? false;
+  const isManager = isCEO || (user?.roles?.some(r => ['hr', 'hod', 'admin'].includes(r)) ?? false);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApprovalStatus | ''>('');

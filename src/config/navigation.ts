@@ -363,9 +363,9 @@ const masterMenu: MenuItem[] = [
  * Maps each role to their permitted menu items
  */
 export const roleMenuConfig: Record<string, MenuItem[]> = {
-  SUPER_ADMIN: masterMenu, // Full access
+  superadmin: masterMenu, // Full access
 
-  HEAD_OF_ADMIN: [
+  admin: [
     masterMenu[0], // Dashboard
     masterMenu[1], // Organization
     masterMenu[2], // HR & Attendance
@@ -377,7 +377,15 @@ export const roleMenuConfig: Record<string, MenuItem[]> = {
     masterMenu[11], // Communication
   ],
 
-  HEAD_OF_DEPARTMENT: [
+  hr: [
+    masterMenu[0], // Dashboard
+    masterMenu[1], // Organization
+    masterMenu[2], // HR & Attendance
+    masterMenu[3], // Projects & Tasks
+    masterMenu[4], // Finance & Payroll (limited)
+  ],
+
+  hod: [
     {
       name: 'Dashboard',
       path: '/dashboard',
@@ -407,7 +415,7 @@ export const roleMenuConfig: Record<string, MenuItem[]> = {
     masterMenu[3], // Projects & Tasks
   ],
 
-  STAFF: [
+  staff: [
     {
       name: 'Dashboard',
       path: '/dashboard',
@@ -444,104 +452,15 @@ export const roleMenuConfig: Record<string, MenuItem[]> = {
       icon: HelpCircle,
     },
   ],
-
-  HR: [
-    masterMenu[0], // Dashboard
-    masterMenu[1], // Organization
-    masterMenu[2], // HR & Attendance
-    masterMenu[3], // Projects & Tasks
-    masterMenu[4], // Finance & Payroll (limited)
-  ],
-
-  INSTRUCTOR: [
-    {
-      name: 'Dashboard',
-      path: '/dashboard',
-      icon: Home,
-      requiredPermission: PermissionCode.ORG_DASHBOARD_VIEW,
-    },
-    {
-      name: 'Courses',
-      path: '/learning/my-courses',
-      icon: BookOpen,
-      requiredPermission: PermissionCode.ORG_COURSE_READ,
-    },
-    {
-      name: 'Students',
-      path: '/learning/my-students',
-      icon: Users,
-      requiredPermission: PermissionCode.ORG_ENROLLMENT_READ,
-    },
-    {
-      name: 'Exams',
-      path: '/learning/my-exams',
-      icon: FileText,
-      requiredPermission: PermissionCode.ORG_EXAM_READ,
-    },
-  ],
-
-  ACCOUNTANT: [
-    masterMenu[0], // Dashboard
-    masterMenu[4], // Finance & Payroll
-    masterMenu[8], // Reports & Analytics
-  ],
-
-  RECEPTIONIST: [
-    {
-      name: 'Dashboard',
-      path: '/dashboard',
-      icon: Home,
-      requiredPermission: PermissionCode.ORG_DASHBOARD_VIEW,
-    },
-    {
-      name: 'Visitors',
-      path: '/reception/visitors',
-      icon: Phone,
-      requiredPermission: PermissionCode.ORG_CONTACT_READ,
-    },
-    {
-      name: 'Messages',
-      path: '/communications/messages',
-      icon: MessageSquare,
-      requiredPermission: PermissionCode.ORG_MESSAGE_READ,
-    },
-    {
-      name: 'Schedule',
-      path: '/reception/schedule',
-      icon: Calendar,
-      requiredPermission: PermissionCode.ORG_CALENDAR_READ,
-    },
-  ],
-
-  INTERN: [
-    {
-      name: 'Dashboard',
-      path: '/dashboard',
-      icon: Home,
-      requiredPermission: PermissionCode.ORG_DASHBOARD_VIEW,
-    },
-    {
-      name: 'Tasks',
-      path: '/my-tasks',
-      icon: CheckSquare,
-      requiredPermission: PermissionCode.ORG_TASK_READ,
-    },
-    {
-      name: 'Profile',
-      path: '/profile',
-      icon: Users,
-      requiredPermission: PermissionCode.ORG_STAFF_READ,
-    },
-  ],
 };
 
 /**
  * Get menu items for a user's primary role
- * @param role User's primary role (e.g., 'SUPER_ADMIN', 'STAFF')
+ * @param role User's primary role (e.g., 'superadmin', 'staff')
  * @returns Array of menu items for that role
  */
 export function getMenuForRole(role: string): MenuItem[] {
-  return roleMenuConfig[role] || roleMenuConfig.STAFF;
+  return roleMenuConfig[role] || roleMenuConfig.staff;
 }
 
 /**

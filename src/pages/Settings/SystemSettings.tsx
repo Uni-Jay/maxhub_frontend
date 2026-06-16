@@ -270,7 +270,7 @@ export default function SystemSettings() {
                   </a>
                 ))}
               </div>
-              <p className="text-xs text-gray-400">The 10 system roles: SUPER_ADMIN, HEAD_OF_ADMIN, HR, HOD, STAFF, INSTRUCTOR, ACCOUNTANT, RECEPTIONIST, INTERN, STUDENT</p>
+              <p className="text-xs text-gray-400">5 system roles: superadmin, admin, hr, hod, staff — positions (Accountant, Instructor, etc.) are assigned at the user level.</p>
             </div>
           )}
 

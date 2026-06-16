@@ -64,7 +64,7 @@ export default function StaffForm() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser } = useAuthStore();
   const isEdit = !!id;
-  const isCEO = currentUser?.roles?.includes('SUPER_ADMIN') ?? false;
+  const isCEO = currentUser?.roles?.includes('superadmin') ?? false;
   const [createdStaff, setCreatedStaff] = useState<any>(null);
   const [useCustomPosition, setUseCustomPosition] = useState(false);
   const [customPosition, setCustomPosition] = useState('');

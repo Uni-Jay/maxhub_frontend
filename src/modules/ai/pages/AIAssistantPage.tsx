@@ -41,7 +41,7 @@ const TASK_SUGGESTIONS = [
   { id: 5, title: 'Update client contracts — Visa Max batch', priority: 'Medium', deadline: 'Jun 22', assignTo: 'Legal', category: 'CRM' },
   { id: 6, title: 'Generate monthly attendance summary', priority: 'Low', deadline: 'Jun 30', assignTo: 'HR', category: 'Attendance' },
   { id: 7, title: 'Review inventory reorder thresholds', priority: 'Medium', deadline: 'Jun 24', assignTo: 'Warehouse Manager', category: 'Inventory' },
-  { id: 8, title: 'Prepare board report for July meeting', priority: 'High', deadline: 'Jun 28', assignTo: 'SUPER_ADMIN', category: 'Management' },
+  { id: 8, title: 'Prepare board report for July meeting', priority: 'High', deadline: 'Jun 28', assignTo: 'Super Admin', category: 'Management' },
 ];
 
 const MEETING_SUMMARIES = [

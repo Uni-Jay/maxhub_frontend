@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Edit2, Check, X, ChevronDown, ChevronUp, Lock, Unlock, Users } from 'lucide-react';
+import { Shield, Edit2, Check, X, ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
 import { cn } from '@utils/cn';
 
@@ -98,11 +98,8 @@ export default function RolesPermissions() {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{cfg.description}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    <Users className="h-3.5 w-3.5" /> {cfg.staffCount} {cfg.staffCount === 1 ? 'user' : 'users'}
-                  </div>
                   <div className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
-                    {cfg.role === 'STUDENT' ? 'Portal only' : `${rolePerms.length}/${MODULES.length} modules`}
+                    {rolePerms.length}/{MODULES.length} modules
                   </div>
                   {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
                 </div>
@@ -136,9 +133,12 @@ export default function RolesPermissions() {
                           )
                         )}
                       </div>
+                      {cfg.note && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2 mb-3">{cfg.note}</p>
+                      )}
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                         {MODULES.map(module => {
-                          const hasAccess = cfg.role === 'STUDENT' ? false : rolePerms.includes(module);
+                          const hasAccess = rolePerms.includes(module);
                           return (
                             <div key={module}
                               onClick={() => isEditing && canEdit(cfg.role) ? togglePermission(cfg.role, module) : undefined}

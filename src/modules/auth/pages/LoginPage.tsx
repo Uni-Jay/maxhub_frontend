@@ -10,15 +10,14 @@ import { resolveRolePath } from '@pages/Dashboard';
 import { Eye, EyeOff, Loader2, AlertCircle, BarChart3, Users, Briefcase, TrendingUp, ChevronDown } from 'lucide-react';
 
 const DEMO_ACCOUNTS = [
-  { label: 'Super Admin',      email: 'superadmin@maxhub.com', password: 'MaxHub@Admin2024!' },
-  { label: 'Admin',            email: 'admin@maxhub.com',      password: 'Demo@12345!' },
-  { label: 'Dept Head',        email: 'depthead@maxhub.com',   password: 'Demo@12345!' },
-  { label: 'Manager',          email: 'manager@maxhub.com',    password: 'Demo@12345!' },
-  { label: 'Supervisor',       email: 'supervisor@maxhub.com', password: 'Demo@12345!' },
-  { label: 'Team Lead',        email: 'teamlead@maxhub.com',   password: 'Demo@12345!' },
-  { label: 'Staff',            email: 'staff@maxhub.com',      password: 'Demo@12345!' },
-  { label: 'Consultant',       email: 'consultant@maxhub.com', password: 'Demo@12345!' },
-  { label: 'Intern',           email: 'intern@maxhub.com',     password: 'Demo@12345!' },
+  { label: 'Super Admin (CEO)',    email: 'superadmin@maxhub.com',   password: 'MaxHub@Admin2024!' },
+  { label: 'Admin (Head of Admin)',email: 'admin@maxhub.com',        password: 'Demo@12345!' },
+  { label: 'HR Manager',          email: 'hr@maxhub.com',           password: 'Demo@12345!' },
+  { label: 'Head of Department',  email: 'hod@maxhub.com',          password: 'Demo@12345!' },
+  { label: 'Staff',               email: 'staff@maxhub.com',        password: 'Demo@12345!' },
+  { label: 'Accountant (Staff)',  email: 'accountant@maxhub.com',   password: 'Demo@12345!' },
+  { label: 'Instructor (Staff)',  email: 'instructor@maxhub.com',   password: 'Demo@12345!' },
+  { label: 'Receptionist (Staff)',email: 'receptionist@maxhub.com', password: 'Demo@12345!' },
 ];
 
 const loginSchema = z.object({
