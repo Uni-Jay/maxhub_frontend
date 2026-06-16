@@ -2,19 +2,26 @@ import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AuthLayout from '@layouts/AuthLayout';
 import DashboardLayout from '@layouts/DashboardLayout';
-import { PrivateRoute, PublicRoute } from '@routes/PrivateRoute';
+import StudentPortalLayout from '@layouts/StudentPortalLayout';
+import { PrivateRoute, StudentRoute, PublicRoute } from '@routes/PrivateRoute';
 import { Toaster } from '@components/ui/toaster';
 
 // ─── Auth Pages ───
 const LoginPage = React.lazy(() => import('@modules/auth/pages/LoginPage'));
-const RegisterPage = React.lazy(() => import('@modules/auth/pages/RegisterPage'));
 const ForgotPasswordPage = React.lazy(() => import('@modules/auth/pages/ForgotPasswordPage'));
 const ResetPasswordPage = React.lazy(() => import('@modules/auth/pages/ResetPasswordPage'));
 const VerifyEmailPage = React.lazy(() => import('@modules/auth/pages/VerifyEmailPage'));
 const Setup2FAPage = React.lazy(() => import('@modules/auth/pages/Setup2FAPage'));
 
-// ─── Dashboard ───
+// ─── Dashboard (smart redirect) ───
 const Dashboard = React.lazy(() => import('@pages/Dashboard'));
+
+// ─── Role-specific dashboards (5 roles only) ───
+const SuperAdminDashboard  = React.lazy(() => import('@pages/dashboards/SuperAdminDashboard'));
+const AdminDashboard       = React.lazy(() => import('@pages/dashboards/HeadOfAdminDashboard'));
+const HRDashboard          = React.lazy(() => import('@pages/dashboards/HRDashboard'));
+const HODDashboard         = React.lazy(() => import('@pages/dashboards/HODDashboard'));
+const StaffDashboard       = React.lazy(() => import('@pages/dashboards/StaffDashboard'));
 
 // ─── Staff ───
 const StaffList = React.lazy(() => import('@modules/staff/pages/StaffList'));
@@ -67,6 +74,103 @@ const ProfileSettings = React.lazy(() => import('@pages/Settings/ProfileSettings
 const SecuritySettings = React.lazy(() => import('@pages/Settings/SecuritySettings'));
 const NotificationSettings = React.lazy(() => import('@pages/Settings/NotificationSettings'));
 
+// ─── Student Portal ───
+const StudentDashboardPage    = React.lazy(() => import('@modules/student/pages/StudentDashboardPage'));
+const StudentCoursesPage      = React.lazy(() => import('@modules/student/pages/StudentCoursesPage'));
+const StudentAssignmentsPage  = React.lazy(() => import('@modules/student/pages/StudentAssignmentsPage'));
+const StudentExamsPage        = React.lazy(() => import('@modules/student/pages/StudentExamsPage'));
+const StudentResultsPage      = React.lazy(() => import('@modules/student/pages/StudentResultsPage'));
+const StudentAttendancePage   = React.lazy(() => import('@modules/student/pages/StudentAttendancePage'));
+const StudentSchedulePage     = React.lazy(() => import('@modules/student/pages/StudentSchedulePage'));
+const StudentCertificatesPage = React.lazy(() => import('@modules/student/pages/StudentCertificatesPage'));
+const StudentMessagesPage     = React.lazy(() => import('@modules/student/pages/StudentMessagesPage'));
+const StudentProfilePage      = React.lazy(() => import('@modules/student/pages/StudentProfilePage'));
+
+// ─── Payroll ───
+const PayrollDashboard = React.lazy(() => import('@modules/payroll/pages/PayrollDashboard'));
+const PayrollPeriods = React.lazy(() => import('@modules/payroll/pages/PayrollPeriods'));
+const PayrollSlips = React.lazy(() => import('@modules/payroll/pages/PayrollSlips'));
+const SalaryStructures = React.lazy(() => import('@modules/payroll/pages/SalaryStructures'));
+const MyPayslips = React.lazy(() => import('@modules/payroll/pages/MyPayslips'));
+
+// ─── CRM ───
+const ContactList = React.lazy(() => import('@modules/crm/pages/ContactList'));
+const OpportunityPipeline = React.lazy(() => import('@modules/crm/pages/OpportunityPipeline'));
+const SalesForecasting = React.lazy(() => import('@modules/crm/pages/SalesForecasting'));
+
+// ─── Inventory ───
+const ItemList = React.lazy(() => import('@modules/inventory/pages/ItemList'));
+const WarehouseList = React.lazy(() => import('@modules/inventory/pages/WarehouseList'));
+
+// ─── HR ───
+const JobPostingsList = React.lazy(() => import('@modules/hr/pages/JobPostingsList'));
+const AppraisalList = React.lazy(() => import('@modules/hr/pages/AppraisalList'));
+const TrainingList = React.lazy(() => import('@modules/hr/pages/TrainingList'));
+
+// ─── Messaging ───
+const MessagingPage = React.lazy(() => import('@modules/messaging/pages/MessagingPage'));
+
+// ─── Video Calls ───
+const VideoCallHub = React.lazy(() => import('@modules/videocall/pages/VideoCallHub'));
+
+// ─── Calendar ───
+const CalendarPage = React.lazy(() => import('@modules/calendar/pages/CalendarPage'));
+
+// ─── Notifications ───
+const NotificationsPage = React.lazy(() => import('@modules/notifications/pages/NotificationsPage'));
+
+// ─── File Manager ───
+const FileManagerPage = React.lazy(() => import('@modules/files/pages/FileManagerPage'));
+
+// ─── Analytics ───
+const AnalyticsDashboard = React.lazy(() => import('@modules/analytics/pages/AnalyticsDashboard'));
+
+// ─── Audit Logs ───
+const AuditLogsPage = React.lazy(() => import('@modules/audit/pages/AuditLogsPage'));
+
+// ─── Sales / Invoices ───
+const InvoiceList = React.lazy(() => import('@modules/sales/pages/InvoiceList'));
+
+// ─── LMS Exam Taking ───
+const ExamTaking = React.lazy(() => import('@modules/lms/pages/ExamTaking'));
+
+// ─── System Settings ───
+const SystemSettings = React.lazy(() => import('@pages/Settings/SystemSettings'));
+
+// ─── AI Assistant ───
+const AIAssistantPage = React.lazy(() => import('@modules/ai/pages/AIAssistantPage'));
+
+// ─── CRM Hub (multi-business) ───
+const CRMHub = React.lazy(() => import('@modules/crm/pages/CRMHub'));
+
+// ─── Bead Max Sales ───
+const BeadMaxSales = React.lazy(() => import('@modules/sales/pages/BeadMaxSales'));
+
+// ─── Inventory Dashboard ───
+const InventoryDashboard = React.lazy(() => import('@modules/inventory/pages/InventoryDashboard'));
+
+// ─── Exam Results ───
+const ExamResultsPage = React.lazy(() => import('@modules/lms/pages/ExamResultsPage'));
+
+// ─── Reports ───
+const AttendanceReport = React.lazy(() => import('@pages/reports/AttendanceReport'));
+const ProjectsReport = React.lazy(() => import('@pages/reports/ProjectsReport'));
+
+// ─── Roles & Permissions ───
+const RolesPermissions = React.lazy(() => import('@pages/Settings/RolesPermissions'));
+
+// ─── Login History ───
+const LoginHistory = React.lazy(() => import('@pages/LoginHistory'));
+
+// ─── Weekly Report ───
+const WeeklyReportPage = React.lazy(() => import('@modules/hr/pages/WeeklyReportPage'));
+
+// ─── VisaMax ───
+const VisaMaxHub = React.lazy(() => import('@modules/visamax/pages/VisaMaxHub'));
+
+// ─── Customer Reports ───
+const CustomerReportList = React.lazy(() => import('@modules/customerreports/pages/CustomerReportList'));
+
 // ─── Not Found ───
 const NotFound = React.lazy(() => import('@pages/NotFound'));
 
@@ -83,11 +187,8 @@ function App() {
         <Routes>
           {/* Public routes */}
           <Route element={<PublicRoute />}>
-            {/* LoginPage is full-page, no AuthLayout wrapper */}
             <Route path="/auth/login" element={<LoginPage />} />
-            {/* Other auth pages use the centered AuthLayout */}
             <Route element={<AuthLayout />}>
-              <Route path="/auth/register" element={<RegisterPage />} />
               <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
               <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
@@ -95,11 +196,42 @@ function App() {
             </Route>
           </Route>
 
-          {/* Protected routes */}
+          {/* Student portal — isolated layout, STUDENT role only */}
+          <Route element={<StudentRoute />}>
+            <Route element={<StudentPortalLayout />}>
+              <Route path="/student/dashboard"    element={<StudentDashboardPage />} />
+              <Route path="/student/courses"      element={<StudentCoursesPage />} />
+              <Route path="/student/assignments"  element={<StudentAssignmentsPage />} />
+              <Route path="/student/exams"        element={<StudentExamsPage />} />
+              <Route path="/student/results"      element={<StudentResultsPage />} />
+              <Route path="/student/attendance"   element={<StudentAttendancePage />} />
+              <Route path="/student/schedule"     element={<StudentSchedulePage />} />
+              <Route path="/student/certificates" element={<StudentCertificatesPage />} />
+              <Route path="/student/messages"     element={<StudentMessagesPage />} />
+              <Route path="/student/profile"      element={<StudentProfilePage />} />
+              <Route path="/student"              element={<Navigate to="/student/dashboard" replace />} />
+            </Route>
+          </Route>
+
+          {/* Staff / admin protected routes */}
           <Route element={<PrivateRoute />}>
             <Route element={<DashboardLayout />}>
-              {/* Dashboard */}
+              {/* Dashboard — smart redirect to role-specific URL */}
               <Route path="/dashboard" element={<Dashboard />} />
+
+              {/* Role-specific dashboard pages (5 roles) */}
+              <Route path="/dashboard/superadmin" element={<SuperAdminDashboard />} />
+              <Route path="/dashboard/admin"      element={<AdminDashboard />} />
+              <Route path="/dashboard/hr"         element={<HRDashboard />} />
+              <Route path="/dashboard/hod"        element={<HODDashboard />} />
+              <Route path="/dashboard/staff"      element={<StaffDashboard />} />
+              {/* Legacy URL redirects for old bookmarks */}
+              <Route path="/dashboard/ceo"               element={<Navigate to="/dashboard/superadmin" replace />} />
+              <Route path="/dashboard/head-of-admin"     element={<Navigate to="/dashboard/admin" replace />} />
+              <Route path="/dashboard/accountant"        element={<Navigate to="/dashboard/staff" replace />} />
+              <Route path="/dashboard/receptionist"      element={<Navigate to="/dashboard/staff" replace />} />
+              <Route path="/dashboard/instructor"        element={<Navigate to="/dashboard/staff" replace />} />
+              <Route path="/dashboard/travel-consultant" element={<Navigate to="/dashboard/staff" replace />} />
 
               {/* Staff Management */}
               <Route path="/staff" element={<StaffList />} />
@@ -152,14 +284,97 @@ function App() {
               <Route path="/lms/exams" element={<ExamList />} />
               <Route path="/lms/certificates" element={<CertificateList />} />
 
+              {/* Payroll */}
+              <Route path="/payroll" element={<PayrollDashboard />} />
+              <Route path="/payroll/periods" element={<PayrollPeriods />} />
+              <Route path="/payroll/slips" element={<PayrollSlips />} />
+              <Route path="/payroll/structures" element={<SalaryStructures />} />
+              <Route path="/payroll/my-slips" element={<MyPayslips />} />
+
+              {/* CRM */}
+              <Route path="/crm/contacts" element={<ContactList />} />
+              <Route path="/crm/pipeline" element={<OpportunityPipeline />} />
+              <Route path="/crm/forecast" element={<SalesForecasting />} />
+
+              {/* Inventory */}
+              <Route path="/inventory/items" element={<ItemList />} />
+              <Route path="/inventory/warehouses" element={<WarehouseList />} />
+
+              {/* HR */}
+              <Route path="/hr/jobs" element={<JobPostingsList />} />
+              <Route path="/hr/appraisals" element={<AppraisalList />} />
+              <Route path="/hr/training" element={<TrainingList />} />
+
+              {/* Messaging */}
+              <Route path="/messages" element={<MessagingPage />} />
+
+              {/* Video Calls */}
+              <Route path="/calls" element={<VideoCallHub />} />
+
+              {/* Calendar */}
+              <Route path="/calendar" element={<CalendarPage />} />
+
+              {/* Notifications */}
+              <Route path="/notifications" element={<NotificationsPage />} />
+
+              {/* File Manager */}
+              <Route path="/files" element={<FileManagerPage />} />
+
+              {/* Analytics */}
+              <Route path="/analytics" element={<AnalyticsDashboard />} />
+
+              {/* Audit Logs */}
+              <Route path="/audit-logs" element={<AuditLogsPage />} />
+
+              {/* Sales / Invoices */}
+              <Route path="/invoices" element={<InvoiceList />} />
+
+              {/* LMS — exam taking (CBT) */}
+              <Route path="/lms/exams/:examId/take" element={<ExamTaking />} />
+
+              {/* AI Assistant */}
+              <Route path="/ai-assistant" element={<AIAssistantPage />} />
+
+              {/* CRM Hub */}
+              <Route path="/crm/hub" element={<CRMHub />} />
+
+              {/* Bead Max Sales */}
+              <Route path="/bead-max/sales" element={<BeadMaxSales />} />
+
+              {/* Inventory Dashboard */}
+              <Route path="/inventory/dashboard" element={<InventoryDashboard />} />
+
+              {/* Exam Results */}
+              <Route path="/lms/exams/:examId/results" element={<ExamResultsPage />} />
+
+              {/* Reports */}
+              <Route path="/reports/attendance" element={<AttendanceReport />} />
+              <Route path="/reports/projects" element={<ProjectsReport />} />
+
+              {/* Roles & Permissions */}
+              <Route path="/settings/roles" element={<RolesPermissions />} />
+
+              {/* Login History */}
+              <Route path="/login-history" element={<LoginHistory />} />
+
+              {/* Weekly Report */}
+              <Route path="/hr/weekly-report" element={<WeeklyReportPage />} />
+
+              {/* VisaMax */}
+              <Route path="/visamax" element={<VisaMaxHub />} />
+
+              {/* Customer Reports */}
+              <Route path="/customer-reports" element={<CustomerReportList />} />
+
               {/* Settings */}
               <Route path="/settings/profile" element={<ProfileSettings />} />
               <Route path="/settings/security" element={<SecuritySettings />} />
               <Route path="/settings/notifications" element={<NotificationSettings />} />
+              <Route path="/settings/system" element={<SystemSettings />} />
             </Route>
           </Route>
 
-          {/* Root redirect */}
+          {/* Root redirect — handled per role in PrivateRoute/StudentRoute */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
           {/* Not found */}

@@ -28,6 +28,9 @@ export interface AuthUser {
   departmentId: number | null;
   roles: string[];
   permissions: string[];
+  // Business unit assignment (required for data isolation)
+  businessUnit?: string;        // Primary business unit name
+  additionalUnits?: string[];   // Extra units granted by CEO only
 }
 
 export interface AuthResponse {

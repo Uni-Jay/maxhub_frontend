@@ -1,377 +1,699 @@
 /**
  * Super Admin Dashboard
- * Complete organization overview with 10 key widgets
+ * Complete organization overview with real API data via react-query
  */
 
-import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Users,
   Building2,
   Calendar,
+  Briefcase,
+  GraduationCap,
+  DollarSign,
+  Clock,
+  Target,
   Bell,
   RefreshCw,
-  Briefcase,
+  TrendingUp,
+  BarChart2,
+  Link,
+  ChevronRight,
+  AlertCircle,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   StatCard,
-  SimpleBarChart,
+  SimpleAreaChart,
   MultiBarChart,
   SimplePieChart,
 } from '@components/charts/ChartComponents';
-import { Loader } from '@components/ui/loader';
+import {
+  superAdminDashboardService,
+  type AttendanceData,
+  type RevenueData,
+  type PayrollData,
+  type DepartmentData,
+  type ProjectData,
+  type NotificationData,
+} from '@services/dashboardService';
+import { useApiQuery } from '../../hooks/useApiQuery';
+import { cn } from '@utils/cn';
 
-// Mock data for demonstration
-const attendanceData = [
-  { name: 'Mon', value: 245, present: 240, absent: 5 },
-  { name: 'Tue', value: 248, present: 243, absent: 5 },
-  { name: 'Wed', value: 242, present: 238, absent: 4 },
-  { name: 'Thu', value: 250, present: 248, absent: 2 },
-  { name: 'Fri', value: 240, present: 235, absent: 5 },
-];
+// ─── Animation variants ──────────────────────────────────────────────────────
 
-const revenueData = [
-  { name: 'Jan', value: 45000, target: 50000 },
-  { name: 'Feb', value: 52000, target: 50000 },
-  { name: 'Mar', value: 48000, target: 50000 },
-  { name: 'Apr', value: 61000, target: 55000 },
-  { name: 'May', value: 55000, target: 55000 },
-  { name: 'Jun', value: 67000, target: 60000 },
-];
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+  },
+};
 
-const payrollData = [
-  { name: 'Salaries', value: 180000 },
-  { name: 'Bonus', value: 35000 },
-  { name: 'Benefits', value: 28000 },
-  { name: 'Deductions', value: 12000 },
-];
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+};
 
-const departmentDistribution = [
-  { name: 'Engineering', value: 65 },
-  { name: 'Sales', value: 42 },
-  { name: 'HR', value: 15 },
-  { name: 'Finance', value: 28 },
-  { name: 'Operations', value: 35 },
-];
+// ─── Skeleton loader ──────────────────────────────────────────────────────────
 
-const studentAnalytics = [
-  { name: 'Enrolled', value: 1250 },
-  { name: 'Active', value: 1100 },
-  { name: 'Completed', value: 450 },
-  { name: 'Dropped', value: 50 },
-];
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn('animate-pulse rounded-lg bg-muted/60', className)} />
+  );
+}
 
-const projectStatus = [
-  { name: 'Active Projects', value: 18 },
-  { name: 'Completed', value: 45 },
-  { name: 'On Hold', value: 3 },
-  { name: 'Delayed', value: 2 },
-];
+function StatCardSkeleton() {
+  return (
+    <div className="rounded-lg p-6 bg-muted/30 space-y-3">
+      <Skeleton className="h-4 w-28" />
+      <Skeleton className="h-8 w-20" />
+      <Skeleton className="h-3 w-16" />
+    </div>
+  );
+}
 
-const crmMetrics = [
-  { name: 'Leads', value: 324 },
-  { name: 'Opportunities', value: 87 },
-  { name: 'Converted', value: 23 },
-  { name: 'Lost', value: 12 },
-];
+function ChartSkeleton({ height = 250 }: { height?: number }) {
+  return <div className="animate-pulse rounded-lg bg-muted/60 w-full" style={{ height }} />;
+}
+
+// ─── Quick Actions ────────────────────────────────────────────────────────────
+
+const QUICK_ACTIONS = [
+  { label: 'Add Staff', path: '/staff/create', icon: Users, color: 'text-blue-600' },
+  { label: 'Generate Payroll', path: '/payroll/periods', icon: DollarSign, color: 'text-emerald-600' },
+  { label: 'Approve Reports', path: '/hr/weekly-report', icon: TrendingUp, color: 'text-purple-600' },
+  { label: 'Customer Reports', path: '/customer-reports', icon: BarChart2, color: 'text-orange-600' },
+  { label: 'VisaMax Hub', path: '/visamax', icon: Link, color: 'text-sky-600' },
+  { label: 'Departments', path: '/staff', icon: Building2, color: 'text-yellow-600' },
+  { label: 'Analytics', path: '/analytics', icon: BarChart2, color: 'text-indigo-600' },
+  { label: 'Announcement', path: '/messages', icon: Bell, color: 'text-rose-600' },
+] as const;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function formatDate(d: Date) {
+  return d.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function formatCurrency(n: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function SuperAdminDashboard() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const today = new Date();
 
-  useEffect(() => {
-    // Simulate data loading
-    const timer = setTimeout(() => setIsLoading(false), 1500);
-    return () => clearTimeout(timer);
-  }, []);
+  // ── Queries ──────────────────────────────────────────────────────────────
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setRefreshing(false);
+  const statsQuery = useApiQuery(
+    ['super-admin', 'stats'],
+    () => superAdminDashboardService.getStats(),
+  );
+
+  const attendanceQuery = useApiQuery(
+    ['super-admin', 'attendance', 7],
+    () => superAdminDashboardService.getAttendanceData(7),
+  );
+
+  const revenueQuery = useApiQuery(
+    ['super-admin', 'revenue', 6],
+    () => superAdminDashboardService.getRevenueAnalytics(6),
+  );
+
+  const payrollQuery = useApiQuery(
+    ['super-admin', 'payroll'],
+    () => superAdminDashboardService.getPayrollSummary(),
+  );
+
+  const departmentQuery = useApiQuery(
+    ['super-admin', 'departments'],
+    () => superAdminDashboardService.getDepartmentDistribution(),
+  );
+
+  const studentQuery = useApiQuery(
+    ['super-admin', 'students'],
+    () => superAdminDashboardService.getStudentAnalytics(),
+  );
+
+  const projectQuery = useApiQuery(
+    ['super-admin', 'projects'],
+    () => superAdminDashboardService.getProjectStatus(),
+  );
+
+  const crmQuery = useApiQuery(
+    ['super-admin', 'crm'],
+    () => superAdminDashboardService.getCRMMetrics(),
+  );
+
+  const notifQuery = useApiQuery(
+    ['super-admin', 'notifications', 5],
+    () => superAdminDashboardService.getNotifications(5),
+  );
+
+  // ── Refresh all ──────────────────────────────────────────────────────────
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['super-admin'] });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader size="lg" />
-      </div>
-    );
-  }
+  // ── Derived values ───────────────────────────────────────────────────────
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
-  };
+  const stats = statsQuery.data;
+  const crm = crmQuery.data;
+  const students = studentQuery.data;
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.4 },
-    },
-  };
+  // Map service response shapes to chart-friendly { name, value } arrays
+  const attendanceChartData = (attendanceQuery.data ?? []).map(
+    (d: AttendanceData) => ({
+      name: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
+      present: d.present,
+      absent: d.absent,
+      late: d.late,
+    }),
+  );
+
+  const revenueChartData = (revenueQuery.data ?? []).map((d: RevenueData) => ({
+    name: d.month,
+    value: d.revenue,
+    target: d.target,
+  }));
+
+  const payrollChartData = (payrollQuery.data ?? []).map((d: PayrollData) => ({
+    name: d.category,
+    value: d.amount,
+  }));
+
+  const departmentChartData = (departmentQuery.data ?? []).map(
+    (d: DepartmentData) => ({ name: d.name, value: d.count }),
+  );
+
+  const projectChartData = (() => {
+    const raw = projectQuery.data ?? [];
+    const counts: Record<string, number> = {};
+    for (const p of raw as ProjectData[]) {
+      const label =
+        p.status === 'active'
+          ? 'Active'
+          : p.status === 'completed'
+          ? 'Completed'
+          : p.status === 'on_hold'
+          ? 'On Hold'
+          : 'Delayed';
+      counts[label] = (counts[label] ?? 0) + 1;
+    }
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  })();
+
+  const isGlobalLoading =
+    statsQuery.isLoading ||
+    attendanceQuery.isLoading ||
+    revenueQuery.isLoading;
+
+  const hasError =
+    statsQuery.isError ||
+    attendanceQuery.isError ||
+    revenueQuery.isError ||
+    crmQuery.isError;
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-8">
-      {/* Header */}
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="space-y-8 p-6"
+    >
+      {/* ── Header ── */}
       <motion.div
         variants={itemVariants}
-        className="flex items-center justify-between"
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
         <div>
-          <h1 className="text-3xl font-bold">Super Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Complete organization overview</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {getGreeting()}, Admin
+          </h1>
+          <p className="text-muted-foreground mt-1">{formatDate(today)}</p>
         </div>
         <motion.button
           onClick={handleRefresh}
-          disabled={refreshing}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          disabled={isGlobalLoading}
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
+            'bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity',
+          )}
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={cn('w-4 h-4', isGlobalLoading && 'animate-spin')}
+          />
           Refresh
         </motion.button>
       </motion.div>
 
-      {/* Key Metrics */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          label="Total Employees"
-          value="185"
-          icon={<Users className="w-8 h-8" />}
-          trend={{ value: 12, positive: true }}
-          color="blue"
-        />
-        <StatCard
-          label="Total Departments"
-          value="12"
-          icon={<Building2 className="w-8 h-8" />}
-          trend={{ value: 2, positive: false }}
-          color="green"
-        />
-        <StatCard
-          label="Attendance Rate"
-          value="97.2%"
-          icon={<Calendar className="w-8 h-8" />}
-          trend={{ value: 5, positive: true }}
-          color="purple"
-        />
-        <StatCard
-          label="Active Projects"
-          value="18"
-          icon={<Briefcase className="w-8 h-8" />}
-          trend={{ value: 8, positive: true }}
-          color="yellow"
-        />
-      </motion.div>
-
-      {/* Charts Grid */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Analytics */}
+      {/* ── Global error banner ── */}
+      {hasError && (
         <motion.div
           variants={itemVariants}
-          className="bg-card rounded-lg p-6 border border-border"
+          className="flex items-center gap-3 p-4 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm"
         >
-          <h2 className="text-lg font-semibold mb-4">Revenue Analytics</h2>
-          <SimpleBarChart
-            data={revenueData}
-            dataKey="value"
-            height={250}
-            color="#3b82f6"
-          />
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          Some data failed to load. Please refresh to try again.
         </motion.div>
+      )}
 
-        {/* Payroll Summary */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-card rounded-lg p-6 border border-border"
-        >
-          <h2 className="text-lg font-semibold mb-4">Payroll Summary (June)</h2>
-          <SimplePieChart
-            data={payrollData}
-            dataKey="value"
-            height={250}
-          />
-        </motion.div>
-      </motion.div>
-
-      {/* Attendance & Department Distribution */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly Attendance */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-card rounded-lg p-6 border border-border"
-        >
-          <h2 className="text-lg font-semibold mb-4">Weekly Attendance</h2>
-          <MultiBarChart
-            data={attendanceData}
-            dataKeys={['present', 'absent']}
-            height={250}
-            colors={['#10b981', '#ef4444']}
-          />
-        </motion.div>
-
-        {/* Department Distribution */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-card rounded-lg p-6 border border-border"
-        >
-          <h2 className="text-lg font-semibold mb-4">Staff by Department</h2>
-          <SimplePieChart
-            data={departmentDistribution}
-            dataKey="value"
-            height={250}
-          />
-        </motion.div>
-      </motion.div>
-
-      {/* Student Analytics & Project Status */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Student Analytics */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-card rounded-lg p-6 border border-border"
-        >
-          <h2 className="text-lg font-semibold mb-4">Student Analytics</h2>
-          <MultiBarChart
-            data={studentAnalytics}
-            dataKeys={['value']}
-            height={250}
-            colors={['#8b5cf6']}
-          />
-          <div className="mt-4 grid grid-cols-4 gap-2 text-center">
-            <div>
-              <p className="text-2xl font-bold text-purple-600">1.2K</p>
-              <p className="text-xs text-muted-foreground">Enrolled</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-blue-600">1.1K</p>
-              <p className="text-xs text-muted-foreground">Active</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-green-600">450</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-red-600">50</p>
-              <p className="text-xs text-muted-foreground">Dropped</p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Project Status */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-card rounded-lg p-6 border border-border"
-        >
-          <h2 className="text-lg font-semibold mb-4">Project Status</h2>
-          <MultiBarChart
-            data={projectStatus}
-            dataKeys={['value']}
-            height={250}
-            colors={['#ef4444']}
-          />
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Active (18)</span>
-              <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500" style={{ width: '72%' }}></div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">On Hold (3)</span>
-              <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full bg-yellow-500" style={{ width: '12%' }}></div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Delayed (2)</span>
-              <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full bg-red-500" style={{ width: '8%' }}></div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </motion.div>
-
-      {/* CRM Overview & Recent Activity */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* CRM Overview */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-card rounded-lg p-6 border border-border"
-        >
-          <h2 className="text-lg font-semibold mb-4">CRM Overview</h2>
-          <div className="space-y-4">
-            {crmMetrics.map((metric) => (
-              <div key={metric.name} className="flex items-center justify-between">
-                <span className="text-sm font-medium">{metric.name}</span>
-                <span className="text-2xl font-bold text-primary">{metric.value}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 p-4 bg-primary/10 rounded-lg">
-            <p className="text-sm font-medium">Conversion Rate</p>
-            <p className="text-3xl font-bold mt-2">26.4%</p>
-          </div>
-        </motion.div>
-
-        {/* Notifications & Quick Actions */}
-        <motion.div
-          variants={itemVariants}
-          className="bg-card rounded-lg p-6 border border-border"
-        >
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Bell className="w-5 h-5" />
-            Recent Notifications
-          </h2>
-          <div className="space-y-3">
-            {[
-              { title: 'Payroll Processing', desc: 'Monthly payroll ready for approval', time: '2 hours ago' },
-              { title: 'Leave Request', desc: '5 new leave requests pending approval', time: '4 hours ago' },
-              { title: 'Project Milestone', desc: 'Website Redesign reached 80% completion', time: '6 hours ago' },
-              { title: 'Attendance Alert', desc: '3 employees marked absent today', time: '8 hours ago' },
-            ].map((notif, i) => (
-              <div key={i} className="p-3 bg-muted/50 rounded-lg border border-border/50">
-                <p className="text-sm font-medium">{notif.title}</p>
-                <p className="text-xs text-muted-foreground mt-1">{notif.desc}</p>
-                <p className="text-xs text-muted-foreground mt-2">{notif.time}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      </motion.div>
-
-      {/* Calendar Widget */}
+      {/* ── 8 KPI Stat Cards ── */}
       <motion.div
         variants={itemVariants}
-        className="bg-card rounded-lg p-6 border border-border"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
       >
-        <h2 className="text-lg font-semibold mb-4">Upcoming Events</h2>
-        <div className="space-y-3">
-          {[
-            { event: 'Board Meeting', date: 'Jun 15, 2024', time: '2:00 PM' },
-            { event: 'Project Kickoff', date: 'Jun 17, 2024', time: '10:00 AM' },
-            { event: 'Team Building', date: 'Jun 22, 2024', time: '4:00 PM' },
-            { event: 'Quarterly Review', date: 'Jun 28, 2024', time: '9:00 AM' },
-          ].map((item, i) => (
-            <div key={i} className="flex items-start justify-between p-3 bg-muted/50 rounded-lg border border-border/50">
-              <div>
-                <p className="text-sm font-medium">{item.event}</p>
-                <p className="text-xs text-muted-foreground mt-1">{item.date}</p>
+        {statsQuery.isLoading ? (
+          Array.from({ length: 8 }).map((_, i) => <StatCardSkeleton key={i} />)
+        ) : (
+          <>
+            <StatCard
+              label="Total Employees"
+              value={stats?.totalEmployees ?? '—'}
+              icon={<Users className="w-7 h-7" />}
+              color="blue"
+            />
+            <StatCard
+              label="Total Departments"
+              value={stats?.totalDepartments ?? '—'}
+              icon={<Building2 className="w-7 h-7" />}
+              color="purple"
+            />
+            <StatCard
+              label="Attendance Rate"
+              value={
+                stats?.attendanceRate != null
+                  ? `${stats.attendanceRate.toFixed(1)}%`
+                  : '—'
+              }
+              icon={<Calendar className="w-7 h-7" />}
+              color="green"
+            />
+            <StatCard
+              label="Active Projects"
+              value={stats?.activeProjects ?? '—'}
+              icon={<Briefcase className="w-7 h-7" />}
+              color="yellow"
+            />
+            {/* Row 2 — extra stats sourced from student / CRM / notifications queries */}
+            <div
+              className={cn(
+                'rounded-lg p-6 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400',
+              )}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium opacity-75">
+                    Total Students
+                  </p>
+                  <p className="text-2xl font-bold mt-2">
+                    {studentQuery.isLoading
+                      ? '…'
+                      : (students?.total_enrolled ?? '—')}
+                  </p>
+                </div>
+                <GraduationCap className="w-7 h-7 opacity-50" />
               </div>
-              <span className="text-xs font-medium text-primary">{item.time}</span>
             </div>
+            <div
+              className={cn(
+                'rounded-lg p-6 bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400',
+              )}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium opacity-75">
+                    Total Revenue
+                  </p>
+                  <p className="text-2xl font-bold mt-2">
+                    {revenueQuery.isLoading
+                      ? '…'
+                      : revenueQuery.data && revenueQuery.data.length > 0
+                      ? formatCurrency(
+                          revenueQuery.data.reduce(
+                            (sum: number, d: RevenueData) => sum + d.revenue,
+                            0,
+                          ),
+                        )
+                      : '—'}
+                  </p>
+                </div>
+                <DollarSign className="w-7 h-7 opacity-50" />
+              </div>
+            </div>
+            <div
+              className={cn(
+                'rounded-lg p-6 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400',
+              )}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium opacity-75">
+                    Pending Approvals
+                  </p>
+                  <p className="text-2xl font-bold mt-2">
+                    {statsQuery.isLoading ? '…' : (stats?.pendingApprovals ?? '—')}
+                  </p>
+                </div>
+                <Clock className="w-7 h-7 opacity-50" />
+              </div>
+            </div>
+            <div
+              className={cn(
+                'rounded-lg p-6 bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400',
+              )}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium opacity-75">
+                    CRM Conversion
+                  </p>
+                  <p className="text-2xl font-bold mt-2">
+                    {crmQuery.isLoading
+                      ? '…'
+                      : crm?.conversion_rate != null
+                      ? `${crm.conversion_rate.toFixed(1)}%`
+                      : '—'}
+                  </p>
+                </div>
+                <Target className="w-7 h-7 opacity-50" />
+              </div>
+            </div>
+          </>
+        )}
+      </motion.div>
+
+      {/* ── Charts Row 1: Attendance + Revenue ── */}
+      <motion.div
+        variants={itemVariants}
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+      >
+        {/* Attendance — last 7 days */}
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <h2 className="text-base font-semibold mb-4">
+            Attendance — Last 7 Days
+          </h2>
+          {attendanceQuery.isLoading ? (
+            <ChartSkeleton />
+          ) : attendanceChartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-16">
+              No attendance data available.
+            </p>
+          ) : (
+            <MultiBarChart
+              data={attendanceChartData}
+              dataKeys={['present', 'absent', 'late']}
+              height={250}
+              colors={['#10b981', '#ef4444', '#f59e0b']}
+            />
+          )}
+        </div>
+
+        {/* Revenue vs Target */}
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <h2 className="text-base font-semibold mb-4">
+            Revenue vs Target
+          </h2>
+          {revenueQuery.isLoading ? (
+            <ChartSkeleton />
+          ) : revenueChartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-16">
+              No revenue data available.
+            </p>
+          ) : (
+            <SimpleAreaChart
+              data={revenueChartData}
+              dataKey="value"
+              height={250}
+              color="#3b82f6"
+            />
+          )}
+        </div>
+      </motion.div>
+
+      {/* ── Charts Row 2: 3 Pie Charts ── */}
+      <motion.div
+        variants={itemVariants}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+      >
+        {/* Department distribution */}
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <h2 className="text-base font-semibold mb-4">
+            Staff by Department
+          </h2>
+          {departmentQuery.isLoading ? (
+            <ChartSkeleton height={200} />
+          ) : departmentChartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-10">
+              No data.
+            </p>
+          ) : (
+            <SimplePieChart
+              data={departmentChartData}
+              dataKey="value"
+              height={200}
+            />
+          )}
+        </div>
+
+        {/* Payroll breakdown */}
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <h2 className="text-base font-semibold mb-4">Payroll Breakdown</h2>
+          {payrollQuery.isLoading ? (
+            <ChartSkeleton height={200} />
+          ) : payrollChartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-10">
+              No data.
+            </p>
+          ) : (
+            <SimplePieChart
+              data={payrollChartData}
+              dataKey="value"
+              height={200}
+            />
+          )}
+        </div>
+
+        {/* Project status */}
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <h2 className="text-base font-semibold mb-4">Project Status</h2>
+          {projectQuery.isLoading ? (
+            <ChartSkeleton height={200} />
+          ) : projectChartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-10">
+              No data.
+            </p>
+          ) : (
+            <SimplePieChart
+              data={projectChartData}
+              dataKey="value"
+              height={200}
+            />
+          )}
+        </div>
+      </motion.div>
+
+      {/* ── Bottom section: CRM + Students + Notifications ── */}
+      <motion.div
+        variants={itemVariants}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+      >
+        {/* CRM metrics */}
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <h2 className="text-base font-semibold mb-5">CRM Overview</h2>
+          {crmQuery.isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : !crm ? (
+            <p className="text-sm text-muted-foreground">No CRM data.</p>
+          ) : (
+            <div className="space-y-4">
+              {(
+                [
+                  { label: 'Total Leads', value: crm.total_leads, color: 'text-blue-600' },
+                  { label: 'Opportunities', value: crm.total_opportunities, color: 'text-purple-600' },
+                  { label: 'Converted Deals', value: crm.converted_deals, color: 'text-emerald-600' },
+                  { label: 'Lost Deals', value: crm.lost_deals, color: 'text-red-600' },
+                ] as const
+              ).map(({ label, value, color }) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between py-2 border-b border-border/40 last:border-0"
+                >
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <span className={cn('text-xl font-bold', color)}>
+                    {value ?? '—'}
+                  </span>
+                </div>
+              ))}
+              <div className="mt-4 p-3 rounded-lg bg-teal-50 dark:bg-teal-950">
+                <p className="text-xs text-muted-foreground">Conversion Rate</p>
+                <p className="text-2xl font-bold text-teal-600 dark:text-teal-400 mt-1">
+                  {crm.conversion_rate?.toFixed(1) ?? '—'}%
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Student analytics */}
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <h2 className="text-base font-semibold mb-5">Student Analytics</h2>
+          {studentQuery.isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : !students ? (
+            <p className="text-sm text-muted-foreground">No student data.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              {(
+                [
+                  {
+                    label: 'Enrolled',
+                    value: students.total_enrolled,
+                    bg: 'bg-blue-50 dark:bg-blue-950',
+                    text: 'text-blue-600 dark:text-blue-400',
+                  },
+                  {
+                    label: 'Active',
+                    value: students.active_students,
+                    bg: 'bg-green-50 dark:bg-green-950',
+                    text: 'text-green-600 dark:text-green-400',
+                  },
+                  {
+                    label: 'Completed',
+                    value: students.completed_courses,
+                    bg: 'bg-purple-50 dark:bg-purple-950',
+                    text: 'text-purple-600 dark:text-purple-400',
+                  },
+                  {
+                    label: 'Dropped',
+                    value: students.dropped_students,
+                    bg: 'bg-red-50 dark:bg-red-950',
+                    text: 'text-red-600 dark:text-red-400',
+                  },
+                ] as const
+              ).map(({ label, value, bg, text }) => (
+                <div
+                  key={label}
+                  className={cn(
+                    'rounded-lg p-4 text-center',
+                    bg,
+                  )}
+                >
+                  <p className={cn('text-2xl font-bold', text)}>
+                    {value?.toLocaleString() ?? '—'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Recent notifications */}
+        <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
+          <h2 className="text-base font-semibold mb-5 flex items-center gap-2">
+            <Bell className="w-4 h-4 text-muted-foreground" />
+            Recent Notifications
+          </h2>
+          {notifQuery.isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : !notifQuery.data || notifQuery.data.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No notifications.</p>
+          ) : (
+            <div className="space-y-3">
+              {(notifQuery.data as NotificationData[]).map((n) => (
+                <div
+                  key={n.id}
+                  className={cn(
+                    'p-3 rounded-lg border border-border/50',
+                    n.read
+                      ? 'bg-muted/40'
+                      : 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium leading-tight">
+                      {n.title}
+                    </p>
+                    {!n.read && (
+                      <span className="shrink-0 w-2 h-2 rounded-full bg-blue-500 mt-1" />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    {n.message}
+                  </p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">
+                    {new Date(n.created_at).toLocaleTimeString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      {/* ── Quick Actions panel ── */}
+      <motion.div
+        variants={itemVariants}
+        className="bg-card rounded-xl p-6 border border-border shadow-sm"
+      >
+        <h2 className="text-base font-semibold mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+          {QUICK_ACTIONS.map(({ label, path, icon: Icon, color }) => (
+            <motion.button
+              key={path}
+              onClick={() => navigate(path)}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              className={cn(
+                'flex flex-col items-center gap-2 p-4 rounded-xl border border-border/60',
+                'bg-muted/30 hover:bg-muted/60 transition-colors cursor-pointer',
+              )}
+            >
+              <Icon className={cn('w-6 h-6', color)} />
+              <span className="text-xs font-medium text-muted-foreground">
+                {label}
+              </span>
+              <ChevronRight className="w-3 h-3 text-muted-foreground/40" />
+            </motion.button>
           ))}
         </div>
       </motion.div>

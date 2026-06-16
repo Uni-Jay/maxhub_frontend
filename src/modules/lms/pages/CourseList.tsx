@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  BookOpen, Search, Users, Clock, Star, Play, Filter,
-  Plus, Award, TrendingUp, BookMarked,
+  BookOpen, Search, Users, Clock, Star, Play,
+  Plus, Award, BookMarked,
 } from 'lucide-react';
 
 const COURSES = [

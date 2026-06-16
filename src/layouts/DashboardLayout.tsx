@@ -1,13 +1,19 @@
-import { useState } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Users, Calendar, Briefcase, CheckSquare, Settings,
   FileText, MessageSquare, BarChart3, Menu, X, Bell, Search,
   LogOut, HelpCircle, UserCircle, Send, Home, ChevronRight, GraduationCap,
+  Video, DollarSign, Package, UserCheck, ShoppingCart, FolderOpen,
+  Receipt, ScrollText, BarChart2, Sun, Moon, Bot, ShoppingBag,
 } from 'lucide-react';
+import { jwtDecode } from 'jwt-decode';
 import { useAuthStore } from '@store/authStore';
+import { useThemeStore } from '@store/themeStore';
 import { cn } from '@utils/cn';
+import { IncomingCallNotification } from '@modules/videocall/components/IncomingCallNotification';
+import type { IncomingCall } from '@services/videoCallService';
 
 interface NavItem {
   label: string;
@@ -16,96 +22,180 @@ interface NavItem {
   children?: { label: string; path: string }[];
 }
 
-const NAV: NavItem[] = [
+// ─── ALL navigation items ────────────────────────────────────────────────────
+const ALL_NAV: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  {
-    label: 'Staff', path: '/staff', icon: Users,
-    children: [
-      { label: 'All Staff', path: '/staff' },
-      { label: 'Add Staff', path: '/staff/create' },
-    ],
-  },
-  {
-    label: 'Attendance', path: '/attendance', icon: Calendar,
-    children: [
-      { label: 'Records', path: '/attendance' },
-      { label: 'Check In', path: '/attendance/check-in' },
-    ],
-  },
-  {
-    label: 'Projects', path: '/projects', icon: Briefcase,
-    children: [
-      { label: 'All Projects', path: '/projects' },
-      { label: 'Create Project', path: '/projects/create' },
-    ],
-  },
-  {
-    label: 'Tasks', path: '/tasks', icon: CheckSquare,
-    children: [
-      { label: 'All Tasks', path: '/tasks' },
-      { label: 'Create Task', path: '/tasks/create' },
-    ],
-  },
-  {
-    label: 'Leave', path: '/leave', icon: FileText,
-    children: [
-      { label: 'Apply Leave', path: '/leave/apply' },
-      { label: 'Requests', path: '/leave/requests' },
-      { label: 'Balance', path: '/leave/balance' },
-    ],
-  },
+
+  { label: 'Staff', path: '/staff', icon: Users, children: [
+    { label: 'All Staff', path: '/staff' },
+    { label: 'Add Staff', path: '/staff/create' },
+  ]},
+  { label: 'HR', path: '/hr', icon: UserCheck, children: [
+    { label: 'Job Postings', path: '/hr/jobs' },
+    { label: 'Appraisals', path: '/hr/appraisals' },
+    { label: 'Training', path: '/hr/training' },
+    { label: 'Weekly Report', path: '/hr/weekly-report' },
+  ]},
+  { label: 'Attendance', path: '/attendance', icon: Calendar, children: [
+    { label: 'Records', path: '/attendance' },
+    { label: 'Check In', path: '/attendance/check-in' },
+  ]},
+  { label: 'Leave', path: '/leave', icon: FileText, children: [
+    { label: 'Apply Leave', path: '/leave/apply' },
+    { label: 'Requests', path: '/leave/requests' },
+    { label: 'Balance', path: '/leave/balance' },
+  ]},
+  { label: 'Payroll', path: '/payroll', icon: DollarSign, children: [
+    { label: 'Dashboard', path: '/payroll' },
+    { label: 'Periods', path: '/payroll/periods' },
+    { label: 'Pay Slips', path: '/payroll/slips' },
+    { label: 'Salary Structures', path: '/payroll/structures' },
+    { label: 'My Payslip', path: '/payroll/my-slips' },
+  ]},
+  { label: 'Projects', path: '/projects', icon: Briefcase, children: [
+    { label: 'All Projects', path: '/projects' },
+    { label: 'Create Project', path: '/projects/create' },
+  ]},
+  { label: 'Tasks', path: '/tasks', icon: CheckSquare, children: [
+    { label: 'All Tasks', path: '/tasks' },
+    { label: 'Create Task', path: '/tasks/create' },
+  ]},
   { label: 'Queries', path: '/queries', icon: HelpCircle },
-  {
-    label: 'Kurios SAT', path: '/lms', icon: GraduationCap,
-    children: [
-      { label: 'Courses', path: '/lms/courses' },
-      { label: 'My Enrollments', path: '/lms/my-enrollments' },
-      { label: 'Exams', path: '/lms/exams' },
-      { label: 'Certificates', path: '/lms/certificates' },
-    ],
-  },
-  {
-    label: 'Clients', path: '/clients', icon: UserCircle,
-    children: [
-      { label: 'All Clients', path: '/clients' },
-      { label: 'Add Client', path: '/clients/create' },
-    ],
-  },
-  {
-    label: 'Communication', path: '/communication', icon: Send,
-    children: [
-      { label: 'Send Message', path: '/communication/send' },
-      { label: 'Templates', path: '/communication/templates' },
-      { label: 'History', path: '/communication/history' },
-    ],
-  },
-  {
-    label: 'Reports', path: '/reports', icon: BarChart3,
-    children: [
-      { label: 'Attendance', path: '/reports/attendance' },
-      { label: 'Projects', path: '/reports/projects' },
-    ],
-  },
+  { label: 'CRM', path: '/crm', icon: ShoppingCart, children: [
+    { label: 'Business Hub', path: '/crm/hub' },
+    { label: 'Contacts', path: '/crm/contacts' },
+    { label: 'Pipeline', path: '/crm/pipeline' },
+    { label: 'Forecast', path: '/crm/forecast' },
+  ]},
+  { label: 'Clients', path: '/clients', icon: UserCircle, children: [
+    { label: 'All Clients', path: '/clients' },
+    { label: 'Add Client', path: '/clients/create' },
+  ]},
+  { label: 'Inventory', path: '/inventory', icon: Package, children: [
+    { label: 'Dashboard', path: '/inventory/dashboard' },
+    { label: 'Items', path: '/inventory/items' },
+    { label: 'Warehouses', path: '/inventory/warehouses' },
+  ]},
+  { label: 'Bead Max', path: '/bead-max', icon: ShoppingBag, children: [
+    { label: 'Sales & Orders', path: '/bead-max/sales' },
+  ]},
+  { label: 'Kurios SAT', path: '/lms', icon: GraduationCap, children: [
+    { label: 'Courses', path: '/lms/courses' },
+    { label: 'My Enrollments', path: '/lms/my-enrollments' },
+    { label: 'Exams', path: '/lms/exams' },
+    { label: 'Certificates', path: '/lms/certificates' },
+  ]},
+  { label: 'Messages', path: '/messages', icon: MessageSquare },
+  { label: 'Video Calls', path: '/calls', icon: Video },
+  { label: 'Broadcast', path: '/communication', icon: Send, children: [
+    { label: 'Send Message', path: '/communication/send' },
+    { label: 'Templates', path: '/communication/templates' },
+    { label: 'History', path: '/communication/history' },
+  ]},
+  { label: 'AI Assistant', path: '/ai-assistant', icon: Bot },
+  { label: 'Calendar', path: '/calendar', icon: Calendar },
+  { label: 'File Manager', path: '/files', icon: FolderOpen },
+  { label: 'Notifications', path: '/notifications', icon: Bell },
+  { label: 'Invoices', path: '/invoices', icon: Receipt },
+  { label: 'Analytics', path: '/analytics', icon: BarChart2 },
+  { label: 'Reports', path: '/reports', icon: BarChart3, children: [
+    { label: 'Attendance', path: '/reports/attendance' },
+    { label: 'Projects', path: '/reports/projects' },
+  ]},
+  { label: 'Audit Logs', path: '/audit-logs', icon: ScrollText },
+  { label: 'Settings', path: '/settings', icon: Settings, children: [
+    { label: 'System Settings', path: '/settings/system' },
+    { label: 'Roles & Permissions', path: '/settings/roles' },
+    { label: 'Profile', path: '/settings/profile' },
+    { label: 'Security', path: '/settings/security' },
+    { label: 'Notifications Prefs', path: '/settings/notifications' },
+    { label: 'Login History', path: '/login-history' },
+  ]},
 ];
+
+// ─── Paths visible per role ──────────────────────────────────────────────────
+// Each array lists the top-level `path` values from ALL_NAV that the role may see.
+const ROLE_PATHS: Record<string, string[]> = {
+  superadmin: ['*'], // full access
+  admin: [
+    '/dashboard','/staff','/hr','/attendance','/leave','/payroll',
+    '/projects','/tasks','/queries','/clients','/inventory',
+    '/messages','/calls','/communication','/calendar','/files',
+    '/notifications','/invoices','/analytics','/reports','/settings',
+  ],
+  hr: [
+    '/dashboard','/staff','/hr','/attendance','/leave','/payroll',
+    '/projects','/messages','/calendar','/notifications','/settings',
+  ],
+  hod: [
+    '/dashboard','/staff','/hr','/attendance','/leave',
+    '/projects','/tasks','/messages','/calendar','/notifications','/settings',
+  ],
+  staff: [
+    '/dashboard','/attendance','/leave','/tasks',
+    '/messages','/calendar','/notifications','/settings',
+  ],
+};
+
+// Normalise legacy display names and old uppercase codes → new lowercase codes.
+const NORMALISE_ROLE: Record<string, string> = {
+  'SUPER_ADMIN': 'superadmin', 'HEAD_OF_ADMIN': 'admin',
+  'HR': 'hr', 'HOD': 'hod', 'STAFF': 'staff',
+  'ACCOUNTANT': 'staff', 'RECEPTIONIST': 'staff',
+  'INSTRUCTOR': 'staff', 'INTERN': 'staff', 'STUDENT': 'student',
+  'Super Administrator': 'superadmin', 'Head of Administration': 'admin',
+  'Human Resources': 'hr', 'Head of Department': 'hod', 'Staff': 'staff',
+  'Instructor': 'staff', 'Accountant': 'staff', 'Receptionist': 'staff',
+  'Intern': 'staff', 'Student': 'student',
+};
+
+function getPrimaryRole(user: { roles?: string[] } | null, accessToken?: string): string {
+  let roles: string[] = [];
+  if (accessToken) {
+    try {
+      const d = jwtDecode<{ roles: string[] }>(accessToken);
+      if (Array.isArray(d.roles) && d.roles.length > 0) roles = d.roles;
+    } catch { /* fall through */ }
+  }
+  if (!roles.length) roles = user?.roles ?? [];
+  return NORMALISE_ROLE[roles[0]] ?? roles[0]?.toLowerCase() ?? 'staff';
+}
+
+function getNavForRole(role: string): NavItem[] {
+  const allowed = ROLE_PATHS[role];
+  if (!allowed) return ALL_NAV.filter(n => n.path === '/dashboard' || n.path === '/settings');
+  if (allowed[0] === '*') return ALL_NAV; // superadmin sees everything
+  return ALL_NAV.filter(n => allowed.includes(n.path));
+}
 
 function SidebarNav({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
+  const { user, tokens, logout } = useAuthStore();
+
+  const NAV = useMemo(() => {
+    const role = getPrimaryRole(user, tokens?.accessToken);
+    return getNavForRole(role);
+  }, [user?.roles, tokens?.accessToken]);
+
   const [expanded, setExpanded] = useState<string | null>(() => {
     const match = NAV.find(n => n.children && location.pathname.startsWith(n.path));
     return match?.path ?? null;
   });
-  const { user, logout } = useAuthStore();
+
+  const primaryRole = getPrimaryRole(user, tokens?.accessToken);
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100 dark:border-gray-800">
-        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-          <span className="text-white font-black text-sm">M</span>
-        </div>
+        <img
+          src="/images/maxhublogo.jpeg"
+          alt="MaxHub"
+          className="h-8 w-auto object-contain flex-shrink-0"
+        />
         <div>
           <p className="font-bold text-gray-900 dark:text-white text-sm">MaxHub ERP</p>
-          <p className="text-xs text-gray-400">Enterprise Platform</p>
+          <p className="text-xs text-gray-400">Three Brands. One Vision.</p>
         </div>
         {onClose && (
           <button onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-gray-600 lg:hidden">
@@ -210,7 +300,7 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
               {user?.email ?? 'User'}
             </p>
-            <p className="text-xs text-gray-400 capitalize">{user?.roles?.[0]?.toLowerCase() ?? 'staff'}</p>
+            <p className="text-xs text-gray-400 capitalize">{primaryRole}</p>
           </div>
           <Settings className="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
         </NavLink>
@@ -229,8 +319,14 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isDark, toggle: toggleTheme } = useThemeStore();
 
-  const pageTitle = NAV.flatMap(n =>
+  const handleAnswerCall = (call: IncomingCall) => {
+    navigate('/calls', { state: { incomingCall: call } });
+  };
+
+  const pageTitle = ALL_NAV.flatMap(n =>
     n.children
       ? n.children.map(c => ({ path: c.path, label: `${n.label} / ${c.label}` }))
       : [{ path: n.path, label: n.label }]
@@ -295,16 +391,25 @@ export function DashboardLayout() {
               <kbd className="ml-auto text-[10px] bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
             </button>
 
-            {/* Notifications */}
-            <button className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition"
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
 
+            {/* Notifications */}
+            <NavLink to="/notifications" className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition">
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+            </NavLink>
+
             {/* Messages */}
-            <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition">
+            <NavLink to="/messages" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition">
               <MessageSquare className="h-5 w-5" />
-            </button>
+            </NavLink>
           </div>
         </header>
 
@@ -315,6 +420,9 @@ export function DashboardLayout() {
           </div>
         </main>
       </div>
+
+      {/* Global incoming call notification — visible on every page */}
+      <IncomingCallNotification onAnswer={handleAnswerCall} />
     </div>
   );
 }

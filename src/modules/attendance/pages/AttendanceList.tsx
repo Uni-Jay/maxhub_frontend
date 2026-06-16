@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { apiClient } from '@services/apiClient';
 import type { AttendanceRecord } from '@/types';
-import { Clock, MapPin, ChevronLeft, ChevronRight, CalendarDays, LogIn } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, CalendarDays, LogIn } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, string> = {
   Present:     'bg-green-50 text-green-700 border-green-200',

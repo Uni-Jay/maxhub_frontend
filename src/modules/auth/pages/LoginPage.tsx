@@ -3,8 +3,23 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { jwtDecode } from 'jwt-decode';
 import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, Loader2, AlertCircle, BarChart3, Users, Briefcase, TrendingUp } from 'lucide-react';
+import { useAuthStore } from '@store/authStore';
+import { resolveRolePath } from '@pages/Dashboard';
+import { Eye, EyeOff, Loader2, AlertCircle, BarChart3, Users, Briefcase, TrendingUp, ChevronDown } from 'lucide-react';
+
+const DEMO_ACCOUNTS = [
+  { label: 'Super Admin',      email: 'superadmin@maxhub.com', password: 'MaxHub@Admin2024!' },
+  { label: 'Admin',            email: 'admin@maxhub.com',      password: 'Demo@12345!' },
+  { label: 'Dept Head',        email: 'depthead@maxhub.com',   password: 'Demo@12345!' },
+  { label: 'Manager',          email: 'manager@maxhub.com',    password: 'Demo@12345!' },
+  { label: 'Supervisor',       email: 'supervisor@maxhub.com', password: 'Demo@12345!' },
+  { label: 'Team Lead',        email: 'teamlead@maxhub.com',   password: 'Demo@12345!' },
+  { label: 'Staff',            email: 'staff@maxhub.com',      password: 'Demo@12345!' },
+  { label: 'Consultant',       email: 'consultant@maxhub.com', password: 'Demo@12345!' },
+  { label: 'Intern',           email: 'intern@maxhub.com',     password: 'Demo@12345!' },
+];
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -25,6 +40,28 @@ const features = [
   { icon: TrendingUp, label: 'Growth Tools', desc: 'Scale your operations' },
 ];
 
+const NORMALISE_ROLE: Record<string, string> = {
+  'SUPER_ADMIN': 'superadmin', 'HEAD_OF_ADMIN': 'admin',
+  'HR': 'hr', 'HOD': 'hod', 'STAFF': 'staff',
+  'ACCOUNTANT': 'staff', 'RECEPTIONIST': 'staff',
+  'INSTRUCTOR': 'staff', 'INTERN': 'staff', 'STUDENT': 'student',
+  'Super Administrator': 'superadmin', 'Head of Administration': 'admin',
+  'Human Resources': 'hr', 'Head of Department': 'hod', 'Staff': 'staff',
+  'Instructor': 'staff', 'Accountant': 'staff', 'Receptionist': 'staff',
+  'Intern': 'staff', 'Student': 'student',
+};
+
+/** Decode the fresh token right after login to get the role-based dashboard URL. */
+function getRoleDashboardPath(accessToken: string): string {
+  try {
+    const decoded = jwtDecode<{ roles: string[] }>(accessToken);
+    const roles = new Set((decoded.roles ?? []).map((r) => NORMALISE_ROLE[r] ?? r.toLowerCase()));
+    return resolveRolePath(roles);
+  } catch {
+    return '/dashboard';
+  }
+}
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,12 +69,19 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const from = (location.state as LocationState)?.from?.pathname || '/dashboard';
+  const from = (location.state as LocationState)?.from?.pathname;
 
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<LoginFormData>({
+  const [showDemo, setShowDemo] = useState(false);
+
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '', rememberMe: false },
   });
+
+  const fillDemo = (account: typeof DEMO_ACCOUNTS[0]) => {
+    setValue('email', account.email, { shouldValidate: true });
+    setValue('password', account.password, { shouldValidate: true });
+  };
 
   const emailValue = watch('email');
   const passwordValue = watch('password');
@@ -53,7 +97,12 @@ export const LoginPage: React.FC = () => {
     setApiError(null);
     try {
       await login(data.email, data.password);
-      navigate(from, { replace: true });
+      // Prefer the page the user was trying to reach; otherwise resolve from role.
+      // We read tokens from the store AFTER login() has updated it.
+      const destination = from && from !== '/auth/login'
+        ? from
+        : getRoleDashboardPath(useAuthStore.getState().tokens?.accessToken ?? '');
+      navigate(destination, { replace: true });
     } catch (error: any) {
       setApiError(
         error?.response?.data?.message ||
@@ -79,10 +128,7 @@ export const LoginPage: React.FC = () => {
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-16">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-indigo-600 font-black text-lg">M</span>
-            </div>
-            <span className="text-white font-bold text-xl tracking-tight">MaxHub ERP</span>
+            <img src="/images/maxhublogo.jpeg" alt="MaxHub" className="h-12 w-auto object-contain" />
           </div>
 
           <h1 className="text-4xl font-bold text-white leading-tight mb-4">
@@ -112,10 +158,7 @@ export const LoginPage: React.FC = () => {
         <div className="w-full max-w-[420px]">
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-10 lg:hidden">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-black">M</span>
-            </div>
-            <span className="font-bold text-gray-900 dark:text-white text-lg">MaxHub ERP</span>
+            <img src="/images/maxhublogo.jpeg" alt="MaxHub" className="h-8 w-auto object-contain" />
           </div>
 
           <div className="mb-8">
@@ -236,6 +279,32 @@ export const LoginPage: React.FC = () => {
           </p>
 
           {/* Demo Credentials */}
+          <div className="mt-6 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowDemo(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+            >
+              <span>Demo accounts (dev only)</span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDemo ? 'rotate-180' : ''}`} />
+            </button>
+            {showDemo && (
+              <div className="border-t border-dashed border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-800">
+                {DEMO_ACCOUNTS.map(acc => (
+                  <button
+                    key={acc.email}
+                    type="button"
+                    onClick={() => fillDemo(acc)}
+                    className="w-full flex items-center justify-between px-4 py-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition text-left"
+                  >
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 w-24 shrink-0">{acc.label}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{acc.email}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
     </div>

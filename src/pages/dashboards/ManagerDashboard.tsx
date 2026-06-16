@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Users, CheckCircle2, AlertCircle, TrendingUp, Calendar,
-  FileText, ArrowUpRight, Clock, RefreshCw, UserCheck, BarChart3,
+  ArrowUpRight, Clock, RefreshCw, UserCheck, BarChart3,
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
 

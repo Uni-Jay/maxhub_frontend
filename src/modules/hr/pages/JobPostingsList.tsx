@@ -1,0 +1,305 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Briefcase, Plus, Search, Clock, Users, MapPin,
+  ChevronRight, DollarSign, ToggleRight, X, Check,
+} from 'lucide-react';
+import { hrService, type JobPosting } from '@services/hrService';
+
+const STATUS_COLORS: Record<string, string> = {
+  Draft: 'bg-gray-100 text-gray-700',
+  Open: 'bg-green-100 text-green-700',
+  Closed: 'bg-red-100 text-red-700',
+  OnHold: 'bg-yellow-100 text-yellow-700',
+  Filled: 'bg-blue-100 text-blue-700',
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  'Full-time': 'bg-indigo-100 text-indigo-700',
+  'Part-time': 'bg-violet-100 text-violet-700',
+  Contract: 'bg-amber-100 text-amber-700',
+  Temporary: 'bg-orange-100 text-orange-700',
+  Internship: 'bg-teal-100 text-teal-700',
+};
+
+const INITIAL_FORM = {
+  title: '', departmentId: '', designationId: '', noOfPositions: 1,
+  jobType: 'Full-time' as 'Contract' | 'Full-time' | 'Part-time' | 'Temporary' | 'Internship', salaryMin: '', salaryMax: '', location: '',
+  requiredExperience: '', qualifications: '', skills: '', benefits: '',
+  description: '', postedDate: new Date().toISOString().split('T')[0],
+  closingDate: '',
+};
+
+export default function JobPostingsList() {
+  const qc = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(INITIAL_FORM);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['job-postings', { search, statusFilter, page }],
+    queryFn: () => hrService.getJobPostings({ page, limit: 12, search: search || undefined, status: statusFilter || undefined }),
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ['job-postings-stats'],
+    queryFn: () => hrService.getJobPostingStats(),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (payload: typeof form) => hrService.createJobPosting({
+      ...payload, departmentId: Number(payload.departmentId),
+      designationId: Number(payload.designationId),
+      noOfPositions: Number(payload.noOfPositions),
+      salaryMin: payload.salaryMin ? Number(payload.salaryMin) : undefined,
+      salaryMax: payload.salaryMax ? Number(payload.salaryMax) : undefined,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['job-postings'] }); setShowModal(false); setForm(INITIAL_FORM); },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) => hrService.updateJobPostingStatus(id, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['job-postings'] }),
+  });
+
+  const postings: JobPosting[] = (data as any)?.data || [];
+  const pagination = (data as any)?.pagination;
+  const statsData = (stats as any)?.data;
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Job Postings</h1>
+          <p className="text-gray-500 text-sm">Manage open positions and recruitment</p>
+        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+        >
+          <Plus className="h-4 w-4" /> New Job Posting
+        </button>
+      </div>
+
+      {/* Stats */}
+      {statsData && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[
+            { label: 'Total', value: statsData.total, color: 'from-gray-500 to-gray-600' },
+            { label: 'Open', value: statsData.open, color: 'from-green-500 to-emerald-600' },
+            { label: 'On Hold', value: statsData.onHold ?? 0, color: 'from-yellow-500 to-amber-600' },
+            { label: 'Closed', value: statsData.closed, color: 'from-red-500 to-rose-600' },
+            { label: 'Filled', value: statsData.filled, color: 'from-blue-500 to-indigo-600' },
+          ].map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className={`bg-gradient-to-br ${s.color} rounded-xl p-4 text-white`}
+            >
+              <p className="text-white/70 text-xs">{s.label}</p>
+              <p className="text-2xl font-bold">{s.value}</p>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search job titles..."
+            className="w-full pl-9 pr-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+          className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">All Statuses</option>
+          {['Draft', 'Open', 'Closed', 'OnHold', 'Filled'].map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Postings Grid */}
+      {postings.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">
+          <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-30" />
+          <p>No job postings found</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {postings.map((job, i) => (
+            <motion.div
+              key={job.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 }}
+              className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm">{job.title}</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">{job.jobCode}</p>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[job.status] || 'bg-gray-100'}`}>
+                  {job.status}
+                </span>
+              </div>
+
+              <div className="space-y-1.5 mb-4">
+                {job.department && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <Users className="h-3.5 w-3.5 text-gray-400" /> {job.department.name}
+                  </div>
+                )}
+                {job.location && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <MapPin className="h-3.5 w-3.5 text-gray-400" /> {job.location}
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                  <Clock className="h-3.5 w-3.5 text-gray-400" /> Closes {new Date(job.closingDate).toLocaleDateString()}
+                </div>
+                {(job.salaryMin || job.salaryMax) && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <DollarSign className="h-3.5 w-3.5 text-gray-400" />
+                    {job.salaryMin ? `₦${Number(job.salaryMin).toLocaleString()}` : ''}{job.salaryMin && job.salaryMax ? ' – ' : ''}{job.salaryMax ? `₦${Number(job.salaryMax).toLocaleString()}` : ''}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className={`text-xs px-2 py-1 rounded-full font-medium ${TYPE_COLORS[job.jobType] || 'bg-gray-100 text-gray-600'}`}>
+                  {job.jobType}
+                </span>
+                <div className="flex items-center gap-2">
+                  {job.status === 'Draft' && (
+                    <button
+                      onClick={() => statusMutation.mutate({ id: job.id, status: 'Open' })}
+                      className="text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1"
+                    >
+                      <ToggleRight className="h-3.5 w-3.5" /> Open
+                    </button>
+                  )}
+                  {job.status === 'Open' && (
+                    <button
+                      onClick={() => statusMutation.mutate({ id: job.id, status: 'Closed' })}
+                      className="text-xs text-red-500 hover:text-red-600 font-medium"
+                    >
+                      Close
+                    </button>
+                  )}
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 text-sm border rounded-lg disabled:opacity-40 hover:bg-gray-50">Prev</button>
+          <span className="text-sm text-gray-600">Page {page} of {pagination.totalPages}</span>
+          <button disabled={page >= pagination.totalPages} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 text-sm border rounded-lg disabled:opacity-40 hover:bg-gray-50">Next</button>
+        </div>
+      )}
+
+      {/* Create Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-lg font-semibold">New Job Posting</h2>
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="text-xs font-medium text-gray-700">Job Title *</label>
+                  <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700">Department ID *</label>
+                  <input type="number" value={form.departmentId} onChange={e => setForm(f => ({ ...f, departmentId: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700">Designation ID *</label>
+                  <input type="number" value={form.designationId} onChange={e => setForm(f => ({ ...f, designationId: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700">Positions *</label>
+                  <input type="number" min={1} value={form.noOfPositions} onChange={e => setForm(f => ({ ...f, noOfPositions: Number(e.target.value) }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700">Job Type *</label>
+                  <select value={form.jobType} onChange={e => setForm(f => ({ ...f, jobType: e.target.value as typeof INITIAL_FORM['jobType'] }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    {['Full-time', 'Part-time', 'Contract', 'Temporary', 'Internship'].map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700">Salary Min (₦)</label>
+                  <input type="number" value={form.salaryMin} onChange={e => setForm(f => ({ ...f, salaryMin: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700">Salary Max (₦)</label>
+                  <input type="number" value={form.salaryMax} onChange={e => setForm(f => ({ ...f, salaryMax: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700">Posted Date *</label>
+                  <input type="date" value={form.postedDate} onChange={e => setForm(f => ({ ...f, postedDate: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700">Closing Date *</label>
+                  <input type="date" value={form.closingDate} onChange={e => setForm(f => ({ ...f, closingDate: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-700">Location</label>
+                  <input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-medium text-gray-700">Description</label>
+                  <textarea rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-medium text-gray-700">Required Skills</label>
+                  <input value={form.skills} onChange={e => setForm(f => ({ ...f, skills: e.target.value }))} placeholder="e.g. React, Node.js, SQL" className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+              <button
+                onClick={() => createMutation.mutate(form)}
+                disabled={createMutation.isPending || !form.title || !form.departmentId || !form.closingDate}
+                className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {createMutation.isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check className="h-4 w-4" />}
+                Create Posting
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+}

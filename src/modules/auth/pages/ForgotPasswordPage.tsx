@@ -41,10 +41,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-[400px]">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8">
-          <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
-            <span className="text-white font-black text-sm">M</span>
-          </div>
-          <span className="font-bold text-gray-900 dark:text-white text-lg">MaxHub ERP</span>
+          <img src="/images/maxhublogo.jpeg" alt="MaxHub" className="h-9 w-auto object-contain" />
         </div>
 
         {success ? (

@@ -1,15 +1,34 @@
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@components/ui/button';
-import { Input } from '@components/ui/input';
 import { Alert, AlertDescription } from '@components/ui/alert';
 import { useApiMutation } from '@hooks/useApiMutation';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { projectService } from '@services/projectService';
 import { departmentService } from '@services/departmentService';
+import { apiClient } from '@services/apiClient';
 import type { CreateProjectPayload } from '@services/projectService';
+
+const SAMPLE_STAFF = [
+  { id: 1, firstName: 'Adaeze', lastName: 'Okonkwo', employeeId: 'EMP-001' },
+  { id: 2, firstName: 'Chukwuemeka', lastName: 'Eze', employeeId: 'EMP-002' },
+  { id: 3, firstName: 'Fatima', lastName: 'Usman', employeeId: 'EMP-003' },
+  { id: 4, firstName: 'Ngozi', lastName: 'Obi', employeeId: 'EMP-004' },
+  { id: 5, firstName: 'Tunde', lastName: 'Adebayo', employeeId: 'EMP-005' },
+];
+
+const FALLBACK_DEPARTMENTS = [
+  { id: 1, name: 'Kurios SAT' },
+  { id: 2, name: 'BeadMax Design' },
+  { id: 3, name: 'VisaMax Travel Limited' },
+];
+
+const PROJECT_DEPT_NAMES = ['kurios', 'beadmax', 'visamax', 'visa max', 'bead max'];
+
+interface StaffMember { id: number; firstName: string; lastName: string; employeeId?: string; }
 
 const schema = z.object({
   name: z.string().min(1, 'Project name is required'),
@@ -30,6 +49,16 @@ export default function ProjectForm() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
+  const [staffList, setStaffList] = useState<StaffMember[]>(SAMPLE_STAFF);
+
+  useEffect(() => {
+    apiClient.get<StaffMember[]>('/staff')
+      .then((data: any) => {
+        const arr = Array.isArray(data) ? data : data?.data;
+        if (Array.isArray(arr) && arr.length > 0) setStaffList(arr);
+      })
+      .catch(() => setStaffList(SAMPLE_STAFF));
+  }, []);
 
   const { data: existing } = useApiQuery(
     ['projects', id],
@@ -38,6 +67,11 @@ export default function ProjectForm() {
   );
 
   const { data: departments } = useApiQuery(['departments'], () => departmentService.getAll());
+
+  const projectDepts = (departments ?? []).filter(d =>
+    PROJECT_DEPT_NAMES.some(n => d.name.toLowerCase().includes(n))
+  );
+  const deptList = projectDepts.length > 0 ? projectDepts : FALLBACK_DEPARTMENTS;
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -66,9 +100,12 @@ export default function ProjectForm() {
 
   const onSubmit = (data: FormData) => save(data as CreateProjectPayload);
 
+  const SEL = 'w-full border border-gray-200 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+  const INP = 'w-full border border-gray-200 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold">{isEdit ? 'Edit Project' : 'New Project'}</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{isEdit ? 'Edit Project' : 'New Project'}</h1>
 
       {error && (
         <Alert variant="destructive">
@@ -78,7 +115,7 @@ export default function ProjectForm() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <FormField label="Project Name *" error={errors.name?.message}>
-          <Input placeholder="e.g. Website Redesign" {...register('name')} disabled={isPending} />
+          <input placeholder="e.g. Website Redesign" {...register('name')} disabled={isPending} className={INP} />
         </FormField>
 
         <FormField label="Description" error={errors.description?.message}>
@@ -86,39 +123,44 @@ export default function ProjectForm() {
             {...register('description')}
             disabled={isPending}
             rows={3}
-            className="w-full border rounded-md px-3 py-2 text-sm resize-none"
+            className={`${INP} resize-none`}
             placeholder="Project description..."
           />
         </FormField>
 
         <div className="grid gap-4 md:grid-cols-2">
           <FormField label="Project Code" error={errors.projectCode?.message}>
-            <Input placeholder="PRJ-001 (auto if blank)" {...register('projectCode')} disabled={isPending} />
+            <input placeholder="PRJ-001 (auto if blank)" {...register('projectCode')} disabled={isPending} className={INP} />
           </FormField>
-          <FormField label="Budget ($)" error={errors.budget?.message}>
-            <Input type="number" placeholder="50000" {...register('budget')} disabled={isPending} />
+          <FormField label="Budget (₦)" error={errors.budget?.message}>
+            <input type="number" placeholder="50000" {...register('budget')} disabled={isPending} className={INP} />
           </FormField>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <FormField label="Department *" error={errors.departmentId?.message}>
-            <select {...register('departmentId')} disabled={isPending}
-              className="w-full border rounded-md px-3 py-2 text-sm">
+            <select {...register('departmentId')} disabled={isPending} className={SEL}>
               <option value="">Select department</option>
-              {(departments ?? []).map(d => (
+              {deptList.map(d => (
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
           </FormField>
-          <FormField label="Project Manager ID *" error={errors.projectManagerId?.message}>
-            <Input type="number" placeholder="Staff ID" {...register('projectManagerId')} disabled={isPending} />
+          <FormField label="Project Manager *" error={errors.projectManagerId?.message}>
+            <select {...register('projectManagerId')} disabled={isPending} className={SEL}>
+              <option value="">Select project manager</option>
+              {staffList.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.employeeId ? `${s.employeeId} — ${s.firstName} ${s.lastName}` : `${s.firstName} ${s.lastName}`}
+                </option>
+              ))}
+            </select>
           </FormField>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <FormField label="Status" error={errors.status?.message}>
-            <select {...register('status')} disabled={isPending}
-              className="w-full border rounded-md px-3 py-2 text-sm">
+            <select {...register('status')} disabled={isPending} className={SEL}>
               <option value="">Select status</option>
               {['Planning', 'Active', 'OnHold', 'Completed', 'Cancelled', 'Archived'].map(s => (
                 <option key={s} value={s}>{s}</option>
@@ -126,8 +168,7 @@ export default function ProjectForm() {
             </select>
           </FormField>
           <FormField label="Priority" error={errors.priority?.message}>
-            <select {...register('priority')} disabled={isPending}
-              className="w-full border rounded-md px-3 py-2 text-sm">
+            <select {...register('priority')} disabled={isPending} className={SEL}>
               <option value="">Select priority</option>
               {['Low', 'Medium', 'High', 'Critical'].map(p => (
                 <option key={p} value={p}>{p}</option>
@@ -138,10 +179,10 @@ export default function ProjectForm() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <FormField label="Start Date *" error={errors.startDate?.message}>
-            <Input type="date" {...register('startDate')} disabled={isPending} />
+            <input type="date" {...register('startDate')} disabled={isPending} className={INP} />
           </FormField>
           <FormField label="End Date" error={errors.endDate?.message}>
-            <Input type="date" {...register('endDate')} disabled={isPending} />
+            <input type="date" {...register('endDate')} disabled={isPending} className={INP} />
           </FormField>
         </div>
 
@@ -159,7 +200,7 @@ export default function ProjectForm() {
 function FormField({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium mb-1">{label}</label>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
       {children}
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>

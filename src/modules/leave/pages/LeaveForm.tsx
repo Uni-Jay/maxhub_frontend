@@ -67,7 +67,7 @@ export default function LeaveForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <FormField label="Leave Type *" error={errors.leaveTypeId?.message}>
           <select {...register('leaveTypeId')} disabled={isPending}
-            className="w-full border rounded-md px-3 py-2 text-sm">
+            className="w-full border border-gray-200 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <option value="">Select leave type</option>
             {(leaveTypes ?? []).map((t: LeaveType) => (
               <option key={t.id} value={t.id}>{t.name}</option>
@@ -95,7 +95,7 @@ export default function LeaveForm() {
             {...register('reason')}
             disabled={isPending}
             rows={4}
-            className="w-full border rounded-md px-3 py-2 text-sm resize-none"
+            className="w-full border border-gray-200 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
             placeholder="Please provide a reason for your leave..."
           />
         </FormField>

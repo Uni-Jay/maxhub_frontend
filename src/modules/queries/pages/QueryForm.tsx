@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,7 +6,19 @@ import { z } from 'zod';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { useApiMutation } from '@hooks/useApiMutation';
 import { queryService } from '@services/queryService';
+import { apiClient } from '@services/apiClient';
 import { ArrowLeft } from 'lucide-react';
+
+const SAMPLE_STAFF = [
+  { id: 1, firstName: 'Adaeze', lastName: 'Okonkwo' },
+  { id: 2, firstName: 'Chukwuemeka', lastName: 'Eze' },
+  { id: 3, firstName: 'Fatima', lastName: 'Usman' },
+  { id: 4, firstName: 'Ngozi', lastName: 'Obi' },
+  { id: 5, firstName: 'Tunde', lastName: 'Adebayo' },
+  { id: 6, firstName: 'Emeka', lastName: 'Nwachukwu' },
+];
+
+const DEPARTMENTS = ['HR', 'Finance', 'Kurios SAT', 'BeadMax Design', 'VisaMax Travel Ltd'];
 
 const schema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -15,15 +27,33 @@ const schema = z.object({
   type: z.enum(['Query', 'Complaint', 'Task', 'Issue', 'Request']),
   dueDate: z.string().optional(),
   departmentId: z.coerce.number().optional(),
-  assignedStaffId: z.coerce.number().optional(),
+  assignedStaffId: z.coerce.number().min(1, 'Please select a staff member'),
+  department: z.string().min(1, 'Please select a department'),
 });
 
 type FormData = z.infer<typeof schema>;
+
+interface StaffMember {
+  id: number;
+  firstName: string;
+  lastName: string;
+}
 
 export default function QueryForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
+  const [staffList, setStaffList] = useState<StaffMember[]>(SAMPLE_STAFF);
+
+  useEffect(() => {
+    apiClient.get<StaffMember[]>('/staff')
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) setStaffList(data);
+      })
+      .catch(() => {
+        setStaffList(SAMPLE_STAFF);
+      });
+  }, []);
 
   const { data: existing } = useApiQuery(
     ['query', id],
@@ -46,6 +76,7 @@ export default function QueryForm() {
         dueDate: existing.dueDate?.slice(0, 10),
         departmentId: existing.departmentId,
         assignedStaffId: existing.assignedStaffId,
+        department: '',
       });
     }
   }, [existing, reset]);
@@ -61,7 +92,7 @@ export default function QueryForm() {
     }
   );
 
-  const inputClass = 'w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500';
+  const inputClass = 'w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -115,6 +146,28 @@ export default function QueryForm() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
             <input type="date" {...register('dueDate')} className={inputClass} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Issue Query To (Staff) *</label>
+            <select {...register('assignedStaffId')} className={inputClass}>
+              <option value="">— Select staff member —</option>
+              {staffList.map((s) => (
+                <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
+              ))}
+            </select>
+            {errors.assignedStaffId && <p className="text-red-500 text-xs mt-1">{errors.assignedStaffId.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department *</label>
+            <select {...register('department')} className={inputClass}>
+              <option value="">— Select department —</option>
+              {DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+            {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department.message}</p>}
           </div>
 
           {mutation.error && (

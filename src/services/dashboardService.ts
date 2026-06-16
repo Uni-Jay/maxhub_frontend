@@ -10,6 +10,8 @@ export interface DashboardStats {
   totalDepartments: number;
   attendanceRate: number;
   activeProjects: number;
+  pendingApprovals?: number;
+  averageAttendance?: number;
 }
 
 export interface AttendanceData {

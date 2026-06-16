@@ -174,9 +174,9 @@ export function ExamList() {
                   </div>
 
                   {exam.status === 'available' && (
-                    <button className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r ${exam.color} hover:opacity-90 transition`}>
+                    <Link to={`/lms/exams/${exam.id}/take`} className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r ${exam.color} hover:opacity-90 transition`}>
                       <Play className="w-3.5 h-3.5" /> Start
-                    </button>
+                    </Link>
                   )}
                 </div>
               </div>

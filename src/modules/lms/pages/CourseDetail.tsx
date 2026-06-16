@@ -67,7 +67,7 @@ const LESSON_ICON: Record<string, React.ElementType> = {
 };
 
 export function CourseDetail() {
-  const { id } = useParams();
+  useParams();
   const [openModules, setOpenModules] = useState<Set<number>>(new Set([1, 2]));
   const [enrolled] = useState(true);
 

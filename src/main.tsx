@@ -3,8 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { useThemeStore } from './store/themeStore';
 import App from './App';
 import './index.css';
+
+// Apply persisted theme before first render
+useThemeStore.getState().init();
 
 const queryClient = new QueryClient({
   defaultOptions: {
