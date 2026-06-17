@@ -145,7 +145,7 @@ export function HRDashboard() {
     queryKey: ['hr-leave-pending', refreshKey],
     queryFn: async () => {
       try {
-        return await apiClient.getRaw('/leave', { status: 'Pending', limit: 10 });
+        return await apiClient.getRaw('/leave/requests', { status: 'Pending', limit: 10 });
       } catch {
         return { data: [] };
       }

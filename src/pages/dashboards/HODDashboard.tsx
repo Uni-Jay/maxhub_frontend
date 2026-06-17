@@ -178,7 +178,7 @@ export function HODDashboard() {
   const { data: leaveRaw } = useQuery({
     queryKey: ['hod-leave', refreshKey],
     queryFn: async () => {
-      try { return await apiClient.getRaw('/leave', { status: 'Pending', limit: 5 }); }
+      try { return await apiClient.getRaw('/leave/requests', { status: 'Pending', limit: 5 }); }
       catch { return { data: [] }; }
     },
     staleTime: 30_000,
