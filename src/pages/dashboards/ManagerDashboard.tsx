@@ -244,7 +244,7 @@ export function ManagerDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{name}</p>
-                    <p className="text-xs text-gray-500 truncate">{m.designation?.title ?? m.position ?? 'Staff'}</p>
+                    <p className="text-xs text-gray-500 truncate">{m.designation?.name ?? m.position ?? 'Staff'}</p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-600'}`}>
                     {status}

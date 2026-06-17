@@ -117,9 +117,9 @@ export default function StaffDetail() {
                   <Phone className="h-3.5 w-3.5" /> {staff.phone}
                 </div>
               )}
-              {(staff.position || staff.designation?.title) && (
+              {(staff.position || staff.designation?.name) && (
                 <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                  <Briefcase className="h-3.5 w-3.5" /> {staff.position || staff.designation?.title}
+                  <Briefcase className="h-3.5 w-3.5" /> {staff.position || staff.designation?.name}
                 </div>
               )}
               {staff.businessUnit && (
@@ -166,7 +166,7 @@ export default function StaffDetail() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <InfoRow label="Department" value={staff.department?.name} />
-            <InfoRow label="Designation" value={staff.designation?.title} />
+            <InfoRow label="Designation" value={staff.designation?.name} />
             <InfoRow label="Position" value={staff.position} />
             <InfoRow label="Primary Business Unit" value={staff.businessUnit} />
             <InfoRow label="Joining Date" value={staff.joiningDate ? new Date(staff.joiningDate).toLocaleDateString() : undefined} />

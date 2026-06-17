@@ -123,7 +123,7 @@ export default function SalaryStructures() {
                     </div>
                     {(s.department || s.designation) && (
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {s.department?.name}{s.department && s.designation ? ' · ' : ''}{s.designation?.title}
+                        {s.department?.name}{s.department && s.designation ? ' · ' : ''}{s.designation?.name}
                       </p>
                     )}
                   </div>

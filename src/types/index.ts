@@ -123,7 +123,7 @@ export interface Department extends BaseEntity {
 }
 
 export interface Designation extends BaseEntity {
-  title: string;
+  name: string;
   code?: string;
   departmentId?: number;
   level?: number;

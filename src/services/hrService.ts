@@ -9,7 +9,7 @@ export interface JobPosting {
   postedDate: string; closingDate: string;
   status: 'Draft' | 'Open' | 'Closed' | 'OnHold' | 'Filled';
   applicationCount?: number;
-  department?: { name: string }; designation?: { title: string };
+  department?: { name: string }; designation?: { name: string };
   createdAt: string;
 }
 

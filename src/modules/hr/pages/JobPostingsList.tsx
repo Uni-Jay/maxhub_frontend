@@ -6,6 +6,7 @@ import {
   ChevronRight, DollarSign, ToggleRight, X, Check,
 } from 'lucide-react';
 import { hrService, type JobPosting } from '@services/hrService';
+import { departmentService, designationService } from '@services/departmentService';
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'bg-gray-100 text-gray-700',
@@ -47,6 +48,17 @@ export default function JobPostingsList() {
   const { data: stats } = useQuery({
     queryKey: ['job-postings-stats'],
     queryFn: () => hrService.getJobPostingStats(),
+  });
+
+  const { data: departments } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => departmentService.getAll(),
+  });
+
+  const { data: designations } = useQuery({
+    queryKey: ['designations', form.departmentId],
+    queryFn: () => designationService.getAll(Number(form.departmentId)),
+    enabled: !!form.departmentId,
   });
 
   const createMutation = useMutation({
@@ -239,12 +251,18 @@ export default function JobPostingsList() {
                   <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-700">Department ID *</label>
-                  <input type="number" value={form.departmentId} onChange={e => setForm(f => ({ ...f, departmentId: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <label className="text-xs font-medium text-gray-700">Department *</label>
+                  <select value={form.departmentId} onChange={e => setForm(f => ({ ...f, departmentId: e.target.value, designationId: '' }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Select department</option>
+                    {(departments || []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-700">Designation ID *</label>
-                  <input type="number" value={form.designationId} onChange={e => setForm(f => ({ ...f, designationId: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <label className="text-xs font-medium text-gray-700">Designation *</label>
+                  <select value={form.designationId} onChange={e => setForm(f => ({ ...f, designationId: e.target.value }))} disabled={!form.departmentId} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50">
+                    <option value="">Select designation</option>
+                    {(designations || []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-700">Positions *</label>
@@ -290,7 +308,7 @@ export default function JobPostingsList() {
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
               <button
                 onClick={() => createMutation.mutate(form)}
-                disabled={createMutation.isPending || !form.title || !form.departmentId || !form.closingDate}
+                disabled={createMutation.isPending || !form.title || !form.departmentId || !form.designationId || !form.closingDate}
                 className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"
               >
                 {createMutation.isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check className="h-4 w-4" />}

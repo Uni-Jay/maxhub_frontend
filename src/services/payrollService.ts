@@ -24,7 +24,7 @@ export interface SalaryStructure {
   baseSalary: number; bonus: number; incomeTax: number;
   providentFund: number; healthInsurance: number; isDefault: boolean;
   departmentId?: number; designationId?: number;
-  department?: { name: string }; designation?: { title: string };
+  department?: { name: string }; designation?: { name: string };
 }
 
 export interface PayrollOverview {
