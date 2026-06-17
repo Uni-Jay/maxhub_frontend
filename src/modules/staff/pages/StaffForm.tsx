@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import {
   User, Phone, GraduationCap, Award, Briefcase, Users,
   Building2, Landmark, Heart, FileText, PenLine, ChevronRight,
-  ChevronLeft, Upload, Plus, Trash2, Loader2, Check, PlusCircle,
+  ChevronLeft, Plus, Trash2, Loader2, Check, PlusCircle,
 } from 'lucide-react';
 import { cn } from '@utils/cn';
 import { apiClient } from '@services/apiClient';
@@ -14,6 +14,8 @@ import { Alert, AlertDescription } from '@components/ui/alert';
 import { departmentService, designationService } from '@services/departmentService';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { useAuthStore } from '@store/authStore';
+import CloudinaryUpload from '@components/ui/CloudinaryUpload';
+import type { CloudinaryUploadResult } from '@services/cloudinaryService';
 
 const BUSINESS_UNITS = ['Kurios SAT', 'VisaMax Travels Ltd', 'Beadmax Design', 'Beadmax Vocational School'];
 const COMMON_POSITIONS = [
@@ -61,7 +63,7 @@ const INIT_DATA = {
   guarantor1Name: '', guarantor1Phone: '', guarantor1Email: '', guarantor1Address: '', guarantor1Relationship: '', guarantor1Occupation: '',
   guarantor2Name: '', guarantor2Phone: '', guarantor2Email: '', guarantor2Address: '', guarantor2Relationship: '', guarantor2Occupation: '',
   // H: Employment
-  employeeId: '', businessUnit: '', departmentId: '', designationId: '', jobTitle: '', joiningDate: '', employmentStatus: 'Full-time', supervisorName: '', workLocation: '',
+  employeeId: '', businessUnit: '', departmentId: '', designationId: '', jobTitle: '', joiningDate: '', employmentStatus: 'Full-Time', supervisorName: '', workLocation: '',
   // I: Bank Details
   bankName: '', accountName: '', accountNumber: '', accountType: 'Savings', sortCode: '', pensionId: '', taxId: '',
   // J: Health
@@ -105,10 +107,10 @@ export default function StaffForm() {
   const [additionalUnits, setAdditionalUnits] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [createdStaff, setCreatedStaff] = useState<any>(null);
-  const signatureRef = useRef<HTMLInputElement>(null);
-  const validIdRef = useRef<HTMLInputElement>(null);
-  const utilityBillRef = useRef<HTMLInputElement>(null);
-  const educationCertRef = useRef<HTMLInputElement>(null);
+  const [validIdFile, setValidIdFile] = useState<CloudinaryUploadResult | null>(null);
+  const [utilityBillFile, setUtilityBillFile] = useState<CloudinaryUploadResult | null>(null);
+  const [certificateFile, setCertificateFile] = useState<CloudinaryUploadResult | null>(null);
+  const [signatureFile, setSignatureFile] = useState<CloudinaryUploadResult | null>(null);
 
   const { data: deptData } = useApiQuery(['departments'], () => departmentService.getAll());
   const { data: desgData } = useApiQuery(['designations'], () => designationService.getAll());
@@ -177,6 +179,10 @@ export default function StaffForm() {
       employmentStatus: data.employmentStatus,
       customPosition: useCustomPosition ? customPosition : undefined,
       additionalUnits,
+      idDocument: validIdFile?.url,
+      utilityBillDocument: utilityBillFile?.url,
+      certificateDocument: certificateFile?.url,
+      signatureImage: signatureFile?.url,
       metadata: {
         middleName: data.middleName, maritalStatus: data.maritalStatus,
         nationality: data.nationality, validIdType: data.validIdType, validIdNumber: data.validIdNumber,
@@ -330,14 +336,15 @@ export default function StaffForm() {
                 </Field>
               </Grid3>
               <Field label="Upload Valid ID">
-                <div className="flex items-center gap-3">
-                  <input type="file" ref={validIdRef} className="hidden" accept="image/*,.pdf" />
-                  <button type="button" onClick={() => validIdRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 transition">
-                    <Upload className="h-4 w-4" /> Choose File
-                  </button>
-                  <span className="text-xs text-gray-400">JPG, PNG or PDF · max 5MB</span>
-                </div>
+                <CloudinaryUpload
+                  compact
+                  folder="maxhub-erp/staff-documents"
+                  label="Choose File"
+                  accept="image/*,.pdf"
+                  multiple={false}
+                  maxSizeMB={5}
+                  onUpload={results => setValidIdFile(results[0])}
+                />
               </Field>
             </div>
           )}
@@ -379,14 +386,15 @@ export default function StaffForm() {
                 </Grid3>
               </div>
               <Field label="Utility Bill (Proof of Address)">
-                <div className="flex items-center gap-3">
-                  <input type="file" ref={utilityBillRef} className="hidden" accept="image/*,.pdf" />
-                  <button type="button" onClick={() => utilityBillRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition">
-                    <Upload className="h-4 w-4" /> Upload Bill
-                  </button>
-                  <span className="text-xs text-gray-400">NEPA/LAWMA bill, etc.</span>
-                </div>
+                <CloudinaryUpload
+                  compact
+                  folder="maxhub-erp/staff-documents"
+                  label="Upload Bill"
+                  accept="image/*,.pdf"
+                  multiple={false}
+                  maxSizeMB={5}
+                  onUpload={results => setUtilityBillFile(results[0])}
+                />
               </Field>
             </div>
           )}
@@ -447,13 +455,15 @@ export default function StaffForm() {
                 </Field>
               )}
               <Field label="Upload Degree Certificate">
-                <div className="flex items-center gap-3">
-                  <input type="file" ref={educationCertRef} className="hidden" accept="image/*,.pdf" />
-                  <button type="button" onClick={() => educationCertRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition">
-                    <Upload className="h-4 w-4" /> Upload Certificate
-                  </button>
-                </div>
+                <CloudinaryUpload
+                  compact
+                  folder="maxhub-erp/staff-documents"
+                  label="Upload Certificate"
+                  accept="image/*,.pdf"
+                  multiple={false}
+                  maxSizeMB={5}
+                  onUpload={results => setCertificateFile(results[0])}
+                />
               </Field>
             </div>
           )}
@@ -585,7 +595,7 @@ export default function StaffForm() {
                 </Field>
                 <Field label="Employment Status">
                   <select value={data.employmentStatus} onChange={e => set('employmentStatus', e.target.value)} className={fCls}>
-                    <option>Full-time</option><option>Part-time</option><option>Contract</option><option>Intern</option>
+                    <option value="Full-Time">Full-time</option><option value="Part-Time">Part-time</option><option value="Contract">Contract</option><option value="Intern">Intern</option><option value="Probation">Probation</option>
                   </select>
                 </Field>
               </Grid3>
@@ -731,14 +741,15 @@ export default function StaffForm() {
                 Providing false information may result in termination of employment.
               </div>
               <Field label="Upload Signature Image">
-                <div className="flex items-center gap-3">
-                  <input type="file" ref={signatureRef} className="hidden" accept="image/*" />
-                  <button type="button" onClick={() => signatureRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition">
-                    <Upload className="h-4 w-4" /> Upload Signature
-                  </button>
-                  <span className="text-xs text-gray-400">PNG or JPG with transparent/white background</span>
-                </div>
+                <CloudinaryUpload
+                  compact
+                  folder="maxhub-erp/staff-documents"
+                  label="Upload Signature"
+                  accept="image/*"
+                  multiple={false}
+                  maxSizeMB={5}
+                  onUpload={results => setSignatureFile(results[0])}
+                />
               </Field>
               <Field label="Date Signed" required>
                 <input type="date" value={data.signatureDate} onChange={e => set('signatureDate', e.target.value)} className={fCls} />
