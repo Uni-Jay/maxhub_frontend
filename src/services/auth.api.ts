@@ -182,6 +182,23 @@ export const authApi = {
   async verifyPassword(password: string): Promise<void> {
     await apiClient.post('/auth/verify-password', { password });
   },
+
+  /**
+   * Enable email-based 2FA for the current user
+   * @returns Void on success
+   */
+  async enable2FA(): Promise<void> {
+    await apiClient.post('/auth/2fa/enable', {});
+  },
+
+  /**
+   * Resend login OTP during the MFA step
+   * @param sessionId - Session ID returned from login
+   * @returns Void on success
+   */
+  async sendLoginOTP(sessionId: string): Promise<void> {
+    await apiClient.post('/auth/2fa/send-login-otp', { sessionId });
+  },
 };
 
 export default authApi;

@@ -281,6 +281,16 @@ export const LoginPage: React.FC = () => {
                     <button
                       type="button"
                       disabled={resendCountdown > 0 || otpLoading}
+                      onClick={async () => {
+                        if (!mfaState) return;
+                        try {
+                          await authApi.sendLoginOTP(mfaState.sessionId);
+                          setResendCountdown(60);
+                          setOtpError(null);
+                        } catch {
+                          setOtpError('Failed to resend code. Please try again.');
+                        }
+                      }}
                       className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 disabled:text-gray-400 disabled:cursor-not-allowed transition font-medium"
                     >
                       <RefreshCw className="h-3 w-3" />
@@ -427,7 +437,8 @@ export const LoginPage: React.FC = () => {
             </Link>
           </p>
 
-          {/* Demo Credentials */}
+          {/* Demo Credentials — dev only */}
+          {import.meta.env.DEV && (
           <div className="mt-6 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden">
             <button
               type="button"
@@ -453,6 +464,7 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
           </div>
+          )}
 
           </>
           )}

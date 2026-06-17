@@ -1,64 +1,33 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Clock, Calendar, CheckSquare, ArrowUpRight,
-  MapPin, CheckCircle2, TrendingUp, Send, FileText,
-  DollarSign, MessageSquare, Bell, Star, ChevronRight,
+  MapPin, CheckCircle2, TrendingUp, Send,
+  DollarSign, MessageSquare, Bell, Star,
   Building2,
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
 import { useAuthStore } from '@store/authStore';
-
-const myTasks = [
-  { id: 1, title: 'Prepare monthly report', project: 'Admin', due: '2026-06-18', status: 'InProgress' },
-  { id: 2, title: 'Review client proposals', project: 'Sales', due: '2026-06-20', status: 'Todo' },
-  { id: 3, title: 'Update staff database', project: 'HR', due: '2026-06-22', status: 'InProgress' },
-  { id: 4, title: 'Team coordination call', project: 'Operations', due: '2026-06-17', status: 'Done' },
-];
-
-const leaveBalance = [
-  { type: 'Annual Leave', total: 20, used: 8, color: 'bg-indigo-500' },
-  { type: 'Sick Leave', total: 10, used: 2, color: 'bg-emerald-500' },
-  { type: 'Emergency Leave', total: 3, used: 0, color: 'bg-amber-500' },
-];
-
-const myWeeklyReports = [
-  { week: 'June 9–13, 2026', status: 'Approved', score: 92 },
-  { week: 'June 2–6, 2026', status: 'Approved', score: 88 },
-  { week: 'May 26–30, 2026', status: 'Submitted', score: null },
-];
-
-const myPayslips = [
-  { period: 'May 2026', amount: '₦185,000', status: 'Paid' },
-  { period: 'April 2026', amount: '₦185,000', status: 'Paid' },
-  { period: 'March 2026', amount: '₦185,000', status: 'Paid' },
-];
-
-const announcements = [
-  { title: 'Public Holiday — June 12', body: 'Democracy Day. Office closed. No attendance required.', date: '2026-06-10', type: 'info' },
-  { title: 'New Leave Policy', body: 'Updated leave application process effective July 1, 2026.', date: '2026-06-08', type: 'policy' },
-  { title: 'Company Outing — June 28', body: 'Team bonding event. Details shared via email.', date: '2026-06-05', type: 'event' },
-];
+import { useApiQuery } from '@/hooks/useApiQuery';
+import { taskService } from '@/services/taskService';
+import { leaveService } from '@/services/leaveService';
+import { payrollService } from '@/services/payrollService';
+import { notificationService } from '@/services/notificationService';
+import { useState } from 'react';
 
 const TASK_STATUS: Record<string, string> = {
   Todo: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
   InProgress: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
   Done: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  Completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
   Blocked: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-};
-
-const REPORT_STATUS: Record<string, string> = {
-  Approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  Submitted: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
-  Draft: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-  'Revision Requested': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
 };
 
 const ANNC_TYPE: Record<string, string> = {
   info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300',
-  policy: 'bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300',
-  event: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300',
+  Leave: 'bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300',
+  System: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300',
+  Alert: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300',
 };
 
 const containerVariants = {
@@ -72,16 +41,29 @@ const item = {
 
 export function StaffDashboard() {
   const { user } = useAuthStore();
-  const [loading, setLoading] = useState(true);
   const [checkedIn, setCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
 
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(t);
-  }, []);
+  const { data: tasksData, isLoading: tasksLoading } = useApiQuery(
+    ['staff-tasks'],
+    () => taskService.getAll({ limit: 4 })
+  );
+  const { data: leaveBalance, isLoading: leaveLoading } = useApiQuery(
+    ['staff-leave-balance'],
+    () => leaveService.getBalance()
+  );
+  const { data: payslipsData, isLoading: payslipsLoading } = useApiQuery(
+    ['staff-payslips'],
+    () => payrollService.getSalaries({ limit: 3 })
+  );
+  const { data: notificationsData, isLoading: notifLoading } = useApiQuery(
+    ['staff-notifications'],
+    () => notificationService.getAll({ limit: 5 })
+  );
 
-  if (loading) return (
+  const isLoading = tasksLoading && leaveLoading && payslipsLoading && notifLoading;
+
+  if (isLoading) return (
     <div className="flex items-center justify-center h-64">
       <Loader size="lg" />
     </div>
@@ -89,7 +71,13 @@ export function StaffDashboard() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const pendingTasks = myTasks.filter((t) => t.status !== 'Done').length;
+
+  const tasks = tasksData?.data ?? [];
+  const pendingTasks = tasks.filter((t) => t.status !== 'Done').length;
+  const leaveTypes = leaveBalance?.leaveTypes ?? [];
+  const totalLeaveAvailable = leaveBalance?.available ?? 0;
+  const payslips = payslipsData?.data ?? [];
+  const notifications = notificationsData?.data ?? [];
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
@@ -131,7 +119,7 @@ export function StaffDashboard() {
             </p>
             <div className="flex items-center gap-2 mt-2 text-sm text-indigo-200">
               <MapPin className="w-3.5 h-3.5" />
-              Main Office, Lagos
+              Main Office
             </div>
           </div>
           <Link to="/attendance/check-in">
@@ -156,10 +144,10 @@ export function StaffDashboard() {
       {/* KPI Stats */}
       <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'My Tasks', value: myTasks.length.toString(), icon: CheckSquare, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20', href: '/tasks' },
+          { label: 'My Tasks', value: tasks.length.toString(), icon: CheckSquare, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20', href: '/tasks' },
           { label: 'Pending Tasks', value: pendingTasks.toString(), icon: Clock, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20', href: '/tasks' },
-          { label: 'Leave Balance', value: '12d', icon: Calendar, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20', href: '/leave/balance' },
-          { label: 'Performance', value: '94%', icon: TrendingUp, color: 'text-violet-600 bg-violet-50 dark:bg-violet-900/20', href: '/hr/appraisals' },
+          { label: 'Leave Available', value: totalLeaveAvailable > 0 ? `${totalLeaveAvailable}d` : '—', icon: Calendar, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20', href: '/leave/balance' },
+          { label: 'Notifications', value: notifications.filter(n => !n.isRead).length.toString(), icon: TrendingUp, color: 'text-violet-600 bg-violet-50 dark:bg-violet-900/20', href: '/notifications' },
         ].map((s) => (
           <Link key={s.label} to={s.href}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 hover:shadow-md transition shadow-sm">
@@ -184,19 +172,23 @@ export function StaffDashboard() {
               View all <ArrowUpRight className="w-3 h-3" />
             </Link>
           </div>
-          <div className="space-y-3">
-            {myTasks.map((t) => (
-              <div key={t.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{t.title}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{t.project} · Due {t.due}</p>
+          {tasks.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">No tasks assigned</p>
+          ) : (
+            <div className="space-y-3">
+              {tasks.map((t) => (
+                <div key={t.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{t.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.project?.name ?? 'General'} · Due {t.dueDate ?? '—'}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${TASK_STATUS[t.status ?? 'Todo'] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {t.status ?? 'Todo'}
+                  </span>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${TASK_STATUS[t.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {t.status}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Leave Balance */}
@@ -209,68 +201,38 @@ export function StaffDashboard() {
               Apply
             </Link>
           </div>
-          <div className="space-y-4">
-            {leaveBalance.map((l) => {
-              const remaining = l.total - l.used;
-              const pct = Math.round((remaining / l.total) * 100);
-              return (
-                <div key={l.type}>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <span className="text-gray-600 dark:text-gray-400">{l.type}</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">{remaining}/{l.total} days</span>
+          {leaveTypes.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">Leave balance unavailable</p>
+          ) : (
+            <div className="space-y-4">
+              {leaveTypes.slice(0, 3).map((l) => {
+                const remaining = l.remainingDays ?? 0;
+                const total = l.totalDays || 1;
+                const pct = Math.round((remaining / total) * 100);
+                const COLORS = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500'];
+                const idx = leaveTypes.indexOf(l);
+                return (
+                  <div key={l.leaveTypeId}>
+                    <div className="flex justify-between text-sm mb-1.5">
+                      <span className="text-gray-600 dark:text-gray-400">{l.leaveType?.name ?? `Type #${l.leaveTypeId}`}</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{remaining}/{total} days</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8 }}
+                        className={`h-2 rounded-full ${COLORS[idx % COLORS.length]}`}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8 }}
-                      className={`h-2 rounded-full ${l.color}`}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
           <Link to="/leave/balance" className="mt-5 flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700">
             Full balance details <ArrowUpRight className="w-3 h-3" />
           </Link>
         </motion.div>
       </div>
-
-      {/* Weekly Reports */}
-      <motion.div variants={item} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-500" /> My Weekly Reports
-          </h2>
-          <Link to="/hr/weekly-report"
-            className="text-xs bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-3 py-1.5 rounded-lg hover:from-indigo-700 hover:to-violet-700 transition flex items-center gap-1">
-            <Send className="w-3 h-3" /> Submit Report
-          </Link>
-        </div>
-        {myWeeklyReports.length === 0 ? (
-          <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">No reports submitted yet</p>
-        ) : (
-          <div className="space-y-3">
-            {myWeeklyReports.map((r, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{r.week}</p>
-                  {r.score !== null && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                      <Star className="w-3 h-3 text-amber-500" /> Score: {r.score}/100
-                    </p>
-                  )}
-                </div>
-                <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0 ${REPORT_STATUS[r.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {r.status}
-                </span>
-                <Link to="/hr/weekly-report">
-                  <ChevronRight className="w-4 h-4 text-gray-400 hover:text-indigo-600" />
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* My Payslips */}
@@ -283,43 +245,53 @@ export function StaffDashboard() {
               View all <ArrowUpRight className="w-3 h-3" />
             </Link>
           </div>
-          <div className="space-y-3">
-            {myPayslips.map((p, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
-                  <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          {payslips.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">No payslips available</p>
+          ) : (
+            <div className="space-y-3">
+              {payslips.map((p) => (
+                <div key={p.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                    <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{p.period?.periodName ?? `${p.period?.month}/${p.period?.year}`}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">₦{p.netSalary?.toLocaleString() ?? '—'}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    p.status === 'Paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {p.status}
+                  </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{p.period}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{p.amount}</p>
-                </div>
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                  {p.status}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </motion.div>
 
-        {/* Announcements */}
+        {/* Notifications / Announcements */}
         <motion.div variants={item} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <Bell className="w-5 h-5 text-amber-500" /> Announcements
+              <Bell className="w-5 h-5 text-amber-500" /> Notifications
             </h2>
             <Link to="/notifications" className="text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1 hover:text-indigo-700">
               All <ArrowUpRight className="w-3 h-3" />
             </Link>
           </div>
-          <div className="space-y-3">
-            {announcements.map((a, i) => (
-              <div key={i} className={`border rounded-xl p-3.5 ${ANNC_TYPE[a.type]}`}>
-                <p className="text-sm font-semibold leading-tight">{a.title}</p>
-                <p className="text-xs mt-1 opacity-80">{a.body}</p>
-                <p className="text-xs mt-1.5 opacity-60">{a.date}</p>
-              </div>
-            ))}
-          </div>
+          {notifications.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">No notifications</p>
+          ) : (
+            <div className="space-y-3">
+              {notifications.map((n) => (
+                <div key={n.id} className={`border rounded-xl p-3.5 ${ANNC_TYPE[n.notificationType] ?? ANNC_TYPE.info}`}>
+                  <p className="text-sm font-semibold leading-tight">{n.title}</p>
+                  <p className="text-xs mt-1 opacity-80 line-clamp-2">{n.message}</p>
+                  <p className="text-xs mt-1.5 opacity-60">{new Date(n.createdAt).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </motion.div>
       </div>
 
@@ -331,7 +303,9 @@ export function StaffDashboard() {
             <MessageSquare className="w-5 h-5 text-indigo-500" /> Chat Activity
           </h2>
           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">3</p>
+            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+              {notifications.filter(n => n.notificationType === 'Message' && !n.isRead).length}
+            </p>
             <p className="text-xs">Unread messages</p>
           </div>
           <Link to="/messages"

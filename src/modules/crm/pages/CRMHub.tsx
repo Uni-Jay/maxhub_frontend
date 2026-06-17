@@ -32,16 +32,6 @@ const VISA_STATUS_STYLES: Record<VisaStatus, string> = {
   Rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
 
-const VISA_APPLICANTS: VisaApplicant[] = [
-  { id: 1, name: 'Adaeze Okonkwo', email: 'adaeze@gmail.com', phone: '08012345678', passport: 'A12345678', visaType: 'Tourist', country: 'Canada', status: 'Processing', consultant: 'Amaka B.', nextAction: 'Wait for embassy feedback', followUpDate: '2026-06-20', travelPackage: 'Canada Explorer', notes: 'Documents submitted on June 10' },
-  { id: 2, name: 'Emeka Nwosu', email: 'emeka@yahoo.com', phone: '08023456789', passport: 'B23456789', visaType: 'Student', country: 'UK', status: 'Documents', consultant: 'Tunde F.', nextAction: 'Collect bank statement', followUpDate: '2026-06-18', travelPackage: 'Study Abroad UK', notes: 'Missing IELTS certificate' },
-  { id: 3, name: 'Fatima Abdullahi', email: 'fatima@hotmail.com', phone: '08034567890', passport: 'C34567890', visaType: 'Work', country: 'UAE', status: 'Approved', consultant: 'Amaka B.', nextAction: 'Book flight', followUpDate: '2026-06-25', travelPackage: 'Dubai Work Permit', notes: 'Visa collected' },
-  { id: 4, name: 'Chidi Obi', email: 'chidi@gmail.com', phone: '08045678901', passport: 'D45678901', visaType: 'Business', country: 'USA', status: 'Consultation', consultant: 'Tunde F.', nextAction: 'Schedule DS-160 session', followUpDate: '2026-06-17', travelPackage: 'US Business Premium', notes: 'First appointment' },
-  { id: 5, name: 'Ngozi Eze', email: 'ngozi@gmail.com', phone: '08056789012', passport: 'E56789012', visaType: 'Residence', country: 'Germany', status: 'Submitted', consultant: 'Amaka B.', nextAction: 'Biometrics scheduled', followUpDate: '2026-06-22', travelPackage: 'EU Residence Package', notes: 'Awaiting VFS appointment' },
-  { id: 6, name: 'Tochukwu Ike', email: 'tochukwu@yahoo.com', phone: '08067890123', passport: 'F67890123', visaType: 'Tourist', country: 'Schengen', status: 'New', consultant: 'Tunde F.', nextAction: 'Initial consultation call', followUpDate: '2026-06-19', travelPackage: 'Europe Explorer', notes: '' },
-  { id: 7, name: 'Blessing Okoro', email: 'blessing@gmail.com', phone: '08078901234', passport: 'G78901234', visaType: 'Student', country: 'Australia', status: 'Rejected', consultant: 'Amaka B.', nextAction: 'Review refusal letter', followUpDate: '2026-06-21', travelPackage: 'Study Down Under', notes: 'Financial insufficiency cited' },
-  { id: 8, name: 'Kelechi Uche', email: 'kelechi@gmail.com', phone: '08089012345', passport: 'H89012345', visaType: 'Work', country: 'Canada', status: 'Processing', consultant: 'Tunde F.', nextAction: 'LMIA verification pending', followUpDate: '2026-06-23', travelPackage: 'Canada Work Permit', notes: 'Express entry profile active' },
-];
 
 // ─── Document types ────────────────────────────────────────
 type DocType = 'Passport' | 'Visa Application' | 'Bank Statement' | 'Sponsor Letter' | 'Medical Certificate' | 'Travel Insurance' | 'Flight Booking' | 'Hotel Booking' | 'Other';
@@ -285,29 +275,6 @@ interface TrainingStudent {
   id: number; name: string; course: string; enrolled: string; progress: number;
 }
 
-const KURIOS_CLIENTS: KuriosClient[] = [
-  { id: 1, company: 'TechBridge Ltd', contact: 'Segun Adeyemi', email: 'segun@techbridge.ng', phone: '08011111111', type: 'Software', projectStatus: 'Active', monthlyValue: 350000, lastContact: '2026-06-14', projectDesc: 'School management system build', budget: 4200000 },
-  { id: 2, company: 'CloudNest Nigeria', contact: 'Priya Sharma', email: 'priya@cloudnest.ng', phone: '08022222222', type: 'Hosting', projectStatus: 'Active', monthlyValue: 85000, lastContact: '2026-06-12', projectDesc: 'Managed hosting for 5 websites', budget: 1020000 },
-  { id: 3, company: 'Greenfields Academy', contact: 'Pastor Emmanuel', email: 'emm@greenfields.edu.ng', phone: '08033333333', type: 'Training', projectStatus: 'Active', monthlyValue: 200000, lastContact: '2026-06-10', projectDesc: 'ICT Training for 40 teachers', budget: 800000 },
-  { id: 4, company: 'QuickShop NG', contact: 'Bello Musa', email: 'bello@quickshop.ng', phone: '08044444444', type: 'Software', projectStatus: 'Pending', monthlyValue: 0, lastContact: '2026-06-08', projectDesc: 'E-commerce platform proposal', budget: 2500000 },
-  { id: 5, company: 'Marina Hotels', contact: 'Chioma Osei', email: 'chioma@marinahotels.com', phone: '08055555555', type: 'Domain', projectStatus: 'Completed', monthlyValue: 15000, lastContact: '2026-06-01', projectDesc: 'Domain + SSL + email setup', budget: 45000 },
-  { id: 6, company: 'LegalEase Partners', contact: 'Barr. Femi Alade', email: 'femi@legalease.ng', phone: '08066666666', type: 'Software', projectStatus: 'On Hold', monthlyValue: 180000, lastContact: '2026-05-28', projectDesc: 'Case management system', budget: 3600000 },
-];
-
-const ACTIVE_PROJECTS: ActiveProject[] = [
-  { id: 1, name: 'School Mgmt System - TechBridge', client: 'TechBridge Ltd', progress: 65, deadline: '2026-08-30', status: 'Active' },
-  { id: 2, name: 'E-Commerce Platform - QuickShop', client: 'QuickShop NG', progress: 10, deadline: '2026-09-15', status: 'Pending' },
-  { id: 3, name: 'Case Mgmt System - LegalEase', client: 'LegalEase Partners', progress: 40, deadline: '2026-10-01', status: 'On Hold' },
-  { id: 4, name: 'Greenfields ICT Training Batch 3', client: 'Greenfields Academy', progress: 80, deadline: '2026-07-01', status: 'Active' },
-];
-
-const TRAINING_STUDENTS: TrainingStudent[] = [
-  { id: 1, name: 'Amaka Chibueze', course: 'Web Development', enrolled: '2026-05-01', progress: 72 },
-  { id: 2, name: 'Yusuf Garba', course: 'Digital Marketing', enrolled: '2026-05-15', progress: 55 },
-  { id: 3, name: 'Sandra Effiong', course: 'Cybersecurity Basics', enrolled: '2026-06-01', progress: 30 },
-  { id: 4, name: 'Philip Okafor', course: 'Web Development', enrolled: '2026-04-10', progress: 90 },
-  { id: 5, name: 'Zara Mohammed', course: 'Data Analysis', enrolled: '2026-05-20', progress: 48 },
-];
 
 // ─── Bead Max types & data ────────────────────────────────
 type OrderStatus = 'Pending' | 'In Progress' | 'Ready' | 'Shipped' | 'Delivered';
@@ -327,29 +294,6 @@ interface IntlShipment {
   courier: string; trackingNum: string; status: string; estimatedDelivery: string;
 }
 
-const BEAD_CUSTOMERS: BeadCustomer[] = [
-  { id: 1, name: 'Ifeoma Achebe', email: 'ifeoma@gmail.com', phone: '08011112222', country: 'Nigeria', orderCount: 12, totalSpent: 485000, lastOrder: '2026-06-10' },
-  { id: 2, name: 'Sarah Johnson', email: 'sarah@gmail.com', phone: '+14155551234', country: 'USA', orderCount: 5, totalSpent: 320000, lastOrder: '2026-06-08' },
-  { id: 3, name: 'Aisha Bello', email: 'aisha@yahoo.com', phone: '08033334444', country: 'Nigeria', orderCount: 8, totalSpent: 210000, lastOrder: '2026-06-12' },
-  { id: 4, name: 'Patricia Mensah', email: 'patricia@hotmail.com', phone: '+233241234567', country: 'Ghana', orderCount: 3, totalSpent: 145000, lastOrder: '2026-06-05' },
-  { id: 5, name: 'Funmi Adeyinka', email: 'funmi@gmail.com', phone: '08055556666', country: 'Nigeria', orderCount: 20, totalSpent: 890000, lastOrder: '2026-06-14' },
-  { id: 6, name: 'Grace Osei', email: 'grace@yahoo.com', phone: '+447911123456', country: 'UK', orderCount: 7, totalSpent: 430000, lastOrder: '2026-06-01' },
-  { id: 7, name: 'Nkechi Eze', email: 'nkechi@gmail.com', phone: '08077778888', country: 'Nigeria', orderCount: 15, totalSpent: 620000, lastOrder: '2026-06-13' },
-  { id: 8, name: 'Amina Ibrahim', email: 'amina@gmail.com', phone: '08099990000', country: 'Nigeria', orderCount: 4, totalSpent: 95000, lastOrder: '2026-05-28' },
-];
-
-const CUSTOM_ORDERS: CustomOrder[] = [
-  { id: 1, customer: 'Ifeoma Achebe', description: 'Wedding bridal set — coral & gold beads', quantity: 1, material: 'Coral, Gold wire', deadline: '2026-06-25', status: 'In Progress' },
-  { id: 2, customer: 'Sarah Johnson', description: 'Waist beads set (10 strands)', quantity: 10, material: 'Glass seed beads', deadline: '2026-06-20', status: 'Ready' },
-  { id: 3, customer: 'Patricia Mensah', description: 'Necklace + earring set — turquoise', quantity: 3, material: 'Turquoise stones', deadline: '2026-07-05', status: 'Pending' },
-  { id: 4, customer: 'Funmi Adeyinka', description: 'Bulk beaded bracelets for event', quantity: 50, material: 'Seed beads, elastic', deadline: '2026-06-22', status: 'In Progress' },
-];
-
-const INTL_SHIPMENTS: IntlShipment[] = [
-  { id: 1, orderNum: 'BM-2024', customer: 'Sarah Johnson', country: 'USA', courier: 'DHL', trackingNum: 'DHL9283746501', status: 'In Transit', estimatedDelivery: '2026-06-22' },
-  { id: 2, orderNum: 'BM-2018', customer: 'Patricia Mensah', country: 'Ghana', courier: 'FedEx', trackingNum: 'FX7654321098', status: 'Delivered', estimatedDelivery: '2026-06-10' },
-  { id: 3, orderNum: 'BM-2026', customer: 'Grace Osei', country: 'UK', courier: 'DHL', trackingNum: 'DHL1122334455', status: 'Dispatched', estimatedDelivery: '2026-06-28' },
-];
 
 const CUSTOM_ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
   Pending: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
@@ -450,11 +394,11 @@ function VisaMaxTab() {
     queryKey: ['crm-visa-applicants'],
     queryFn: async () => {
       try { return await apiClient.get<VisaApplicant[]>('/crm/visa/applicants'); }
-      catch { return VISA_APPLICANTS; }
+      catch { return [] as VisaApplicant[]; }
     },
   });
 
-  const applicants = (data as VisaApplicant[]) ?? VISA_APPLICANTS;
+  const applicants = (data ?? []) as VisaApplicant[];
 
   const filtered = applicants.filter(a =>
     (!search || a.name.toLowerCase().includes(search.toLowerCase()) || a.passport.includes(search)) &&
@@ -798,11 +742,29 @@ function KuriosSatTab() {
     queryKey: ['crm-kurios-clients'],
     queryFn: async () => {
       try { return await apiClient.get<KuriosClient[]>('/crm/kurios/clients'); }
-      catch { return KURIOS_CLIENTS; }
+      catch { return [] as KuriosClient[]; }
     },
   });
 
-  const clients = (data as KuriosClient[]) ?? KURIOS_CLIENTS;
+  const { data: projectsData } = useQuery({
+    queryKey: ['crm-kurios-projects'],
+    queryFn: async () => {
+      try { return await apiClient.get<ActiveProject[]>('/crm/kurios/projects'); }
+      catch { return [] as ActiveProject[]; }
+    },
+  });
+
+  const { data: studentsData } = useQuery({
+    queryKey: ['crm-kurios-students'],
+    queryFn: async () => {
+      try { return await apiClient.get<TrainingStudent[]>('/crm/kurios/students'); }
+      catch { return [] as TrainingStudent[]; }
+    },
+  });
+
+  const clients = (data ?? []) as KuriosClient[];
+  const activeProjects = (projectsData ?? []) as ActiveProject[];
+  const trainingStudents = (studentsData ?? []) as TrainingStudent[];
 
   const filtered = clients.filter(c =>
     (!search || c.company.toLowerCase().includes(search.toLowerCase()) || c.contact.toLowerCase().includes(search.toLowerCase())) &&
@@ -905,7 +867,8 @@ function KuriosSatTab() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Active Software Projects</h3>
           <div className="space-y-4">
-            {ACTIVE_PROJECTS.map(p => (
+            {activeProjects.length === 0 && <p className="text-xs text-gray-400 text-center py-4">No active projects</p>}
+            {activeProjects.map(p => (
               <div key={p.id}>
                 <div className="flex justify-between items-center mb-1">
                   <div>
@@ -935,7 +898,10 @@ function KuriosSatTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-                {TRAINING_STUDENTS.map(s => (
+                {trainingStudents.length === 0 && (
+                  <tr><td colSpan={3} className="py-4 text-center text-xs text-gray-400">No students found</td></tr>
+                )}
+                {trainingStudents.map(s => (
                   <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
                     <td className="py-2.5 pr-3">
                       <p className="font-medium text-gray-900 dark:text-white text-xs">{s.name}</p>
@@ -1119,11 +1085,29 @@ function BeadMaxTab() {
     queryKey: ['crm-bead-customers'],
     queryFn: async () => {
       try { return await apiClient.get<BeadCustomer[]>('/crm/bead/customers'); }
-      catch { return BEAD_CUSTOMERS; }
+      catch { return [] as BeadCustomer[]; }
     },
   });
 
-  const customers = (data as BeadCustomer[]) ?? BEAD_CUSTOMERS;
+  const { data: ordersData } = useQuery({
+    queryKey: ['crm-bead-orders'],
+    queryFn: async () => {
+      try { return await apiClient.get<CustomOrder[]>('/crm/bead/orders'); }
+      catch { return [] as CustomOrder[]; }
+    },
+  });
+
+  const { data: shipmentsData } = useQuery({
+    queryKey: ['crm-bead-shipments'],
+    queryFn: async () => {
+      try { return await apiClient.get<IntlShipment[]>('/crm/bead/shipments'); }
+      catch { return [] as IntlShipment[]; }
+    },
+  });
+
+  const customers = (data ?? []) as BeadCustomer[];
+  const customOrders = (ordersData ?? []) as CustomOrder[];
+  const intlShipments = (shipmentsData ?? []) as IntlShipment[];
 
   const filtered = customers.filter(c =>
     (!search || c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase())) &&
@@ -1134,7 +1118,7 @@ function BeadMaxTab() {
 
   const stats = {
     total: customers.length,
-    activeOrders: CUSTOM_ORDERS.filter(o => o.status !== 'Delivered').length,
+    activeOrders: customOrders.filter(o => o.status !== 'Delivered').length,
     international: intl.length,
     revenue: customers.reduce((s, c) => s + c.totalSpent, 0),
   };
@@ -1213,7 +1197,8 @@ function BeadMaxTab() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">Pending Custom Orders</h3>
           <div className="space-y-3">
-            {CUSTOM_ORDERS.map(o => (
+            {customOrders.length === 0 && <p className="text-xs text-gray-400 text-center py-4">No pending orders</p>}
+            {customOrders.map(o => (
               <div key={o.id} className="flex items-start justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{o.description}</p>
@@ -1228,7 +1213,8 @@ function BeadMaxTab() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">International Shipments</h3>
           <div className="space-y-3">
-            {INTL_SHIPMENTS.map(s => (
+            {intlShipments.length === 0 && <p className="text-xs text-gray-400 text-center py-4">No international shipments</p>}
+            {intlShipments.map(s => (
               <div key={s.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
                 <div className="flex justify-between items-start">
                   <div>

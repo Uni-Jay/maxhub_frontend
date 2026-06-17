@@ -3,6 +3,7 @@ import { Loader } from '@components/ui/loader';
 import { useAuth } from '@/contexts/AuthContext';
 
 const STUDENT_ROLE = 'STUDENT';
+const SUPERADMIN_ROLE = 'superadmin';
 
 function LoadingScreen() {
   return (
@@ -40,6 +41,22 @@ export function StudentRoute() {
   if (!isAuthenticated) return <Navigate to="/auth/login" replace />;
 
   if (!hasRole(STUDENT_ROLE)) return <Navigate to="/dashboard" replace />;
+
+  return <Outlet />;
+}
+
+/**
+ * SuperAdminRoute — restricts a route to superadmin role.
+ * Non-superadmin authenticated users see a 403-style redirect to /dashboard.
+ */
+export function SuperAdminRoute() {
+  const { isAuthenticated, isInitialized, isLoading, hasRole } = useAuth();
+
+  if (!isInitialized || isLoading) return <LoadingScreen />;
+
+  if (!isAuthenticated) return <Navigate to="/auth/login" replace />;
+
+  if (!hasRole(SUPERADMIN_ROLE)) return <Navigate to="/dashboard" replace />;
 
   return <Outlet />;
 }

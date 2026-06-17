@@ -1,0 +1,2 @@
+import{q as t}from"./index-C0MBN1rJ.js";const e={getAll:(e={})=>t.getRaw("/staff",e),getById:e=>t.get(`/staff/${e}`),create:e=>t.post("/staff",e),update:(e,s)=>t.patch(`/staff/${e}`,s),remove:e=>t.delete(`/staff/${e}`),getQualifications:e=>t.get(`/staff/${e}/qualifications`),getSkills:e=>t.get(`/staff/${e}/skills`),getDocuments:e=>t.get(`/staff/${e}/documents`)};export{e as s};
+//# sourceMappingURL=staffService-BedMzyXM.js.map

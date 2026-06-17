@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import AuthLayout from '@layouts/AuthLayout';
 import DashboardLayout from '@layouts/DashboardLayout';
 import StudentPortalLayout from '@layouts/StudentPortalLayout';
-import { PrivateRoute, StudentRoute, PublicRoute } from '@routes/PrivateRoute';
+import { PrivateRoute, StudentRoute, PublicRoute, SuperAdminRoute } from '@routes/PrivateRoute';
 import { Toaster } from '@components/ui/toaster';
 
 // ─── Auth Pages ───
@@ -351,8 +351,10 @@ function App() {
               <Route path="/reports/attendance" element={<AttendanceReport />} />
               <Route path="/reports/projects" element={<ProjectsReport />} />
 
-              {/* Roles & Permissions */}
-              <Route path="/settings/roles" element={<RolesPermissions />} />
+              {/* Roles & Permissions — superadmin only */}
+              <Route element={<SuperAdminRoute />}>
+                <Route path="/settings/roles" element={<RolesPermissions />} />
+              </Route>
 
               {/* Login History */}
               <Route path="/login-history" element={<LoginHistory />} />
@@ -366,11 +368,15 @@ function App() {
               {/* Customer Reports */}
               <Route path="/customer-reports" element={<CustomerReportList />} />
 
-              {/* Settings */}
+              {/* Settings — profile/security/notifications open to all staff */}
               <Route path="/settings/profile" element={<ProfileSettings />} />
               <Route path="/settings/security" element={<SecuritySettings />} />
               <Route path="/settings/notifications" element={<NotificationSettings />} />
-              <Route path="/settings/system" element={<SystemSettings />} />
+
+              {/* System Settings — superadmin only */}
+              <Route element={<SuperAdminRoute />}>
+                <Route path="/settings/system" element={<SystemSettings />} />
+              </Route>
             </Route>
           </Route>
 
