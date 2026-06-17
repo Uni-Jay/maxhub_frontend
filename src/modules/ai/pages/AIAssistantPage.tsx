@@ -1,21 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
 import {
   Bot, Send, Sparkles, FileText, Calendar, Mail, Bell,
-  ListTodo, ChevronRight, Download, Copy, Check, Clock,
-  BrainCircuit, Zap, User, CheckCircle, X, RefreshCw,
-  FileDown, AlertCircle, Target, AlarmClock,
+  ListTodo, Copy, Check, BrainCircuit, Zap, User,
+  AlertCircle, ChevronDown, Loader2,
+  CheckCircle, Clock, XCircle, Download,
 } from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
 import { apiClient } from '@services/apiClient';
 import { useAuthStore } from '@store/authStore';
 import { cn } from '@utils/cn';
 
-type RightTab = 'tasks' | 'reports' | 'meetings' | 'email' | 'reminders';
+type RightTab = 'tasks' | 'report' | 'meeting' | 'email' | 'reminder';
+type OllamaModel = 'llama3' | 'deepseek-r1' | 'mistral' | 'gemma';
 
 interface ChatMessage {
   id: string;
@@ -24,712 +20,687 @@ interface ChatMessage {
   ts: Date;
 }
 
+const MODELS: { value: OllamaModel; label: string }[] = [
+  { value: 'llama3',      label: 'Llama 3' },
+  { value: 'deepseek-r1', label: 'DeepSeek-R1' },
+  { value: 'mistral',     label: 'Mistral' },
+  { value: 'gemma',       label: 'Gemma' },
+];
+
 const QUICK_PROMPTS = [
-  "Summarize today's tasks",
-  'Draft a meeting agenda',
-  'Generate attendance report',
-  'Suggest task priorities',
-  'Draft email to team',
+  "Summarize today's pending tasks",
+  'What are the key HR compliance requirements?',
+  'Draft a weekly team update email',
+  'Explain our leave policy',
+  'Tips for improving staff attendance',
 ];
 
-
-const TASK_SUGGESTIONS = [
-  { id: 1, title: 'Review Q2 staff appraisals', priority: 'High', deadline: 'Jun 20', assignTo: 'HR Manager', category: 'HR' },
-  { id: 2, title: 'Update payroll structure for new hires', priority: 'High', deadline: 'Jun 18', assignTo: 'Accountant', category: 'Payroll' },
-  { id: 3, title: 'Schedule team-building event', priority: 'Medium', deadline: 'Jun 25', assignTo: 'Head of Admin', category: 'Admin' },
-  { id: 4, title: 'Complete compliance training modules', priority: 'High', deadline: 'Jun 19', assignTo: 'All Staff', category: 'Training' },
-  { id: 5, title: 'Update client contracts — Visa Max batch', priority: 'Medium', deadline: 'Jun 22', assignTo: 'Legal', category: 'CRM' },
-  { id: 6, title: 'Generate monthly attendance summary', priority: 'Low', deadline: 'Jun 30', assignTo: 'HR', category: 'Attendance' },
-  { id: 7, title: 'Review inventory reorder thresholds', priority: 'Medium', deadline: 'Jun 24', assignTo: 'Warehouse Manager', category: 'Inventory' },
-  { id: 8, title: 'Prepare board report for July meeting', priority: 'High', deadline: 'Jun 28', assignTo: 'Super Admin', category: 'Management' },
+const TABS: { key: RightTab; label: string; icon: React.ElementType }[] = [
+  { key: 'tasks',   label: 'Tasks',    icon: ListTodo },
+  { key: 'report',  label: 'Reports',  icon: FileText },
+  { key: 'meeting', label: 'Meetings', icon: Calendar },
+  { key: 'email',   label: 'Email',    icon: Mail },
+  { key: 'reminder',label: 'Reminders',icon: Bell },
 ];
 
-const MEETING_SUMMARIES = [
-  {
-    id: 1,
-    title: 'Q2 Performance Review',
-    date: 'Jun 12, 2026',
-    participants: ['Dr. Adeyemi', 'Ngozi Obi', 'Emeka Chukwu'],
-    summary: [
-      'Q2 revenue exceeded target by 8% — strongest quarter YTD',
-      'Staff turnover rate improved to 3.2% from 5.1% in Q1',
-      'New LMS platform launched with 340 active student enrollments',
-      'Payroll accuracy reached 99.8% after system upgrade',
-    ],
-    actions: ['Prepare Q3 targets by June 20', 'Schedule individual appraisals'],
-  },
-  {
-    id: 2,
-    title: 'IT Infrastructure Planning',
-    date: 'Jun 10, 2026',
-    participants: ['Tunde Adebayo', 'Chiamaka Eze', 'IT Team'],
-    summary: [
-      'Cloud migration timeline confirmed for August 2026',
-      'Budget approved for new server hardware: ₦2.4M',
-      'Cybersecurity audit scheduled for end of July',
-      'MaxHub ERP uptime at 99.6% — exceeding SLA',
-    ],
-    actions: ['Finalise cloud vendor by June 25', 'Submit security audit RFP'],
-  },
-  {
-    id: 3,
-    title: 'Student Enrollment Drive',
-    date: 'Jun 8, 2026',
-    participants: ['Admissions', 'Marketing', 'HOD'],
-    summary: [
-      'June intake target: 120 students — currently at 87 enrolled',
-      'Social media campaign generated 340 leads this month',
-      'Scholarship program approved for 15 top-performing applicants',
-      'Fashion Design course has highest demand — waitlist of 23',
-    ],
-    actions: ['Launch referral incentive by June 18', 'Update scholarship FAQ on website'],
-  },
-  {
-    id: 4,
-    title: 'HR Policy Updates',
-    date: 'Jun 5, 2026',
-    participants: ['HR Director', 'Legal', 'HOD Representatives'],
-    summary: [
-      'Remote work policy updated — up to 2 days/week approved',
-      'Annual leave carryover limit increased to 10 days',
-      'New maternity/paternity leave policy aligned with Nigerian labour law',
-      'Performance bonus structure revised for 2026',
-    ],
-    actions: ['Circulate new policy document by June 15', 'Update HR module settings'],
-  },
-];
-
-const EMAIL_PURPOSES = ['Follow-up', 'Reminder', 'Announcement', 'Invitation', 'Apology'];
-const EMAIL_TONES = ['Professional', 'Friendly', 'Formal'];
-
-function generateEmail(to: string, subject: string, purpose: string, tone: string): string {
-  const greeting = tone === 'Friendly' ? 'Hi there,' : tone === 'Formal' ? 'Dear Sir/Madam,' : `Dear ${to || 'Team'},`;
-  const closing = tone === 'Friendly' ? 'Cheers,' : tone === 'Formal' ? 'Yours faithfully,' : 'Best regards,';
-
-  const bodies: Record<string, string> = {
-    'Follow-up': `I hope this message finds you well.\n\nI'm writing to follow up on our recent discussion regarding ${subject || 'the matter at hand'}. As we discussed, I would like to ensure we are aligned on the next steps.\n\nCould you please provide an update at your earliest convenience? Your timely response would be greatly appreciated.`,
-    'Reminder': `I hope you are doing well.\n\nThis is a friendly reminder regarding ${subject || 'the upcoming deadline'}. Please ensure that all necessary actions are completed before the due date to avoid any delays.\n\nIf you have any questions or need clarification, do not hesitate to reach out.`,
-    'Announcement': `I am pleased to share an important update with you.\n\nWe would like to announce ${subject || 'a key development within MaxHub'}. This change is effective immediately and we appreciate your cooperation as we implement this update.\n\nPlease review the attached information and share with your respective teams.`,
-    'Invitation': `You are cordially invited to ${subject || 'our upcoming event/meeting'}.\n\nWe believe your participation would be invaluable and we look forward to your presence. Please confirm your attendance at your earliest convenience so we can make the necessary arrangements.`,
-    'Apology': `I am writing to sincerely apologise regarding ${subject || 'the recent inconvenience'}.\n\nWe understand how this may have impacted you and we take full responsibility. Steps have already been taken to ensure this does not recur. We value your trust and patience.`,
-  };
-
-  return `${greeting}\n\n${bodies[purpose] || bodies['Follow-up']}\n\nThank you for your time and continued support.\n\n${closing}\n[Your Name]\nMaxHub ERP`;
-}
-
-const SMART_REMINDERS = [
-  { id: 1, icon: Clock, text: '3 leave requests pending approval', time: 'Due today', color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/20', snoozed: false },
-  { id: 2, icon: Target, text: 'Payroll processing deadline', time: 'Tomorrow, 5 PM', color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20', snoozed: false },
-  { id: 3, icon: Calendar, text: 'Board meeting scheduled', time: 'Jun 18, 10:00 AM', color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-900/20', snoozed: false },
-  { id: 4, icon: AlarmClock, text: '2 staff probation reviews due', time: 'Jun 20', color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20', snoozed: false },
-  { id: 5, icon: FileText, text: 'Monthly compliance report due', time: 'Jun 30', color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', snoozed: false },
-  { id: 6, icon: AlertCircle, text: 'IT security audit follow-up', time: 'Jun 25', color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20', snoozed: false },
-];
-
+const REPORT_TYPES = ['attendance', 'payroll', 'leave', 'performance'] as const;
+const EMAIL_TYPES = [
+  { value: 'leave_approval',       label: 'Leave Approval' },
+  { value: 'leave_rejection',      label: 'Leave Rejection' },
+  { value: 'meeting_invitation',   label: 'Meeting Invitation' },
+  { value: 'payroll_notification', label: 'Payroll Notification' },
+  { value: 'warning_letter',       label: 'Warning Letter' },
+  { value: 'onboarding',           label: 'Onboarding Welcome' },
+] as const;
+const REMINDER_TYPES = ['payroll', 'meeting', 'approval', 'contract_renewal', 'leave'] as const;
 const PRIORITY_COLORS: Record<string, string> = {
-  High: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  Medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  Low: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  urgent: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  high:   'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+  medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  low:    'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
 };
 
-const REPORT_TYPES = ['Attendance', 'Payroll', 'Sales', 'HR', 'Performance'];
-const REPORT_PERIODS = ['This Week', 'This Month', 'This Quarter', 'This Year'];
-const REPORT_FORMATS = ['PDF', 'Excel', 'CSV'];
-
-const REPORT_CHART_DATA = [
-  { name: 'Attendance', value: 94 },
-  { name: 'Payroll', value: 78 },
-  { name: 'Sales', value: 61 },
-  { name: 'HR', value: 45 },
-  { name: 'Performance', value: 82 },
-];
+// ── tiny markdown renderer ────────────────────────────────
+function SimpleMarkdown({ text }: { text: string }) {
+  const html = text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^## (.+)$/gm, '<h3 class="font-bold text-sm mt-2 mb-1">$1</h3>')
+    .replace(/^### (.+)$/gm, '<h4 class="font-semibold text-xs mt-1.5 mb-0.5">$1</h4>')
+    .replace(/^• (.+)$/gm, '<li class="ml-3">$1</li>')
+    .replace(/^- (.+)$/gm, '<li class="ml-3">$1</li>')
+    .replace(/\n/g, '<br/>');
+  return <span dangerouslySetInnerHTML={{ __html: html }} />;
+}
 
 export default function AIAssistantPage() {
-  const navigate = useNavigate();
   const user = useAuthStore(s => s.user);
-  const userId = (user as any)?.id;
-  const userRole = (user as any)?.role || 'STAFF';
   const userName = (user as any)?.firstName || 'there';
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '0',
-      role: 'assistant',
-      content: `Hello ${userName}! I'm MaxHub AI, your intelligent ERP assistant. How can I help you today?\n\nYou can ask me about tasks, reports, meetings, emails, or use the quick prompts below.`,
-      ts: new Date(),
-    },
-  ]);
+  const [model, setModel] = useState<OllamaModel>('llama3');
+  const [ollamaOk, setOllamaOk] = useState<boolean | null>(null);
+  const [activeTab, setActiveTab] = useState<RightTab>('tasks');
+  const [copied, setCopied] = useState(false);
+
+  // ── Chat state ────────────────────────────────────────────
+  const [messages, setMessages] = useState<ChatMessage[]>([{
+    id: '0', role: 'assistant', ts: new Date(),
+    content: `Hello ${userName}! I'm MaxHub AI, powered by Ollama. I can help you with ERP tasks, reports, and more. What would you like to do?`,
+  }]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const [activeTab, setActiveTab] = useState<RightTab>('tasks');
+  // ── Panel state ───────────────────────────────────────────
+  const [taskForm, setTaskForm]       = useState({ notes: '' });
+  const [taskResult, setTaskResult]   = useState<any>(null);
+  const [taskLoading, setTaskLoading] = useState(false);
 
-  const [acceptedTasks, setAcceptedTasks] = useState<Set<number>>(new Set());
+  const [reportForm, setReportForm]     = useState({ type: 'attendance' as typeof REPORT_TYPES[number], period: 'This Month', notes: '' });
+  const [reportResult, setReportResult] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
 
-  const [reportForm, setReportForm] = useState({ type: 'Attendance', period: 'This Month', format: 'PDF', description: '' });
-  const [reportState, setReportState] = useState<'idle' | 'generating' | 'ready'>('idle');
+  const [meetForm, setMeetForm]     = useState({ title: '', participants: '', transcript: '' });
+  const [meetResult, setMeetResult] = useState<any>(null);
+  const [meetLoading, setMeetLoading] = useState(false);
 
-  const [emailForm, setEmailForm] = useState({ to: '', subject: '', purpose: 'Follow-up', tone: 'Professional' });
-  const [emailDraft, setEmailDraft] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [emailForm, setEmailForm]     = useState({ type: 'leave_approval' as typeof EMAIL_TYPES[number]['value'], recipient: '', notes: '' });
+  const [emailResult, setEmailResult] = useState<any>(null);
+  const [emailLoading, setEmailLoading] = useState(false);
 
-  const [reminders] = useState(SMART_REMINDERS);
-  const [snoozedIds, setSnoozedIds] = useState<Set<number>>(new Set());
-  const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
+  const [reminderForm, setReminderForm]     = useState({ type: 'payroll' as typeof REMINDER_TYPES[number], notes: '' });
+  const [reminderResult, setReminderResult] = useState<any>(null);
+  const [reminderLoading, setReminderLoading] = useState(false);
+
+  // ── Ollama status check ───────────────────────────────────
+  useEffect(() => {
+    apiClient.get<{ ollamaAvailable: boolean }>('/ai/status')
+      .then(d => setOllamaOk(d.ollamaAvailable))
+      .catch(() => setOllamaOk(false));
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  useQuery({
-    queryKey: ['ai-tasks', userId],
-    queryFn: async () => {
-      try { return await apiClient.get(`/tasks?assignedTo=${userId}&limit=8`); } catch { return null; }
-    },
-  });
-
+  // ── Chat ──────────────────────────────────────────────────
   const sendMessage = useCallback(async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content) return;
-
     const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content, ts: new Date() };
     setMessages(m => [...m, userMsg]);
     setInput('');
     setIsTyping(true);
-
     try {
       const apiMessages = [
         ...messages.map(m => ({ role: m.role, content: m.content })),
         { role: 'user' as const, content },
       ];
-
-      const response = await apiClient.post<{ reply: string; model: string }>('/ai/chat', { messages: apiMessages });
-      const reply: string = response.reply ?? 'I was unable to generate a response. Please try again.';
-      setMessages(m => [...m, { id: (Date.now() + 1).toString(), role: 'assistant', content: reply, ts: new Date() }]);
+      const resp = await apiClient.post<{ reply: string; model: string }>('/ai/chat', { messages: apiMessages, model });
+      setMessages(m => [...m, { id: (Date.now() + 1).toString(), role: 'assistant', content: resp.reply, ts: new Date() }]);
     } catch (err: any) {
-      const serverMsg: string | undefined = err?.response?.data?.message;
-      const errorReply = serverMsg?.includes('ANTHROPIC_API_KEY')
-        ? 'AI service is not configured yet. Please set the `ANTHROPIC_API_KEY` in the backend `.env` file.'
-        : 'Failed to reach the AI service. Please check your connection and try again.';
-      setMessages(m => [...m, { id: (Date.now() + 1).toString(), role: 'assistant', content: errorReply, ts: new Date() }]);
+      const msg = err?.response?.data?.message ?? '';
+      const errorText = msg.includes('not running')
+        ? '⚠️ Ollama is not running. Start it with: `ollama serve`, then pull a model with: `ollama pull llama3`'
+        : msg.includes('not found')
+        ? `⚠️ Model "${model}" not found. Run: \`ollama pull ${model}\``
+        : 'Failed to reach the AI service. Please try again.';
+      setMessages(m => [...m, { id: (Date.now() + 1).toString(), role: 'assistant', content: errorText, ts: new Date() }]);
     } finally {
       setIsTyping(false);
     }
-  }, [input, messages]);
+  }, [input, messages, model]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  // ── Panel API calls ───────────────────────────────────────
+  const runTasks = async () => {
+    setTaskLoading(true); setTaskResult(null);
+    try {
+      const r = await apiClient.post<any>('/ai/task-suggestions', {
+        model,
+        overdueTasks: [],
+        pendingTasks: [],
+        teamWorkload: [],
+        ...( taskForm.notes ? { context: taskForm.notes } : {} ),
+      });
+      setTaskResult(r);
+    } catch { setTaskResult({ error: true }); }
+    finally { setTaskLoading(false); }
   };
 
-  const handleGenerateReport = () => {
-    setReportState('generating');
-    setTimeout(() => setReportState('ready'), 2200);
+  const runReport = async () => {
+    setReportLoading(true); setReportResult('');
+    try {
+      const r = await apiClient.post<{ report: string }>('/ai/report', {
+        model,
+        type: reportForm.type,
+        period: reportForm.period,
+        data: { period: reportForm.period, notes: reportForm.notes, generatedAt: new Date().toISOString() },
+      });
+      setReportResult(r.report);
+    } catch { setReportResult('Failed to generate report. Ensure Ollama is running.'); }
+    finally { setReportLoading(false); }
   };
 
-  const handleGenerateDraft = () => {
-    setEmailDraft(generateEmail(emailForm.to, emailForm.subject, emailForm.purpose, emailForm.tone));
+  const runMeeting = async () => {
+    if (!meetForm.transcript.trim()) return;
+    setMeetLoading(true); setMeetResult(null);
+    try {
+      const r = await apiClient.post<any>('/ai/summarize', {
+        model,
+        title: meetForm.title || 'Meeting Summary',
+        transcript: meetForm.transcript,
+        participants: meetForm.participants ? meetForm.participants.split(',').map(s => s.trim()) : [],
+      });
+      setMeetResult(r);
+    } catch { setMeetResult({ error: true }); }
+    finally { setMeetLoading(false); }
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(emailDraft).catch(() => {});
+  const runEmail = async () => {
+    setEmailLoading(true); setEmailResult(null);
+    try {
+      const r = await apiClient.post<any>('/ai/email-draft', {
+        model,
+        type: emailForm.type,
+        recipient: emailForm.recipient || 'Team Member',
+        context: { notes: emailForm.notes, date: new Date().toLocaleDateString() },
+      });
+      setEmailResult(r);
+    } catch { setEmailResult({ error: true }); }
+    finally { setEmailLoading(false); }
+  };
+
+  const runReminder = async () => {
+    setReminderLoading(true); setReminderResult(null);
+    try {
+      const r = await apiClient.post<any>('/ai/reminder', {
+        model,
+        type: reminderForm.type,
+        context: { notes: reminderForm.notes, date: new Date().toLocaleDateString() },
+      });
+      setReminderResult(r);
+    } catch { setReminderResult({ error: true }); }
+    finally { setReminderLoading(false); }
+  };
+
+  const copyText = (text: string) => {
+    navigator.clipboard.writeText(text).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSnooze = (id: number) => {
-    setSnoozedIds(s => new Set(s).add(id));
-    setTimeout(() => setSnoozedIds(s => { const n = new Set(s); n.delete(id); return n; }), 3000);
-  };
-
-  const handleDismiss = (id: number) => setDismissedIds(d => new Set(d).add(id));
-
-  const TABS: { key: RightTab; label: string; icon: React.ElementType }[] = [
-    { key: 'tasks', label: 'Task Suggestions', icon: ListTodo },
-    { key: 'reports', label: 'Report Generator', icon: FileText },
-    { key: 'meetings', label: 'Meeting Summaries', icon: Calendar },
-    { key: 'email', label: 'Email Drafts', icon: Mail },
-    { key: 'reminders', label: 'Smart Reminders', icon: Bell },
-  ];
-
-  const visibleReminders = reminders.filter(r => !dismissedIds.has(r.id));
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <BrainCircuit className="h-6 w-6 text-indigo-600" />
-            MaxHub AI Assistant
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Intelligent ERP assistance for {userRole.replace(/_/g, ' ')}</p>
+    <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden">
+      {/* Ollama status banner */}
+      {ollamaOk === false && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-xs">
+          <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+          <span>
+            Ollama is not running. Start it: <code className="font-mono bg-amber-100 dark:bg-amber-900/40 px-1 rounded">ollama serve</code>
+            &nbsp;then pull a model: <code className="font-mono bg-amber-100 dark:bg-amber-900/40 px-1 rounded">ollama pull llama3</code>
+          </span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-full font-medium">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          AI Online
+      )}
+      {ollamaOk === true && (
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs">
+          <CheckCircle className="h-3 w-3" />
+          <span>Ollama is running — free, local AI</span>
         </div>
-      </div>
+      )}
 
-      <div className="flex gap-4 h-[calc(100vh-160px)] min-h-[600px]">
-        {/* ── LEFT: Chat (40%) ── */}
-        <div className="w-[40%] flex-shrink-0 flex flex-col bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-          <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 flex-shrink-0">
-            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-              <Bot className="h-5 w-5 text-white" />
+      <div className="flex flex-1 min-h-0 gap-4 p-4">
+        {/* ── Left: Chat ──────────────────────────────────── */}
+        <div className="flex flex-col w-full max-w-xl flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center">
+                <BrainCircuit className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">MaxHub AI</p>
+                <p className="text-[10px] text-gray-400">Powered by Ollama · Free & Local</p>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-white text-sm">MaxHub AI</p>
-              <p className="text-xs text-indigo-200">Your intelligent ERP companion</p>
+            {/* Model selector */}
+            <div className="relative">
+              <select
+                value={model}
+                onChange={e => setModel(e.target.value as OllamaModel)}
+                className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 pr-6 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+              >
+                {MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             <AnimatePresence initial={false}>
               {messages.map(msg => (
                 <motion.div
                   key={msg.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={cn('flex gap-2', msg.role === 'user' ? 'justify-end' : 'justify-start')}
+                  className={cn('flex gap-2.5', msg.role === 'user' ? 'justify-end' : 'justify-start')}
                 >
                   {msg.role === 'assistant' && (
-                    <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Bot className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Bot className="h-3.5 w-3.5 text-white" />
                     </div>
                   )}
                   <div className={cn(
-                    'max-w-[80%] px-3 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap',
+                    'max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed',
                     msg.role === 'user'
-                      ? 'bg-indigo-600 text-white rounded-br-sm'
-                      : 'bg-gray-50 dark:bg-gray-700/60 text-gray-800 dark:text-gray-100 rounded-bl-sm border border-gray-100 dark:border-gray-700'
+                      ? 'bg-indigo-600 text-white rounded-tr-sm'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm',
                   )}>
-                    {msg.content}
-                    <p className={cn('text-[10px] mt-1', msg.role === 'user' ? 'text-indigo-200 text-right' : 'text-gray-400')}>
+                    <SimpleMarkdown text={msg.content} />
+                    <p className={cn('text-[10px] mt-1', msg.role === 'user' ? 'text-indigo-200' : 'text-gray-400')}>
                       {msg.ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                   {msg.role === 'user' && (
-                    <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <User className="h-4 w-4 text-white" />
+                    <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <User className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                     </div>
                   )}
                 </motion.div>
               ))}
             </AnimatePresence>
-
             {isTyping && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2 items-center">
-                <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0">
-                  <Bot className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <div className="flex gap-2.5 items-center">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+                  <Bot className="h-3.5 w-3.5 text-white" />
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-700/60 border border-gray-100 dark:border-gray-700 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-1">
-                  {[0, 1, 2].map(i => (
-                    <span key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-                  ))}
+                <div className="bg-gray-100 dark:bg-gray-700 rounded-2xl rounded-tl-sm px-3 py-2">
+                  <div className="flex gap-1">
+                    {[0,1,2].map(i => (
+                      <span key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                    ))}
+                  </div>
                 </div>
-              </motion.div>
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {QUICK_PROMPTS.map(p => (
-                <button key={p} onClick={() => sendMessage(p)}
-                  className="text-[11px] px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-colors font-medium border border-indigo-100 dark:border-indigo-800/50">
-                  {p}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-end gap-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-transparent transition">
+          {/* Quick prompts */}
+          <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700 flex gap-1.5 overflow-x-auto scrollbar-hide">
+            {QUICK_PROMPTS.map(p => (
+              <button
+                key={p}
+                onClick={() => sendMessage(p)}
+                className="flex-shrink-0 text-[10px] px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition whitespace-nowrap"
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
+          {/* Input */}
+          <div className="px-3 py-3 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex gap-2 items-end bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent">
               <textarea
-                ref={inputRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask MaxHub AI anything..."
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                placeholder="Ask anything about your ERP..."
                 rows={1}
-                className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none focus:outline-none py-1 max-h-24 overflow-y-auto leading-relaxed"
-                style={{ height: Math.min(Math.max(input.split('\n').length, 1) * 20 + 18, 96) + 'px' }}
+                className="flex-1 resize-none bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none max-h-24"
               />
               <button
                 onClick={() => sendMessage()}
                 disabled={!input.trim() || isTyping}
-                className="w-8 h-8 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 rounded-lg flex items-center justify-center text-white transition flex-shrink-0"
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800 text-white transition flex-shrink-0"
               >
-                <Send className="h-4 w-4" />
+                {isTyping ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
               </button>
             </div>
           </div>
         </div>
 
-        {/* ── RIGHT: Smart Features (60%) ── */}
-        <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-          <div className="flex border-b border-gray-100 dark:border-gray-700 flex-shrink-0 overflow-x-auto">
-            {TABS.map(t => {
-              const Icon = t.icon;
-              return (
-                <button
-                  key={t.key}
-                  onClick={() => setActiveTab(t.key)}
-                  className={cn(
-                    'flex items-center gap-1.5 px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors',
-                    activeTab === t.key
-                      ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-900/20'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {t.label}
-                </button>
-              );
-            })}
+        {/* ── Right: Feature Panels ────────────────────────── */}
+        <div className="flex-1 min-w-0 flex flex-col bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+          {/* Tabs */}
+          <div className="flex border-b border-gray-100 dark:border-gray-700 overflow-x-auto">
+            {TABS.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 py-3 text-xs font-medium whitespace-nowrap border-b-2 transition',
+                  activeTab === tab.key
+                    ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
+                )}
+              >
+                <tab.icon className="h-3.5 w-3.5" />
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5">
-            {/* ── TASK SUGGESTIONS ── */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {/* ── Task Suggestions ─────────────────────────── */}
             {activeTab === 'tasks' && (
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4 text-indigo-500" />
-                    AI-Generated Task Recommendations
-                  </p>
-                  <span className="text-xs text-gray-400">{TASK_SUGGESTIONS.length} suggestions</span>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Smart Task Suggestions</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">AI analyses your workload and suggests next actions.</p>
                 </div>
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                  {TASK_SUGGESTIONS.map(task => (
-                    <div key={task.id} className="bg-gray-50 dark:bg-gray-700/40 rounded-xl border border-gray-100 dark:border-gray-700 p-4 hover:shadow-sm transition">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-100 leading-snug">{task.title}</p>
-                        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0', PRIORITY_COLORS[task.priority])}>
-                          {task.priority}
-                        </span>
+                <textarea
+                  value={taskForm.notes}
+                  onChange={e => setTaskForm({ notes: e.target.value })}
+                  placeholder="Describe your current task situation or paste overdue tasks..."
+                  rows={3}
+                  className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  onClick={runTasks}
+                  disabled={taskLoading}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-sm font-semibold px-4 py-2 rounded-xl transition"
+                >
+                  {taskLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                  {taskLoading ? 'Analysing...' : 'Get AI Suggestions'}
+                </button>
+                {taskResult && !taskResult.error && (
+                  <div className="space-y-3">
+                    {taskResult.workloadNotes && (
+                      <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 text-sm text-indigo-800 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
+                        {taskResult.workloadNotes}
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-3">
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{task.deadline}</span>
-                        <span className="flex items-center gap-1"><User className="h-3 w-3" />{task.assignTo}</span>
-                        <span className="bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded text-[10px]">{task.category}</span>
-                      </div>
-                      {acceptedTasks.has(task.id) ? (
-                        <div className="flex items-center gap-1.5 text-emerald-600 text-xs font-medium">
-                          <CheckCircle className="h-4 w-4" /> Added to Tasks
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => { setAcceptedTasks(s => new Set(s).add(task.id)); navigate('/tasks/create'); }}
-                          className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition"
-                        >
-                          Accept <ChevronRight className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── REPORT GENERATOR ── */}
-            {activeTab === 'reports' && (
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                  <FileText className="h-4 w-4 text-indigo-500" />
-                  Generate AI Reports
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Report Type</label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {REPORT_TYPES.map(t => (
-                        <button key={t} onClick={() => setReportForm(f => ({ ...f, type: t }))}
-                          className={cn('px-3 py-1.5 rounded-lg text-xs font-medium border transition',
-                            reportForm.type === t
-                              ? 'bg-indigo-600 text-white border-indigo-600'
-                              : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-indigo-300')}>
-                          {t}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Period</label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {REPORT_PERIODS.map(p => (
-                        <button key={p} onClick={() => setReportForm(f => ({ ...f, period: p }))}
-                          className={cn('px-3 py-1.5 rounded-lg text-xs font-medium border transition',
-                            reportForm.period === p
-                              ? 'bg-indigo-600 text-white border-indigo-600'
-                              : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-indigo-300')}>
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Format</label>
-                    <div className="flex gap-2 mt-2">
-                      {REPORT_FORMATS.map(f => (
-                        <button key={f} onClick={() => setReportForm(rf => ({ ...rf, format: f }))}
-                          className={cn('px-3 py-1.5 rounded-lg text-xs font-medium border transition',
-                            reportForm.format === f
-                              ? 'bg-indigo-600 text-white border-indigo-600'
-                              : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-indigo-300')}>
-                          {f}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Description (optional)</label>
-                    <textarea
-                      value={reportForm.description}
-                      onChange={e => setReportForm(f => ({ ...f, description: e.target.value }))}
-                      placeholder="Additional notes or parameters..."
-                      rows={2}
-                      className="w-full mt-2 text-sm border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white placeholder-gray-400 resize-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 dark:bg-gray-700/40 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Report Volume by Type</p>
-                  <ResponsiveContainer width="100%" height={120}>
-                    <BarChart data={REPORT_CHART_DATA} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(v) => [`${v}%`, 'Completion']} />
-                      <Bar dataKey="value" fill="#6366f1" radius={[3, 3, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {reportState === 'idle' && (
-                  <button onClick={handleGenerateReport}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition shadow-sm">
-                    <Sparkles className="h-4 w-4" /> Generate {reportForm.type} Report
-                  </button>
-                )}
-
-                {reportState === 'generating' && (
-                  <div className="flex items-center gap-3 px-5 py-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800">
-                    <RefreshCw className="h-5 w-5 text-indigo-600 animate-spin" />
-                    <div>
-                      <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Generating report...</p>
-                      <p className="text-xs text-indigo-500 dark:text-indigo-400">Analysing {reportForm.period.toLowerCase()} data</p>
-                    </div>
-                  </div>
-                )}
-
-                {reportState === 'ready' && (
-                  <div className="flex items-center justify-between px-5 py-3.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                    <div className="flex items-center gap-3">
-                      <FileDown className="h-5 w-5 text-emerald-600" />
-                      <div>
-                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Report Ready</p>
-                        <p className="text-xs text-emerald-500 dark:text-emerald-400">{reportForm.type}_{reportForm.period.replace(/\s/g, '_')}.{reportForm.format.toLowerCase()}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setReportState('idle')}
-                        className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1 rounded">
-                        <X className="h-4 w-4" />
-                      </button>
-                      <button className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition">
-                        <Download className="h-3.5 w-3.5" /> Download
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {/* ── MEETING SUMMARIES ── */}
-            {activeTab === 'meetings' && (
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4 text-indigo-500" />
-                  AI-Generated Meeting Summaries
-                </p>
-                {MEETING_SUMMARIES.map((meeting, i) => (
-                  <motion.div key={meeting.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-                    className="bg-gray-50 dark:bg-gray-700/40 rounded-xl border border-gray-100 dark:border-gray-700 p-4">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div>
-                        <h3 className="font-semibold text-sm text-gray-900 dark:text-white">{meeting.title}</h3>
-                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{meeting.date}</span>
-                          <span className="flex items-center gap-1"><User className="h-3 w-3" />{meeting.participants.join(', ')}</span>
-                        </div>
-                      </div>
-                      <span className="flex items-center gap-1 text-[10px] font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full flex-shrink-0">
-                        <Zap className="h-2.5 w-2.5" /> AI Summary
-                      </span>
-                    </div>
-                    <ul className="space-y-1 mb-3">
-                      {meeting.summary.map((point, j) => (
-                        <li key={j} className="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-300">
-                          <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                          {point}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="border-t border-gray-100 dark:border-gray-700 pt-2.5">
-                      <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Action Items</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {meeting.actions.map((a, j) => (
-                          <span key={j} className="text-[11px] bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full border border-amber-100 dark:border-amber-800/40">
-                            {a}
+                    )}
+                    {taskResult.suggestions?.map((s: any, i: number) => (
+                      <div key={i} className="border border-gray-100 dark:border-gray-700 rounded-xl p-3 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{s.action}</p>
+                          <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', PRIORITY_COLORS[s.priority] ?? PRIORITY_COLORS.medium)}>
+                            {s.priority}
                           </span>
-                        ))}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{s.reason}</p>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
+                    ))}
+                  </div>
+                )}
+                {taskResult?.error && (
+                  <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
+                    <XCircle className="h-4 w-4 flex-shrink-0" />
+                    Failed to get suggestions. Ensure Ollama is running.
+                  </div>
+                )}
+              </div>
             )}
 
-            {/* ── EMAIL DRAFTS ── */}
-            {activeTab === 'email' && (
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                  <Mail className="h-4 w-4 text-indigo-500" />
-                  AI Email Composer
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* ── Report Generator ─────────────────────────── */}
+            {activeTab === 'report' && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">AI Report Generator</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Generate professional ERP reports with AI narrative.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">To</label>
-                    <input
-                      value={emailForm.to}
-                      onChange={e => setEmailForm(f => ({ ...f, to: e.target.value }))}
-                      placeholder="Recipient name or team..."
-                      className="w-full mt-1.5 text-sm border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white placeholder-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Subject</label>
-                    <input
-                      value={emailForm.subject}
-                      onChange={e => setEmailForm(f => ({ ...f, subject: e.target.value }))}
-                      placeholder="Email subject..."
-                      className="w-full mt-1.5 text-sm border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white placeholder-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Purpose</label>
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Report Type</label>
                     <select
-                      value={emailForm.purpose}
-                      onChange={e => setEmailForm(f => ({ ...f, purpose: e.target.value }))}
-                      className="w-full mt-1.5 text-sm border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white"
+                      value={reportForm.type}
+                      onChange={e => setReportForm(f => ({ ...f, type: e.target.value as any }))}
+                      className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      {EMAIL_PURPOSES.map(p => <option key={p}>{p}</option>)}
+                      {REPORT_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tone</label>
-                    <div className="flex gap-2 mt-1.5">
-                      {EMAIL_TONES.map(t => (
-                        <button key={t} onClick={() => setEmailForm(f => ({ ...f, tone: t }))}
-                          className={cn('flex-1 px-2 py-2 rounded-lg text-xs font-medium border transition',
-                            emailForm.tone === t
-                              ? 'bg-indigo-600 text-white border-indigo-600'
-                              : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-indigo-300')}>
-                          {t}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <button onClick={handleGenerateDraft}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition shadow-sm">
-                  <Sparkles className="h-4 w-4" /> Generate Draft
-                </button>
-
-                {emailDraft && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Generated Draft</p>
-                      <button onClick={handleCopy}
-                        className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-medium">
-                        {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
-                      </button>
-                    </div>
-                    <textarea
-                      value={emailDraft}
-                      onChange={e => setEmailDraft(e.target.value)}
-                      rows={12}
-                      className="w-full text-sm border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white resize-none font-mono leading-relaxed"
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Period</label>
+                    <input
+                      value={reportForm.period}
+                      onChange={e => setReportForm(f => ({ ...f, period: e.target.value }))}
+                      placeholder="e.g. June 2026"
+                      className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
-                )}
-              </motion.div>
-            )}
-
-            {/* ── SMART REMINDERS ── */}
-            {activeTab === 'reminders' && (
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                    <Bell className="h-4 w-4 text-indigo-500" />
-                    Smart Reminders
-                  </p>
-                  <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full font-medium">
-                    {visibleReminders.length} active
-                  </span>
                 </div>
-                <AnimatePresence>
-                  {visibleReminders.map((r, i) => {
-                    const Icon = r.icon;
-                    const isSnoozed = snoozedIds.has(r.id);
-                    return (
-                      <motion.div key={r.id} layout
-                        initial={{ opacity: 0, x: -8 }} animate={{ opacity: isSnoozed ? 0.5 : 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20, height: 0, marginBottom: 0 }}
-                        transition={{ delay: i * 0.04 }}
-                        className={cn('flex items-center gap-3 p-3.5 rounded-xl border transition', r.bg,
-                          isSnoozed ? 'border-gray-200 dark:border-gray-700' : 'border-transparent')}>
-                        <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0', r.bg)}>
-                          <Icon className={cn('h-5 w-5', r.color)} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn('text-sm font-medium', isSnoozed ? 'text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-100')}>
-                            {isSnoozed ? 'Snoozed for 3s...' : r.text}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
-                            <Clock className="h-3 w-3" /> {r.time}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <button
-                            onClick={() => handleSnooze(r.id)}
-                            disabled={isSnoozed}
-                            className="text-[11px] px-2.5 py-1 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition disabled:opacity-40"
-                          >
-                            Snooze
-                          </button>
-                          <button
-                            onClick={() => handleDismiss(r.id)}
-                            className="text-[11px] px-2.5 py-1 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-red-500 hover:border-red-200 dark:hover:border-red-800 transition"
-                          >
-                            Dismiss
-                          </button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-                {visibleReminders.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-600">
-                    <Bell className="h-10 w-10 mb-2 opacity-30" />
-                    <p className="text-sm font-medium">All reminders cleared</p>
-                    <button onClick={() => setDismissedIds(new Set())}
-                      className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
-                      Restore all
-                    </button>
+                <textarea
+                  value={reportForm.notes}
+                  onChange={e => setReportForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Add context, data points, or special notes for the AI..."
+                  rows={3}
+                  className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  onClick={runReport}
+                  disabled={reportLoading}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-sm font-semibold px-4 py-2 rounded-xl transition"
+                >
+                  {reportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                  {reportLoading ? 'Generating...' : 'Generate Report'}
+                </button>
+                {reportResult && (
+                  <div className="bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Generated Report</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => copyText(reportResult)} className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800">
+                          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          {copied ? 'Copied' : 'Copy'}
+                        </button>
+                        <button onClick={() => {
+                          const blob = new Blob([reportResult], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a'); a.href = url; a.download = `${reportForm.type}-report.txt`; a.click();
+                        }} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700">
+                          <Download className="h-3 w-3" /> Download
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{reportResult}</div>
                   </div>
                 )}
-              </motion.div>
+              </div>
+            )}
+
+            {/* ── Meeting Summary ───────────────────────────── */}
+            {activeTab === 'meeting' && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Meeting Summarizer</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Paste your transcript — AI extracts summary, action items, and decisions.</p>
+                </div>
+                <input
+                  value={meetForm.title}
+                  onChange={e => setMeetForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="Meeting title (optional)"
+                  className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <input
+                  value={meetForm.participants}
+                  onChange={e => setMeetForm(f => ({ ...f, participants: e.target.value }))}
+                  placeholder="Participants (comma separated)"
+                  className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <textarea
+                  value={meetForm.transcript}
+                  onChange={e => setMeetForm(f => ({ ...f, transcript: e.target.value }))}
+                  placeholder="Paste meeting transcript here..."
+                  rows={5}
+                  className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  onClick={runMeeting}
+                  disabled={meetLoading || !meetForm.transcript.trim()}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-sm font-semibold px-4 py-2 rounded-xl transition"
+                >
+                  {meetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {meetLoading ? 'Summarizing...' : 'Summarize Meeting'}
+                </button>
+                {meetResult && !meetResult.error && (
+                  <div className="space-y-3">
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 border border-indigo-100 dark:border-indigo-800">
+                      <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Summary</p>
+                      <p className="text-sm text-indigo-900 dark:text-indigo-200 leading-relaxed">{meetResult.summary}</p>
+                    </div>
+                    {meetResult.actionItems?.length > 0 && (
+                      <div className="border border-gray-100 dark:border-gray-700 rounded-xl p-3">
+                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Action Items</p>
+                        <div className="space-y-2">
+                          {meetResult.actionItems.map((item: any, i: number) => (
+                            <div key={i} className="flex items-start gap-2 text-sm">
+                              <CheckCircle className="h-3.5 w-3.5 text-indigo-500 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="text-gray-800 dark:text-gray-200">{item.task}</p>
+                                {(item.assignee || item.deadline) && (
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {item.assignee && `→ ${item.assignee}`} {item.deadline && `· ${item.deadline}`}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {meetResult.keyDecisions?.length > 0 && (
+                      <div className="border border-gray-100 dark:border-gray-700 rounded-xl p-3">
+                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Key Decisions</p>
+                        {meetResult.keyDecisions.map((d: string, i: number) => (
+                          <p key={i} className="text-sm text-gray-700 dark:text-gray-300">• {d}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {meetResult?.error && (
+                  <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
+                    <XCircle className="h-4 w-4" /> Failed to summarize. Ensure Ollama is running.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Email Drafter ─────────────────────────────── */}
+            {activeTab === 'email' && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">AI Email Drafter</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Generate professional HR emails instantly.</p>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Email Type</label>
+                  <select
+                    value={emailForm.type}
+                    onChange={e => setEmailForm(f => ({ ...f, type: e.target.value as any }))}
+                    className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {EMAIL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </div>
+                <input
+                  value={emailForm.recipient}
+                  onChange={e => setEmailForm(f => ({ ...f, recipient: e.target.value }))}
+                  placeholder="Recipient name (e.g. Emeka Obi)"
+                  className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <textarea
+                  value={emailForm.notes}
+                  onChange={e => setEmailForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Add context (dates, reasons, specific details)..."
+                  rows={3}
+                  className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  onClick={runEmail}
+                  disabled={emailLoading}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-sm font-semibold px-4 py-2 rounded-xl transition"
+                >
+                  {emailLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                  {emailLoading ? 'Drafting...' : 'Draft Email'}
+                </button>
+                {emailResult && !emailResult.error && (
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Subject: {emailResult.subject}</p>
+                      <button onClick={() => copyText(`Subject: ${emailResult.subject}\n\n${emailResult.body}`)} className="flex items-center gap-1 text-xs text-indigo-600">
+                        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        {copied ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                    <div className="p-3 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                      {emailResult.body}
+                    </div>
+                  </div>
+                )}
+                {emailResult?.error && (
+                  <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
+                    <XCircle className="h-4 w-4" /> Failed to draft email. Ensure Ollama is running.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Smart Reminders ───────────────────────────── */}
+            {activeTab === 'reminder' && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Smart Reminder Generator</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">AI generates contextual reminders with urgency levels.</p>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Reminder Type</label>
+                  <select
+                    value={reminderForm.type}
+                    onChange={e => setReminderForm(f => ({ ...f, type: e.target.value as any }))}
+                    className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {REMINDER_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
+                  </select>
+                </div>
+                <textarea
+                  value={reminderForm.notes}
+                  onChange={e => setReminderForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Add context (who, when, what's at stake)..."
+                  rows={3}
+                  className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  onClick={runReminder}
+                  disabled={reminderLoading}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-sm font-semibold px-4 py-2 rounded-xl transition"
+                >
+                  {reminderLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
+                  {reminderLoading ? 'Generating...' : 'Generate Reminder'}
+                </button>
+                {reminderResult && !reminderResult.error && (
+                  <div className={cn(
+                    'rounded-xl border p-4 space-y-2',
+                    reminderResult.urgency === 'critical' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' :
+                    reminderResult.urgency === 'high' ? 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800' :
+                    'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800',
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{reminderResult.title}</p>
+                      <span className={cn(
+                        'text-[10px] font-bold px-2 py-0.5 rounded-full uppercase',
+                        reminderResult.urgency === 'critical' ? 'bg-red-200 text-red-800' :
+                        reminderResult.urgency === 'high' ? 'bg-amber-200 text-amber-800' :
+                        'bg-indigo-200 text-indigo-800',
+                      )}>{reminderResult.urgency}</span>
+                    </div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">{reminderResult.message}</p>
+                    {reminderResult.suggestedSendTime && (
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        <Clock className="h-3 w-3" /> Send: {reminderResult.suggestedSendTime}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {reminderResult?.error && (
+                  <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
+                    <XCircle className="h-4 w-4" /> Failed to generate reminder. Ensure Ollama is running.
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

@@ -108,6 +108,9 @@ export interface StaffMember extends BaseEntity {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   status: StaffStatus;
+  position?: string;
+  businessUnit?: string;
+  businessUnits?: string[];
   department?: Department;
   designation?: Designation;
 }

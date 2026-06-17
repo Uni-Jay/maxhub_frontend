@@ -124,12 +124,17 @@ export default function StaffList() {
                       <span>{s.phone}</span>
                     </div>
                   )}
-                  {(s.designation?.title || s.department?.name) && (
+                  {(s.position || s.designation?.title || s.department?.name) && (
                     <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                       <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
                       <span className="truncate">
-                        {[s.designation?.title, s.department?.name].filter(Boolean).join(' · ')}
+                        {[s.position || s.designation?.title, s.department?.name].filter(Boolean).join(' · ')}
                       </span>
+                    </div>
+                  )}
+                  {s.businessUnit && (
+                    <div className="flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400">
+                      <span className="truncate">{s.businessUnit}</span>
                     </div>
                   )}
                 </div>

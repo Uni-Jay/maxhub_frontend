@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,8 +6,9 @@ import { z } from 'zod';
 import { jwtDecode } from 'jwt-decode';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthStore } from '@store/authStore';
+import { authApi } from '@/services/auth.api';
 import { resolveRolePath } from '@pages/Dashboard';
-import { Eye, EyeOff, Loader2, AlertCircle, BarChart3, Users, Briefcase, TrendingUp, ChevronDown } from 'lucide-react';
+import { Eye, EyeOff, Loader2, AlertCircle, BarChart3, Users, Briefcase, TrendingUp, ChevronDown, ShieldCheck, RefreshCw } from 'lucide-react';
 
 const DEMO_ACCOUNTS = [
   { label: 'Super Admin (CEO)',    email: 'superadmin@maxhub.com',   password: 'MaxHub@Admin2024!' },
@@ -61,12 +62,29 @@ function getRoleDashboardPath(accessToken: string): string {
   }
 }
 
+const OTP_LENGTH = 6;
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isLoading, clearError } = useAuth();
+  const { isLoading, clearError } = useAuth();
+  const store = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+
+  // MFA state
+  const [mfaState, setMfaState] = useState<{ sessionId: string; user: any } | null>(null);
+  const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const t = setTimeout(() => setResendCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCountdown]);
 
   const from = (location.state as LocationState)?.from?.pathname;
 
@@ -92,16 +110,27 @@ export const LoginPage: React.FC = () => {
     }
   }, [emailValue, passwordValue]);
 
+  const getDestination = (accessToken: string) =>
+    from && from !== '/auth/login'
+      ? from
+      : getRoleDashboardPath(accessToken);
+
   const onSubmit = async (data: LoginFormData) => {
     setApiError(null);
     try {
-      await login(data.email, data.password);
-      // Prefer the page the user was trying to reach; otherwise resolve from role.
-      // We read tokens from the store AFTER login() has updated it.
-      const destination = from && from !== '/auth/login'
-        ? from
-        : getRoleDashboardPath(useAuthStore.getState().tokens?.accessToken ?? '');
-      navigate(destination, { replace: true });
+      const response = await authApi.login({ email: data.email, password: data.password });
+
+      if (response.requiresMFA) {
+        setMfaState({ sessionId: response.sessionId, user: response.user });
+        setOtpDigits(Array(OTP_LENGTH).fill(''));
+        setResendCountdown(60);
+        setTimeout(() => otpRefs.current[0]?.focus(), 100);
+        return;
+      }
+
+      store.setUser(response.user);
+      store.setTokens({ accessToken: response.accessToken, refreshToken: response.refreshToken });
+      navigate(getDestination(response.accessToken), { replace: true });
     } catch (error: any) {
       setApiError(
         error?.response?.data?.message ||
@@ -109,6 +138,51 @@ export const LoginPage: React.FC = () => {
         error?.message ||
         'Login failed. Please check your credentials.'
       );
+    }
+  };
+
+  // OTP digit handlers
+  const handleDigitChange = useCallback((index: number, value: string) => {
+    const cleaned = value.replace(/\D/g, '').slice(-1);
+    setOtpDigits(prev => { const n = [...prev]; n[index] = cleaned; return n; });
+    if (cleaned && index < OTP_LENGTH - 1) otpRefs.current[index + 1]?.focus();
+  }, []);
+
+  const handleDigitKeyDown = useCallback((index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace') {
+      if (!otpDigits[index] && index > 0) otpRefs.current[index - 1]?.focus();
+      else setOtpDigits(prev => { const n = [...prev]; n[index] = ''; return n; });
+    } else if (e.key === 'ArrowLeft' && index > 0) otpRefs.current[index - 1]?.focus();
+    else if (e.key === 'ArrowRight' && index < OTP_LENGTH - 1) otpRefs.current[index + 1]?.focus();
+  }, [otpDigits]);
+
+  const handleDigitPaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH);
+    if (!pasted) return;
+    const next = Array(OTP_LENGTH).fill('');
+    pasted.split('').forEach((ch, i) => { next[i] = ch; });
+    setOtpDigits(next);
+    setTimeout(() => otpRefs.current[Math.min(pasted.length, OTP_LENGTH - 1)]?.focus(), 10);
+  }, []);
+
+  const handleOTPSubmit = async () => {
+    if (!mfaState) return;
+    const otpCode = otpDigits.join('');
+    if (otpCode.length < OTP_LENGTH) { setOtpError('Please enter the full 6-digit code'); return; }
+    setOtpLoading(true);
+    setOtpError(null);
+    try {
+      const result = await authApi.verifyOTPLogin(mfaState.sessionId, otpCode);
+      store.setUser(result.user);
+      store.setTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken });
+      navigate(getDestination(result.accessToken), { replace: true });
+    } catch (err: any) {
+      setOtpError(
+        err?.response?.data?.error?.message || err?.message || 'Invalid code. Please try again.'
+      );
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -160,6 +234,82 @@ export const LoginPage: React.FC = () => {
             <img src="/images/maxhublogo.jpeg" alt="MaxHub" className="h-8 w-auto object-contain" />
           </div>
 
+          {/* ── MFA OTP step ─────────────────────────────────────────────────── */}
+          {mfaState ? (
+            <div>
+              <div className="mb-7">
+                <div className="w-12 h-12 bg-violet-100 dark:bg-violet-900/30 rounded-2xl flex items-center justify-center mb-4">
+                  <ShieldCheck className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Two-factor verification</h2>
+                <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
+                  Enter the 6-digit code sent to your registered email or authenticator app.
+                </p>
+              </div>
+
+              {otpError && (
+                <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-4 py-3 mb-5 text-sm">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{otpError}</span>
+                </div>
+              )}
+
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    Verification code
+                  </label>
+                  <div className="flex gap-2 justify-between" onPaste={handleDigitPaste}>
+                    {otpDigits.map((digit, i) => (
+                      <input
+                        key={i}
+                        ref={el => { otpRefs.current[i] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={e => handleDigitChange(i, e.target.value)}
+                        onKeyDown={e => handleDigitKeyDown(i, e)}
+                        disabled={otpLoading}
+                        className={`w-12 h-14 text-center text-xl font-bold rounded-xl border bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                          digit ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex justify-end mt-2">
+                    <button
+                      type="button"
+                      disabled={resendCountdown > 0 || otpLoading}
+                      className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 disabled:text-gray-400 disabled:cursor-not-allowed transition font-medium"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : 'Resend code'}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleOTPSubmit}
+                  disabled={otpLoading || otpDigits.some(d => !d)}
+                  className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-3 px-4 rounded-xl transition text-sm"
+                >
+                  {otpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                  {otpLoading ? 'Verifying...' : 'Verify & Sign In'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setMfaState(null); setOtpError(null); setOtpDigits(Array(OTP_LENGTH).fill('')); }}
+                  className="w-full text-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition"
+                >
+                  ← Back to login
+                </button>
+              </div>
+            </div>
+          ) : (
+          <>
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome back</h2>
             <p className="text-gray-500 dark:text-gray-400 mt-2">Sign in to your account to continue</p>
@@ -303,6 +453,9 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
           </div>
+
+          </>
+          )}
 
         </div>
       </div>

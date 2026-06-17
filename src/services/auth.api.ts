@@ -76,14 +76,25 @@ export const authApi = {
   },
 
   /**
-   * Reset password using reset token
-   * @param token - Reset token from email link
+   * Reset password using emailed OTP code
+   * @param email - User email
+   * @param otpCode - 6-digit OTP from email
    * @param newPassword - New password
    * @returns Void on success
    */
-  async resetPassword(token: string, newPassword: string): Promise<void> {
-    const payload = { token, newPassword };
-    await apiClient.post('/auth/reset-password', payload);
+  async resetPassword(email: string, otpCode: string, newPassword: string): Promise<void> {
+    await apiClient.post('/auth/reset-password', { email, otpCode, newPassword });
+  },
+
+  /**
+   * Verify MFA code after login (for 2FA users)
+   * @param sessionId - Session ID returned from login when requiresMFA is true
+   * @param otpCode - OTP code from email or authenticator
+   * @returns Full auth response with tokens
+   */
+  async verifyOTPLogin(sessionId: string, otpCode: string): Promise<AuthResponse> {
+    const response = await apiClient.post<AuthResponse>('/auth/2fa/verify-login', { sessionId, otpCode });
+    return response;
   },
 
   /**

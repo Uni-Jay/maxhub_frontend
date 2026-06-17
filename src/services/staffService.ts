@@ -18,12 +18,17 @@ export interface CreateStaffPayload {
   phone: string;
   employeeId?: string;
   departmentId: number;
-  designationId: number;
+  designationId?: number;
   locationId?: number;
   joiningDate: string;
   dateOfBirth: string;
   gender?: 'Male' | 'Female' | 'Other';
   status?: string;
+  // Position & business unit
+  position?: string;
+  customPosition?: string;
+  businessUnit?: string;
+  additionalUnits?: string[];
 }
 
 export type UpdateStaffPayload = Partial<CreateStaffPayload>;

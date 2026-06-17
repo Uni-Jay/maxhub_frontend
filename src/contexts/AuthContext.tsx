@@ -32,7 +32,7 @@ export interface AuthContextType {
   refreshAccessToken: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (token: string, newPassword: string) => Promise<void>;
+  resetPassword: (email: string, otpCode: string, newPassword: string) => Promise<void>;
   verifyOTP: (code: string) => Promise<void>;
   updateProfile: (data: Partial<AuthUser>) => Promise<void>;
 
@@ -178,10 +178,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Reset password handler
   const handleResetPassword = useCallback(
-    async (token: string, newPassword: string) => {
+    async (email: string, otpCode: string, newPassword: string) => {
       setError(null);
       try {
-        await authApi.resetPassword(token, newPassword);
+        await authApi.resetPassword(email, otpCode, newPassword);
       } catch (err: any) {
         const message = err?.response?.data?.error?.message || err?.message || 'Password reset failed';
         setError(message);

@@ -4,7 +4,7 @@ import { useApiMutation } from '@hooks/useApiMutation';
 import { staffService } from '@services/staffService';
 import {
   ArrowLeft, Pencil, Trash2, Mail, Phone, Building2, Calendar,
-  User, Heart, AlertTriangle, Briefcase,
+  User, Heart, AlertTriangle, Briefcase, MapPin,
 } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -117,9 +117,14 @@ export default function StaffDetail() {
                   <Phone className="h-3.5 w-3.5" /> {staff.phone}
                 </div>
               )}
-              {staff.designation?.title && (
+              {(staff.position || staff.designation?.title) && (
                 <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                  <Briefcase className="h-3.5 w-3.5" /> {staff.designation.title}
+                  <Briefcase className="h-3.5 w-3.5" /> {staff.position || staff.designation?.title}
+                </div>
+              )}
+              {staff.businessUnit && (
+                <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+                  <MapPin className="h-3.5 w-3.5" /> {staff.businessUnit}
                 </div>
               )}
               {staff.department?.name && (
@@ -162,8 +167,22 @@ export default function StaffDetail() {
           <div className="grid grid-cols-2 gap-4">
             <InfoRow label="Department" value={staff.department?.name} />
             <InfoRow label="Designation" value={staff.designation?.title} />
+            <InfoRow label="Position" value={staff.position} />
+            <InfoRow label="Primary Business Unit" value={staff.businessUnit} />
             <InfoRow label="Joining Date" value={staff.joiningDate ? new Date(staff.joiningDate).toLocaleDateString() : undefined} />
           </div>
+          {staff.businessUnits && staff.businessUnits.length > 1 && (
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">All Business Units</p>
+              <div className="flex flex-wrap gap-2">
+                {staff.businessUnits.map((unit) => (
+                  <span key={unit} className="text-xs font-medium px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
+                    {unit}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Emergency Contact */}
