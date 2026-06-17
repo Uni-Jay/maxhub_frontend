@@ -7,7 +7,7 @@ export const BUSINESS_UNIT_LABELS: Record<BusinessUnitCode, string> = {
 
 export interface JobPosting {
   id: number; uuid: string; jobCode: string; title: string; description?: string;
-  departmentId: number; designationId: number; noOfPositions: number;
+  departmentId: number; designationId?: number; noOfPositions: number;
   jobType: 'Full-time' | 'Part-time' | 'Contract' | 'Temporary' | 'Internship';
   salaryMin?: number; salaryMax?: number; currency?: string; location?: string;
   requiredExperience?: string; qualifications?: string; skills?: string; benefits?: string;
@@ -81,7 +81,7 @@ export const hrService = {
 
   getJobPostingById: (id: number | string) => apiClient.get<JobPosting>(`/job-postings/${id}`),
 
-  createJobPosting: (payload: Partial<JobPosting> & { title: string; departmentId: number; designationId: number; noOfPositions: number; jobType: string; postedDate: string; closingDate: string; businessUnit: BusinessUnitCode }) =>
+  createJobPosting: (payload: Partial<JobPosting> & { title: string; departmentId: number; noOfPositions: number; jobType: string; postedDate: string; closingDate: string; businessUnit: BusinessUnitCode }) =>
     apiClient.post<JobPosting>('/job-postings', payload),
 
   updateJobPosting: (id: number | string, payload: Partial<JobPosting>) =>
