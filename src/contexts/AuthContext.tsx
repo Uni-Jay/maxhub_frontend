@@ -77,11 +77,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        store.initializeAuth?.();
-        
-        // Try to restore session from stored tokens
-        if (store.tokens?.accessToken) {
-          store.setUser(store.user);
+        // persist middleware already rehydrated synchronously; just ensure
+        // isAuthenticated reflects the stored state without overwriting user.
+        const state = useAuthStore.getState();
+        if (state.tokens?.accessToken && state.user) {
+          // Check token expiry; if expired, attempt silent refresh
+          const { jwtDecode } = await import('jwt-decode');
+          try {
+            const decoded = jwtDecode<{ exp: number }>(state.tokens.accessToken);
+            const isExpired = decoded.exp * 1000 < Date.now();
+            if (isExpired) {
+              await store.refreshAccessToken?.();
+            } else {
+              useAuthStore.getState().setUser(state.user);
+            }
+          } catch {
+            // Malformed token — try refresh anyway
+            await store.refreshAccessToken?.();
+          }
         }
       } catch (err) {
         console.error('Failed to initialize auth:', err);
@@ -91,6 +104,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     initializeAuth();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Login handler
@@ -261,7 +275,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [store.user]);
 
   const hasRole = useCallback((role: string): boolean => {
-    return store.user?.roles?.includes(role) || false;
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
+    const target = norm(role);
+    return (store.user?.roles ?? []).some((r) => norm(r ?? '') === target);
   }, [store.user]);
 
   const hasAnyPermission = useCallback((permissions: string[]): boolean => {

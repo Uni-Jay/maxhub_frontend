@@ -4,7 +4,7 @@ import { useApiQuery } from '@hooks/useApiQuery';
 import { useApiMutation } from '@hooks/useApiMutation';
 import { leaveService } from '@services/leaveService';
 import type { LeaveRequestItem } from '@/types';
-import { Plus, Calendar, CheckCircle2, XCircle, Clock, FileText, ChevronLeft, ChevronRight, User } from 'lucide-react';
+import { Plus, Calendar, CheckCircle2, XCircle, Clock, FileText, ChevronLeft, ChevronRight, User, Search } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, { badge: string; icon: React.ElementType; iconColor: string }> = {
   Pending:   { badge: 'bg-amber-50 text-amber-700 border-amber-200',  icon: Clock,         iconColor: 'text-amber-500' },
@@ -18,11 +18,12 @@ const STATUSES = ['Pending', 'Approved', 'Rejected', 'Cancelled', 'Withdrawn'];
 
 export default function LeaveRequests() {
   const [statusFilter, setStatusFilter] = useState('');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError } = useApiQuery(
-    ['leave', 'requests', { statusFilter, page }],
-    () => leaveService.getRequests({ status: statusFilter || undefined, page, limit: 20 }),
+    ['leave', 'requests', { statusFilter, search, page }],
+    () => leaveService.getRequests({ status: statusFilter || undefined, search: search || undefined, page, limit: 20 }),
     { placeholderData: (prev) => prev }
   );
 
@@ -61,8 +62,18 @@ export default function LeaveRequests() {
         </Link>
       </div>
 
-      {/* Filter */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+      {/* Search + Filter */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by staff name or leave type..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white placeholder-gray-400"
+          />
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => { setStatusFilter(''); setPage(1); }}

@@ -51,7 +51,7 @@ export interface TrainingAttendance {
 }
 
 export interface JobPostingListParams { page?: number; limit?: number; status?: string; departmentId?: number; jobType?: string; search?: string; }
-export interface AppraisalListParams { page?: number; limit?: number; status?: string; staffId?: number; appraisalPeriod?: string; }
+export interface AppraisalListParams { page?: number; limit?: number; status?: string; staffId?: number; appraisalPeriod?: string; search?: string; }
 export interface TrainingListParams { page?: number; limit?: number; status?: string; trainingType?: string; search?: string; }
 
 export const hrService = {

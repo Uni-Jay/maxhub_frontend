@@ -37,14 +37,6 @@ interface PastReport {
   forwardedToCEO?: boolean;
 }
 
-// ─── Sample data ───────────────────────────────────────────
-const SAMPLE_PAST: PastReport[] = [
-  { id:'1', weekEnding:'2026-06-13', status:'Submitted', summary:'Completed API integration for payroll module. Attended team stand-up.', submittedAt:'2026-06-13T16:45:00Z', approvalStatus:'Approved', approvedBy:'Manager A' },
-  { id:'2', weekEnding:'2026-06-06', status:'Submitted', summary:'Worked on attendance UI redesign. Fixed 3 bugs in the check-in flow.', submittedAt:'2026-06-06T17:02:00Z', approvalStatus:'Pending' },
-  { id:'3', weekEnding:'2026-05-30', status:'Missed', summary:'' },
-  { id:'4', weekEnding:'2026-05-23', status:'Submitted', summary:'Completed CRM pipeline Kanban board. Code review for colleague.', submittedAt:'2026-05-23T16:30:00Z', approvalStatus:'Rejected', rejectionReason:'Insufficient detail on CRM deliverables.' },
-  { id:'5', weekEnding:'2026-05-16', status:'Submitted', summary:'LMS exam module implementation. 80% complete.', submittedAt:'2026-05-16T15:58:00Z', approvalStatus:'Approved', approvedBy:'HOD B', forwardedToCEO:true },
-];
 
 // ─── Helpers ───────────────────────────────────────────────
 function getThisFriday(): Date {
@@ -117,6 +109,16 @@ export default function WeeklyReportPage() {
       catch { return null; }
     },
   });
+
+  const { data: pastData } = useQuery({
+    queryKey: ['weekly-reports-past'],
+    queryFn: async () => {
+      try { return await apiClient.get<PastReport[]>('/hr/weekly-reports') as any; }
+      catch { return []; }
+    },
+  });
+
+  const pastReports: PastReport[] = Array.isArray(pastData) ? pastData : [];
 
   const alreadySubmitted = !!(data as any)?.id || submitted;
 
@@ -338,10 +340,10 @@ export default function WeeklyReportPage() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
           <h2 className="font-semibold text-gray-900 dark:text-white text-sm">Past Reports & Review History</h2>
-          <span className="text-xs text-gray-400">{SAMPLE_PAST.length} reports</span>
+          <span className="text-xs text-gray-400">{pastReports.length} reports</span>
         </div>
         <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
-          {SAMPLE_PAST.map(r => (
+          {pastReports.map(r => (
             <div key={r.id}>
               <div className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/20 transition"
                 onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}>

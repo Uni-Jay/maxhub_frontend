@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { apiClient } from '@services/apiClient';
 import type { AttendanceRecord } from '@/types';
-import { Clock, ChevronLeft, ChevronRight, CalendarDays, LogIn } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, CalendarDays, LogIn, Search } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, string> = {
   Present:     'bg-green-50 text-green-700 border-green-200',
@@ -18,12 +18,14 @@ const AVATAR_COLORS = ['bg-indigo-500', 'bg-violet-500', 'bg-emerald-500', 'bg-a
 
 export default function AttendanceList() {
   const [dateFilter, setDateFilter] = useState('');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError } = useApiQuery(
-    ['attendance', { dateFilter, page }],
+    ['attendance', { dateFilter, search, page }],
     () => apiClient.getRaw('/attendance', {
       date: dateFilter || undefined,
+      search: search || undefined,
       page,
       limit: 20,
     }) as Promise<{
@@ -56,9 +58,19 @@ export default function AttendanceList() {
         </Link>
       </div>
 
-      {/* Date filter */}
+      {/* Search + Date filter */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by name..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+            />
+          </div>
           <div className="relative">
             <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input

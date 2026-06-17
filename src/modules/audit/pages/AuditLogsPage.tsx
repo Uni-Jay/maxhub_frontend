@@ -25,16 +25,6 @@ const ACTION_ICONS: Record<string, React.ElementType> = {
   login: LogIn, logout: LogOut, export: Download, view: Eye,
 };
 
-const SAMPLE_LOGS = [
-  { id: 1, action: 'login', module: 'Auth', resource: 'Session', userId: 1, userEmail: 'superadmin@maxhub.com', userName: 'Super Admin', ipAddress: '192.168.1.10', details: { browser: 'Chrome 121', os: 'Windows 11' }, createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString() },
-  { id: 2, action: 'create', module: 'HR', resource: 'Staff', userId: 1, userEmail: 'hr@maxhub.com', userName: 'Human Resources', ipAddress: '192.168.1.12', details: { staffName: 'John Doe', department: 'Engineering' }, createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
-  { id: 3, action: 'update', module: 'Payroll', resource: 'SalaryStructure', userId: 2, userEmail: 'accountant@maxhub.com', userName: 'Finance Accountant', ipAddress: '192.168.1.15', details: { field: 'baseSalary', from: '80000', to: '95000' }, createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString() },
-  { id: 4, action: 'delete', module: 'Projects', resource: 'Task', userId: 3, userEmail: 'hod@maxhub.com', userName: 'Department Head', ipAddress: '192.168.1.18', details: { taskName: 'Old Task #4', projectId: 12 }, createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString() },
-  { id: 5, action: 'export', module: 'Reports', resource: 'AttendanceReport', userId: 1, userEmail: 'headofadmin@maxhub.com', userName: 'Admin Head', ipAddress: '192.168.1.10', details: { format: 'PDF', records: 240 }, createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString() },
-  { id: 6, action: 'login', module: 'Auth', resource: 'Session', userId: 5, userEmail: 'staff@maxhub.com', userName: 'Regular Staff', ipAddress: '10.0.0.45', details: { browser: 'Firefox 122', os: 'macOS' }, createdAt: new Date(Date.now() - 1000 * 60 * 180).toISOString() },
-  { id: 7, action: 'update', module: 'LMS', resource: 'Course', userId: 6, userEmail: 'instructor@maxhub.com', userName: 'Course Instructor', ipAddress: '192.168.1.22', details: { courseTitle: 'Fashion Design Basics', field: 'status', to: 'Published' }, createdAt: new Date(Date.now() - 1000 * 60 * 240).toISOString() },
-  { id: 8, action: 'create', module: 'CRM', resource: 'Opportunity', userId: 2, userEmail: 'staff@maxhub.com', userName: 'Regular Staff', ipAddress: '10.0.0.45', details: { client: 'ABC Corp', value: 250000 }, createdAt: new Date(Date.now() - 1000 * 60 * 300).toISOString() },
-];
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -112,16 +102,12 @@ export default function AuditLogsPage() {
           ...(endDate && { endDate }),
         }) as any;
       } catch {
-        const filtered = SAMPLE_LOGS.filter(l =>
-          (action === 'all' || l.action === action) &&
-          (!search || l.userName.toLowerCase().includes(search.toLowerCase()) || l.userEmail.toLowerCase().includes(search.toLowerCase()))
-        );
-        return { data: filtered, pagination: { total: filtered.length, page: 1, limit: LIMIT, totalPages: 1 } };
+        return { data: [], pagination: { total: 0, page: 1, limit: LIMIT, totalPages: 1 } };
       }
     },
   });
 
-  const logs: any[] = (data as any)?.data || SAMPLE_LOGS;
+  const logs: any[] = (data as any)?.data || [];
   const pagination = (data as any)?.pagination || { total: logs.length, totalPages: 1 };
 
   const exportCSV = useCallback(() => {

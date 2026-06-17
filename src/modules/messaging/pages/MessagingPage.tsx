@@ -1269,41 +1269,64 @@ export default function MessagingPage() {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const getAuthToken = (): string => {
+    try {
+      const stored = localStorage.getItem('auth-storage');
+      if (stored) { const parsed = JSON.parse(stored); return parsed?.state?.tokens?.accessToken || ''; }
+    } catch { /* */ }
+    return '';
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedId) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const dataUrl = reader.result as string;
-      const isImg = file.type.startsWith('image/');
-      const isVid = file.type.startsWith('video/');
-      const msgType = isImg ? 'Image' : isVid ? 'Video' : 'File';
-      const msgText = isImg ? '📷 Image' : isVid ? '🎬 Video' : `📎 ${file.name}`;
-      sendMutation.mutate({ messageText: msgText, messageType: msgType, attachmentUrl: dataUrl, attachmentType: file.type });
-    };
-    if (file.size <= 8 * 1024 * 1024) reader.readAsDataURL(file);
-    else sendMutation.mutate({ messageText: `📎 ${file.name} (${(file.size / 1048576).toFixed(1)} MB)`, messageType: 'File' });
     e.target.value = '';
+    try {
+      const token = getAuthToken();
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/messages/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const json = await res.json();
+      const { url, type, name } = json.data;
+      const msgType = type === 'Image' ? 'Image' : type === 'Video' ? 'Video' : 'File';
+      const msgText = type === 'Image' ? '📷 Image' : type === 'Video' ? '🎬 Video' : `📎 ${name}`;
+      sendMutation.mutate({ messageText: msgText, messageType: msgType, attachmentUrl: url, attachmentType: file.type });
+    } catch {
+      alert('File upload failed. Please try again.');
+    }
   };
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
       recorder.ondataavailable = e => audioChunksRef.current.push(e.data);
-      recorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.onloadend = () => sendMutation.mutate({
-          messageText: '🎤 Voice note',
-          messageType: 'Voice',
-          attachmentUrl: reader.result as string,
-          attachmentType: 'audio/webm',
-        });
-        reader.readAsDataURL(blob);
+      recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const voiceFile = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
+        try {
+          const token = getAuthToken();
+          const formData = new FormData();
+          formData.append('file', voiceFile);
+          const res = await fetch('/api/messages/upload', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+          if (!res.ok) throw new Error('Upload failed');
+          const json = await res.json();
+          sendMutation.mutate({ messageText: '🎤 Voice note', messageType: 'Voice', attachmentUrl: json.data.url, attachmentType: 'audio/webm' });
+        } catch {
+          alert('Voice note upload failed.');
+        }
       };
       recorder.start();
       setIsRecording(true);

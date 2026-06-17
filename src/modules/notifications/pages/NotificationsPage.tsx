@@ -38,17 +38,6 @@ const TYPE_CONFIG: Record<NotifType, { icon: React.ComponentType<any>; iconCls: 
 
 const FILTER_TABS: FilterTab[] = ['All', 'Unread', 'Read', 'Info', 'Warning', 'Success', 'Error'];
 
-// ─── Sample data (shown when API fails) ──────────────────────────────────────
-const SAMPLE_NOTIFICATIONS: Notification[] = [
-  { id: 's1', title: 'Payroll Approved',        message: 'June payroll has been approved and will be processed on Monday.',        type: 'Success', read: false, createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
-  { id: 's2', title: 'Leave Request Pending',   message: 'You have 3 pending leave requests awaiting your approval.',              type: 'Warning', read: false, createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString() },
-  { id: 's3', title: 'New Team Member',         message: 'Adaeze Okonkwo has joined the Engineering team.',                       type: 'Info',    read: true,  createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString() },
-  { id: 's4', title: 'Server Alert',            message: 'High CPU usage detected on the production server. Please investigate.',  type: 'Error',   read: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() },
-  { id: 's5', title: 'Project Milestone',       message: 'MaxHub ERP has reached 80% completion. Great work team!',               type: 'Success', read: true,  createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString() },
-  { id: 's6', title: 'System Maintenance',      message: 'Scheduled maintenance window: Sunday 2 AM – 4 AM WAT.',                 type: 'Info',    read: true,  createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
-  { id: 's7', title: 'Attendance Alert',        message: '5 employees have not checked in today.',                                 type: 'Warning', read: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString() },
-  { id: 's8', title: 'Training Reminder',       message: 'Mandatory compliance training is due in 3 days.',                       type: 'Warning', read: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 10).toISOString() },
-];
 
 function timeAgo(dateStr: string) {
   try {
@@ -165,55 +154,47 @@ export default function NotificationsPage() {
   const [page] = useState(1);
   const [selectedNotif, setSelectedNotif] = useState<Notification | null>(null);
 
-  // Local state used when API fails (sample mode)
+  // Local state used for optimistic updates when API fails
   const [localNotifs, setLocalNotifs] = useState<Notification[] | null>(null);
-  const [isSampleMode, setIsSampleMode] = useState(false);
 
   // Fetch
   const { data: apiData, isLoading, refetch } = useQuery({
     queryKey: ['notifications', page],
     queryFn: async () => {
       try {
-        const res = await apiClient.getRaw('/notifications', { page, limit: 20 });
-        setIsSampleMode(false);
-        return res;
+        return await apiClient.getRaw('/notifications', { page, limit: 20 });
       } catch {
-        setIsSampleMode(true);
-        setLocalNotifs(SAMPLE_NOTIFICATIONS);
         return null;
       }
     },
     refetchInterval: 30000,
   });
 
-  const rawNotifs: Notification[] = isSampleMode
-    ? (localNotifs ?? SAMPLE_NOTIFICATIONS)
-    : ((apiData?.data ?? apiData ?? []) as Notification[]);
+  const rawNotifs: Notification[] = localNotifs
+    ?? ((apiData?.data ?? apiData ?? []) as Notification[]);
 
   // Mark read mutation
   const markReadMutation = useMutation({
     mutationFn: (id: string) => apiClient.patch(`/notifications/${id}/read`, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
-    onError: () => {
-      if (isSampleMode) {
-        setLocalNotifs((prev) => prev?.map((n) => (n.id === markReadMutation.variables ? { ...n, read: true } : n)) ?? null);
-      }
+    onSuccess: () => { setLocalNotifs(null); qc.invalidateQueries({ queryKey: ['notifications'] }); },
+    onError: (_err, id) => {
+      setLocalNotifs((prev) => (prev ?? rawNotifs).map((n) => (n.id === id ? { ...n, read: true } : n)));
     },
   });
 
   const markAllReadMutation = useMutation({
     mutationFn: () => apiClient.post('/notifications/mark-all-read', {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+    onSuccess: () => { setLocalNotifs(null); qc.invalidateQueries({ queryKey: ['notifications'] }); },
     onError: () => {
-      if (isSampleMode) setLocalNotifs((prev) => prev?.map((n) => ({ ...n, read: true })) ?? null);
+      setLocalNotifs((prev) => (prev ?? rawNotifs).map((n) => ({ ...n, read: true })));
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/notifications/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
-    onError: () => {
-      if (isSampleMode) setLocalNotifs((prev) => prev?.filter((n) => n.id !== deleteMutation.variables) ?? null);
+    onSuccess: () => { setLocalNotifs(null); qc.invalidateQueries({ queryKey: ['notifications'] }); },
+    onError: (_err, id) => {
+      setLocalNotifs((prev) => (prev ?? rawNotifs).filter((n) => n.id !== id));
     },
   });
 
@@ -222,9 +203,9 @@ export default function NotificationsPage() {
       const readIds = rawNotifs.filter((n) => n.read).map((n) => n.id);
       await Promise.allSettled(readIds.map((id) => apiClient.delete(`/notifications/${id}`)));
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+    onSuccess: () => { setLocalNotifs(null); qc.invalidateQueries({ queryKey: ['notifications'] }); },
     onError: () => {
-      if (isSampleMode) setLocalNotifs((prev) => prev?.filter((n) => !n.read) ?? null);
+      setLocalNotifs((prev) => (prev ?? rawNotifs).filter((n) => !n.read));
     },
   });
 
@@ -240,36 +221,20 @@ export default function NotificationsPage() {
 
   const handleMarkRead = (n: Notification) => {
     if (n.read) return;
-    if (isSampleMode) {
-      setLocalNotifs((prev) => prev?.map((x) => (x.id === n.id ? { ...x, read: true } : x)) ?? null);
-    } else {
-      markReadMutation.mutate(n.id);
-    }
+    markReadMutation.mutate(n.id);
   };
 
   const handleDelete = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (isSampleMode) {
-      setLocalNotifs((prev) => prev?.filter((n) => n.id !== id) ?? null);
-    } else {
-      deleteMutation.mutate(id);
-    }
+    deleteMutation.mutate(id);
   };
 
   const handleMarkAllRead = () => {
-    if (isSampleMode) {
-      setLocalNotifs((prev) => prev?.map((n) => ({ ...n, read: true })) ?? null);
-    } else {
-      markAllReadMutation.mutate();
-    }
+    markAllReadMutation.mutate();
   };
 
   const handleDeleteAllRead = () => {
-    if (isSampleMode) {
-      setLocalNotifs((prev) => prev?.filter((n) => !n.read) ?? null);
-    } else {
-      deleteAllReadMutation.mutate();
-    }
+    deleteAllReadMutation.mutate();
   };
 
   const handleCardClick = (notif: Notification) => {
@@ -281,9 +246,6 @@ export default function NotificationsPage() {
     if (selectedNotif) {
       handleMarkRead(selectedNotif);
       setSelectedNotif((prev) => prev ? { ...prev, read: true } : null);
-      if (isSampleMode) {
-        setSelectedNotif((prev) => prev ? { ...prev, read: true } : null);
-      }
     }
   };
 
@@ -306,7 +268,7 @@ export default function NotificationsPage() {
             )}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            {isSampleMode ? 'Showing sample data — API unavailable' : `${rawNotifs.length} notification${rawNotifs.length !== 1 ? 's' : ''}`}
+            {`${rawNotifs.length} notification${rawNotifs.length !== 1 ? 's' : ''}`}
           </p>
         </div>
         <div className="flex items-center gap-2">

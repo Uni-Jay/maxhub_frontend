@@ -80,18 +80,18 @@ export interface NotificationData {
 }
 
 export interface CRMMetrics {
-  total_leads: number;
-  total_opportunities: number;
-  converted_deals: number;
-  lost_deals: number;
-  conversion_rate: number;
+  totalLeads: number;
+  totalOpportunities: number;
+  convertedDeals: number;
+  lostDeals: number;
+  conversionRate: number;
 }
 
 export interface StudentAnalytics {
-  total_enrolled: number;
-  active_students: number;
-  completed_courses: number;
-  dropped_students: number;
+  totalEnrolled: number;
+  activeStudents: number;
+  completedCourses: number;
+  droppedStudents: number;
 }
 
 /**

@@ -2,7 +2,8 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { Loader } from '@components/ui/loader';
 import { useAuth } from '@/contexts/AuthContext';
 
-const STUDENT_ROLE = 'STUDENT';
+// Role codes match the DB enum values (all lowercase)
+const STUDENT_ROLE = 'student';
 const SUPERADMIN_ROLE = 'superadmin';
 
 function LoadingScreen() {

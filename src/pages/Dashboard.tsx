@@ -21,6 +21,13 @@ const NORMALISE_ROLE: Record<string, string> = {
   'INSTRUCTOR':     'staff',
   'INTERN':         'staff',
   'STUDENT':        'student',
+  // Lowercase-underscore variants (DB code stored as snake_case)
+  'super_admin':    'superadmin',
+  'head_of_admin':  'admin',
+  'accountant':     'staff',
+  'receptionist':   'staff',
+  'instructor':     'staff',
+  'intern':         'staff',
   // Display names (tokens issued before code fix)
   'Super Administrator':  'superadmin',
   'Head of Administration': 'admin',
@@ -34,8 +41,27 @@ const NORMALISE_ROLE: Record<string, string> = {
   'Student':              'student',
 };
 
+// Canonical map for stripped alpha-only codes (catches any remaining variants)
+const CANONICAL_ROLE: Record<string, string> = {
+  'superadmin':   'superadmin',
+  'headofadmin':  'admin',
+  'admin':        'admin',
+  'hr':           'hr',
+  'hod':          'hod',
+  'staff':        'staff',
+  'accountant':   'staff',
+  'receptionist': 'staff',
+  'instructor':   'staff',
+  'intern':       'staff',
+  'student':      'student',
+};
+
 function normaliseRoles(roles: string[]): Set<string> {
-  return new Set(roles.map((r) => NORMALISE_ROLE[r] ?? r.toLowerCase()));
+  return new Set(roles.map((r) => {
+    if (NORMALISE_ROLE[r]) return NORMALISE_ROLE[r];
+    const stripped = r.toLowerCase().replace(/[^a-z]/g, '');
+    return CANONICAL_ROLE[stripped] ?? stripped;
+  }));
 }
 
 /** Read roles from the live JWT first (bypasses stale Zustand-persist cache). */

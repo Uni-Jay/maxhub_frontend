@@ -3,13 +3,12 @@ import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
   Trophy, Medal, Users, BarChart3, Target, Clock,
-  Download, Search, CheckCircle, XCircle, ChevronUp, ChevronDown,
-  BookOpen, TrendingUp,
+  Download, Search, ChevronUp, ChevronDown, BookOpen,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
 import { useAuthStore } from '@store/authStore';
@@ -30,80 +29,6 @@ interface StudentResult {
   timeTaken: string;
   timeTakenSecs: number;
 }
-
-interface QuestionReview {
-  id: number;
-  question: string;
-  userAnswer: string;
-  correctAnswer: string;
-  isCorrect: boolean;
-}
-
-const STUDENT_RESULTS: StudentResult[] = [
-  { id: 1,  rank: 1,  name: 'Adaeze Okonkwo',     score: 96, maxScore: 100, percentage: 96, status: 'Pass', timeTaken: '42:18', timeTakenSecs: 2538 },
-  { id: 2,  rank: 2,  name: 'Chukwuemeka Eze',     score: 94, maxScore: 100, percentage: 94, status: 'Pass', timeTaken: '38:45', timeTakenSecs: 2325 },
-  { id: 3,  rank: 3,  name: 'Ngozi Obi',           score: 91, maxScore: 100, percentage: 91, status: 'Pass', timeTaken: '45:02', timeTakenSecs: 2702 },
-  { id: 4,  rank: 4,  name: 'Tunde Adebayo',       score: 88, maxScore: 100, percentage: 88, status: 'Pass', timeTaken: '40:33', timeTakenSecs: 2433 },
-  { id: 5,  rank: 5,  name: 'Fatima Usman',        score: 85, maxScore: 100, percentage: 85, status: 'Pass', timeTaken: '43:17', timeTakenSecs: 2597 },
-  { id: 6,  rank: 6,  name: 'Oluwaseun Balogun',   score: 82, maxScore: 100, percentage: 82, status: 'Pass', timeTaken: '41:09', timeTakenSecs: 2469 },
-  { id: 7,  rank: 7,  name: 'Amina Ibrahim',       score: 79, maxScore: 100, percentage: 79, status: 'Pass', timeTaken: '44:51', timeTakenSecs: 2691 },
-  { id: 8,  rank: 8,  name: 'Emeka Nwachukwu',     score: 77, maxScore: 100, percentage: 77, status: 'Pass', timeTaken: '47:22', timeTakenSecs: 2842 },
-  { id: 9,  rank: 9,  name: 'Chidinma Okafor',     score: 74, maxScore: 100, percentage: 74, status: 'Pass', timeTaken: '48:05', timeTakenSecs: 2885 },
-  { id: 10, rank: 10, name: 'Yusuf Musa',          score: 71, maxScore: 100, percentage: 71, status: 'Pass', timeTaken: '50:44', timeTakenSecs: 3044 },
-  { id: 11, rank: 11, name: 'Blessing Ogundele',   score: 68, maxScore: 100, percentage: 68, status: 'Pass', timeTaken: '52:11', timeTakenSecs: 3131 },
-  { id: 12, rank: 12, name: 'Kemi Adeyemi',        score: 65, maxScore: 100, percentage: 65, status: 'Pass', timeTaken: '53:37', timeTakenSecs: 3217 },
-  { id: 13, rank: 13, name: 'Sule Garba',          score: 62, maxScore: 100, percentage: 62, status: 'Pass', timeTaken: '55:00', timeTakenSecs: 3300 },
-  { id: 14, rank: 14, name: 'Ifeoma Ugwu',         score: 58, maxScore: 100, percentage: 58, status: 'Pass', timeTaken: '56:22', timeTakenSecs: 3382 },
-  { id: 15, rank: 15, name: 'Taiwo Salami',        score: 55, maxScore: 100, percentage: 55, status: 'Pass', timeTaken: '57:14', timeTakenSecs: 3434 },
-  { id: 16, rank: 16, name: 'Olamide Fashola',     score: 48, maxScore: 100, percentage: 48, status: 'Fail', timeTaken: '58:00', timeTakenSecs: 3480 },
-  { id: 17, rank: 17, name: 'Musa Abdullahi',      score: 44, maxScore: 100, percentage: 44, status: 'Fail', timeTaken: '59:10', timeTakenSecs: 3550 },
-  { id: 18, rank: 18, name: 'Chibundo Eze',        score: 38, maxScore: 100, percentage: 38, status: 'Fail', timeTaken: '60:00', timeTakenSecs: 3600 },
-  { id: 19, rank: 19, name: 'Remi Adekunle',       score: 32, maxScore: 100, percentage: 32, status: 'Fail', timeTaken: '60:00', timeTakenSecs: 3600 },
-  { id: 20, rank: 20, name: 'Zainab Aliyu',        score: 25, maxScore: 100, percentage: 25, status: 'Fail', timeTaken: '60:00', timeTakenSecs: 3600 },
-];
-
-const MY_QUESTION_REVIEW: QuestionReview[] = [
-  { id: 1,  question: 'Which fabric is most commonly used in traditional Nigerian fashion?',    userAnswer: 'Ankara',       correctAnswer: 'Ankara',          isCorrect: true },
-  { id: 2,  question: 'What does "haute couture" mean?',                                        userAnswer: 'High fashion', correctAnswer: 'High fashion',    isCorrect: true },
-  { id: 3,  question: 'Primary colors in color theory are red, blue, and yellow.',              userAnswer: 'True',         correctAnswer: 'True',            isCorrect: true },
-  { id: 4,  question: 'Which tool is used for measuring fabric before cutting?',                userAnswer: 'Scissors',     correctAnswer: 'Tape measure',    isCorrect: false },
-  { id: 5,  question: 'A dart in garment construction is used to create shape.',                userAnswer: 'True',         correctAnswer: 'True',            isCorrect: true },
-  { id: 6,  question: 'Which technique permanently joins two pieces of fabric?',                userAnswer: 'Seaming',      correctAnswer: 'Seaming',         isCorrect: true },
-  { id: 7,  question: 'What is the standard seam allowance?',                                   userAnswer: '1 inch',       correctAnswer: '5/8 inch',        isCorrect: false },
-  { id: 8,  question: 'Aso-Oke is a hand-woven cloth from Yoruba culture.',                    userAnswer: 'True',         correctAnswer: 'True',            isCorrect: true },
-  { id: 9,  question: 'Which design element refers to the outline or silhouette of a garment?', userAnswer: 'Line',         correctAnswer: 'Line',            isCorrect: true },
-  { id: 10, question: 'A zipper is not considered a type of fastener.',                         userAnswer: 'True',         correctAnswer: 'False',           isCorrect: false },
-];
-
-const SCORE_DISTRIBUTION = [
-  { range: '0–20',   count: 1 },
-  { range: '21–40',  count: 2 },
-  { range: '41–60',  count: 4 },
-  { range: '61–80',  count: 8 },
-  { range: '81–100', count: 5 },
-];
-
-const PASS_FAIL_DATA = [
-  { name: 'Pass', value: 15 },
-  { name: 'Fail', value: 5 },
-];
-
-const TREND_DATA = [
-  { exam: 'Exam 1', avg: 64 },
-  { exam: 'Exam 2', avg: 68 },
-  { exam: 'Exam 3', avg: 71 },
-  { exam: 'Exam 4', avg: 74 },
-  { exam: 'Exam 5', avg: 73 },
-];
-
-const QUESTION_PERFORMANCE = [
-  { question: 'Q7 — Seam allowance',   wrong: 14 },
-  { question: 'Q10 — Fastener types',  wrong: 11 },
-  { question: 'Q4 — Measuring tools',  wrong: 9 },
-  { question: 'Q2 — Haute couture',    wrong: 7 },
-  { question: 'Q6 — Join technique',   wrong: 5 },
-  { question: 'Q9 — Design elements',  wrong: 4 },
-];
 
 const PIE_COLORS = ['#10b981', '#ef4444'];
 const BAR_COLOR = '#6366f1';
@@ -137,21 +62,45 @@ export default function ExamResultsPage() {
   const { data: examData } = useQuery({
     queryKey: ['exam-results', examId],
     queryFn: async () => {
-      try { return await apiClient.get(`/exams/${examId}/results`); } catch { return null; }
+      try { return await apiClient.getRaw(`/courses/exams/${examId}/leaderboard`); } catch { return null; }
     },
   });
 
-  const examName = (examData as any)?.title || 'Fashion Design Fundamentals — Module 2 Assessment';
-  const examDate = (examData as any)?.date || 'June 12, 2026';
+  const rankings: StudentResult[] = (examData as any)?.rankings ?? [];
+  const examMeta = (examData as any)?.exam;
+  const myResult: StudentResult | null = (examData as any)?.myResult ?? null;
 
-  const totalStudents = STUDENT_RESULTS.length;
-  const avgScore = Math.round(STUDENT_RESULTS.reduce((s, r) => s + r.percentage, 0) / totalStudents);
-  const passCount = STUDENT_RESULTS.filter(r => r.status === 'Pass').length;
-  const passRate = Math.round((passCount / totalStudents) * 100);
-  const highestScore = Math.max(...STUDENT_RESULTS.map(r => r.percentage));
+  const examName = examMeta?.title ?? 'Exam Results';
+  const examDate = examMeta?.date
+    ? new Date(examMeta.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
 
-  const myResult = STUDENT_RESULTS.find(r => r.id === 5) ?? STUDENT_RESULTS[4];
-  const myCorrect = MY_QUESTION_REVIEW.filter(q => q.isCorrect).length;
+  const totalStudents = rankings.length;
+  const avgScore = totalStudents > 0 ? Math.round(rankings.reduce((s, r) => s + r.percentage, 0) / totalStudents) : 0;
+  const passCount = rankings.filter(r => r.status === 'Pass').length;
+  const passRate = totalStudents > 0 ? Math.round((passCount / totalStudents) * 100) : 0;
+  const highestScore = totalStudents > 0 ? Math.max(...rankings.map(r => r.percentage)) : 0;
+
+  const scoreDistribution = useMemo(() => {
+    const buckets = [
+      { range: '0–20', count: 0 }, { range: '21–40', count: 0 },
+      { range: '41–60', count: 0 }, { range: '61–80', count: 0 },
+      { range: '81–100', count: 0 },
+    ];
+    rankings.forEach(r => {
+      if (r.percentage <= 20) buckets[0].count++;
+      else if (r.percentage <= 40) buckets[1].count++;
+      else if (r.percentage <= 60) buckets[2].count++;
+      else if (r.percentage <= 80) buckets[3].count++;
+      else buckets[4].count++;
+    });
+    return buckets;
+  }, [rankings]);
+
+  const passFail = useMemo(() => [
+    { name: 'Pass', value: passCount },
+    { name: 'Fail', value: totalStudents - passCount },
+  ], [passCount, totalStudents]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -163,7 +112,7 @@ export default function ExamResultsPage() {
   };
 
   const filteredSorted = useMemo(() => {
-    let list = STUDENT_RESULTS.filter(r =>
+    let list = rankings.filter(r =>
       r.name.toLowerCase().includes(search.toLowerCase())
     );
     list = [...list].sort((a, b) => {
@@ -176,11 +125,11 @@ export default function ExamResultsPage() {
       return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number);
     });
     return list;
-  }, [search, sortKey, sortDir]);
+  }, [rankings, search, sortKey, sortDir]);
 
   const exportCSV = () => {
     const header = 'Rank,Name,Score,Percentage,Status,Time Taken\n';
-    const rows = STUDENT_RESULTS.map(r =>
+    const rows = rankings.map(r =>
       `${r.rank},${r.name},${r.score}/${r.maxScore},${r.percentage}%,${r.status},${r.timeTaken}`
     ).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv' });
@@ -227,7 +176,7 @@ export default function ExamResultsPage() {
         <StatCard label="Total Students" value={totalStudents} sub="Participated" color="bg-indigo-600" />
         <StatCard label="Average Score" value={`${avgScore}%`} sub="Class average" color="bg-emerald-600" />
         <StatCard label="Pass Rate" value={`${passRate}%`} sub={`${passCount} of ${totalStudents} passed`} color="bg-amber-500" />
-        <StatCard label="Highest Score" value={`${highestScore}%`} sub={STUDENT_RESULTS[0].name} color="bg-purple-600" />
+        <StatCard label="Highest Score" value={`${highestScore}%`} sub={rankings[0]?.name ?? ''} color="bg-purple-600" />
       </div>
 
       <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
@@ -250,7 +199,8 @@ export default function ExamResultsPage() {
         {tab === 'rankings' && (
           <motion.div key="rankings" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
             <div className="flex items-end justify-center gap-4 py-6 bg-gradient-to-b from-indigo-50 to-transparent dark:from-indigo-950/20 dark:to-transparent rounded-2xl border border-gray-100 dark:border-gray-700">
-              {[STUDENT_RESULTS[1], STUDENT_RESULTS[0], STUDENT_RESULTS[2]].map((s, i) => {
+              {rankings.length >= 3
+                ? [rankings[1], rankings[0], rankings[2]].map((s, i) => {
                 const realRank = i === 0 ? 2 : i === 1 ? 1 : 3;
                 const cfg = MEDAL_CONFIG.find(m => m.rank === realRank)!;
                 const Icon = cfg.icon;
@@ -277,7 +227,8 @@ export default function ExamResultsPage() {
                     )}
                   </div>
                 );
-              })}
+              })
+                : <p className="text-sm text-gray-400 py-4">No results yet</p>}
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
@@ -325,7 +276,7 @@ export default function ExamResultsPage() {
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
                         className={cn(
                           'hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors',
-                          r.id === myResult.id ? 'bg-indigo-50/60 dark:bg-indigo-900/10' : ''
+                          myResult && r.id === myResult.id ? 'bg-indigo-50/60 dark:bg-indigo-900/10' : ''
                         )}>
                         <td className="px-5 py-3">
                           <span className={cn(
@@ -345,8 +296,8 @@ export default function ExamResultsPage() {
                                 {r.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                               </span>
                             </div>
-                            <span className={cn('text-sm font-medium', r.id === myResult.id ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-800 dark:text-gray-100')}>
-                              {r.name} {r.id === myResult.id && <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full ml-1">You</span>}
+                            <span className={cn('text-sm font-medium', myResult && r.id === myResult.id ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-800 dark:text-gray-100')}>
+                              {r.name} {myResult && r.id === myResult.id && <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full ml-1">You</span>}
                             </span>
                           </div>
                         </td>
@@ -396,7 +347,7 @@ export default function ExamResultsPage() {
                   Score Distribution
                 </h3>
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={SCORE_DISTRIBUTION} margin={{ left: -10 }}>
+                  <BarChart data={scoreDistribution} margin={{ left: -10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="range" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
@@ -417,59 +368,27 @@ export default function ExamResultsPage() {
                 <div className="flex items-center gap-6">
                   <ResponsiveContainer width="60%" height={200}>
                     <PieChart>
-                      <Pie data={PASS_FAIL_DATA} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" nameKey="name">
-                        {PASS_FAIL_DATA.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+                      <Pie data={passFail} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" nameKey="name">
+                        {passFail.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
                       </Pie>
                       <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="space-y-3">
-                    {PASS_FAIL_DATA.map((d, i) => (
+                    {passFail.map((d, i) => (
                       <div key={d.name}>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: PIE_COLORS[i] }} />
                           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{d.name}</span>
                         </div>
                         <p className="text-2xl font-black text-gray-900 dark:text-white ml-5">{d.value}</p>
-                        <p className="text-xs text-gray-400 ml-5">{Math.round((d.value / totalStudents) * 100)}%</p>
+                        <p className="text-xs text-gray-400 ml-5">{totalStudents > 0 ? Math.round((d.value / totalStudents) * 100) : 0}%</p>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-1.5">
-                  <TrendingUp className="h-4 w-4 text-amber-500" />
-                  Average Score Trend (Last 5 Exams)
-                </h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={TREND_DATA} margin={{ left: -10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="exam" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} domain={[50, 100]} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v) => [`${v}%`, 'Avg Score']} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="avg" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 4, fill: '#6366f1' }} name="Average Score" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-1.5">
-                  <BookOpen className="h-4 w-4 text-red-500" />
-                  Most Commonly Wrong Questions
-                </h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={QUESTION_PERFORMANCE} layout="vertical" margin={{ left: 10, right: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis type="number" tick={{ fontSize: 11 }} />
-                    <YAxis dataKey="question" type="category" tick={{ fontSize: 10 }} width={130} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(v) => [`${v} students`, 'Got Wrong']} />
-                    <Bar dataKey="wrong" fill="#ef4444" name="Got Wrong" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
             </div>
           </motion.div>
         )}
@@ -477,85 +396,43 @@ export default function ExamResultsPage() {
         {/* ── MY RESULT ── */}
         {tab === 'my-result' && (
           <motion.div key="my-result" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
-            <div className={cn(
-              'rounded-2xl p-6 text-white text-center',
-              myResult.status === 'Pass' ? 'bg-gradient-to-br from-emerald-500 to-teal-600' : 'bg-gradient-to-br from-red-500 to-rose-600'
-            )}>
-              <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3 text-3xl font-black">
-                {myResult.percentage}%
+            {!myResult ? (
+              <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                <Target className="w-16 h-16 mb-4" />
+                <p className="text-lg font-semibold text-gray-600 dark:text-gray-400">No result found</p>
+                <p className="text-sm mt-1">You may not have taken this exam yet</p>
               </div>
-              <h2 className="text-xl font-bold">{myResult.status === 'Pass' ? 'Congratulations! You Passed' : 'Exam Not Passed'}</h2>
-              <p className="text-sm opacity-90 mt-1">{examName}</p>
-              <div className="grid grid-cols-3 gap-4 mt-5">
-                {[
-                  { label: 'Score', value: `${myResult.score}/${myResult.maxScore}` },
-                  { label: 'Rank', value: `#${myResult.rank} of ${totalStudents}` },
-                  { label: 'Time', value: myResult.timeTaken },
-                ].map(s => (
-                  <div key={s.label} className="bg-white/10 rounded-xl py-3 px-2">
-                    <p className="text-xs opacity-80">{s.label}</p>
-                    <p className="text-lg font-bold mt-0.5">{s.value}</p>
+            ) : (
+              <>
+                <div className={cn(
+                  'rounded-2xl p-6 text-white text-center',
+                  myResult.status === 'Pass' ? 'bg-gradient-to-br from-emerald-500 to-teal-600' : 'bg-gradient-to-br from-red-500 to-rose-600'
+                )}>
+                  <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3 text-3xl font-black">
+                    {myResult.percentage}%
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                <h3 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-indigo-500" />
-                  Question-by-Question Review
-                </h3>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                    <CheckCircle className="h-3.5 w-3.5" /> {myCorrect} Correct
-                  </span>
-                  <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-medium">
-                    <XCircle className="h-3.5 w-3.5" /> {MY_QUESTION_REVIEW.length - myCorrect} Wrong
-                  </span>
-                </div>
-              </div>
-
-              <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
-                {MY_QUESTION_REVIEW.map((q, i) => (
-                  <motion.div key={q.id} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
-                    className={cn('px-5 py-4 flex items-start gap-4 transition-colors',
-                      q.isCorrect ? 'hover:bg-emerald-50/40 dark:hover:bg-emerald-900/10' : 'hover:bg-red-50/40 dark:hover:bg-red-900/10')}>
-                    <div className={cn(
-                      'w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 font-bold text-xs',
-                      q.isCorrect
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                    )}>
-                      {i + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-100 mb-2">{q.question}</p>
-                      <div className="flex flex-wrap gap-3 text-xs">
-                        <span className={cn('flex items-center gap-1 px-2.5 py-1 rounded-full font-medium',
-                          q.isCorrect
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400')}>
-                          {q.isCorrect ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                          Your answer: {q.userAnswer}
-                        </span>
-                        {!q.isCorrect && (
-                          <span className="flex items-center gap-1 px-2.5 py-1 rounded-full font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40">
-                            <CheckCircle className="h-3 w-3" />
-                            Correct: {q.correctAnswer}
-                          </span>
-                        )}
+                  <h2 className="text-xl font-bold">{myResult.status === 'Pass' ? 'Congratulations! You Passed' : 'Exam Not Passed'}</h2>
+                  <p className="text-sm opacity-90 mt-1">{examName}</p>
+                  <div className="grid grid-cols-3 gap-4 mt-5">
+                    {[
+                      { label: 'Score', value: `${myResult.score}/${myResult.maxScore}` },
+                      { label: 'Rank', value: `#${myResult.rank} of ${totalStudents}` },
+                      { label: 'Time', value: myResult.timeTaken },
+                    ].map(s => (
+                      <div key={s.label} className="bg-white/10 rounded-xl py-3 px-2">
+                        <p className="text-xs opacity-80">{s.label}</p>
+                        <p className="text-lg font-bold mt-0.5">{s.value}</p>
                       </div>
-                    </div>
-                    <div className="flex-shrink-0 mt-0.5">
-                      {q.isCorrect
-                        ? <CheckCircle className="h-5 w-5 text-emerald-500" />
-                        : <XCircle className="h-5 w-5 text-red-500" />}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm flex flex-col items-center justify-center gap-2 text-gray-400">
+                  <BookOpen className="w-8 h-8 text-indigo-300" />
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Question-by-question review is not available for this exam</p>
+                </div>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

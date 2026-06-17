@@ -52,15 +52,6 @@ const EVENT_TYPE_STYLES: Record<EventType, { pill: string; dot: string; badge: s
 
 const EVENT_TYPES: EventType[] = ['Meeting', 'Leave', 'Holiday', 'Birthday', 'Deadline', 'Training'];
 
-const NIGERIAN_HOLIDAYS: CalendarEvent[] = [
-  { id: 'h1',  title: "New Year's Day",      date: `${new Date().getFullYear()}-01-01`, type: 'Holiday' },
-  { id: 'h2',  title: 'New Year Holiday',    date: `${new Date().getFullYear()}-01-03`, type: 'Holiday' },
-  { id: 'h3',  title: "Workers' Day",        date: `${new Date().getFullYear()}-05-01`, type: 'Holiday' },
-  { id: 'h4',  title: 'Democracy Day',       date: `${new Date().getFullYear()}-06-12`, type: 'Holiday' },
-  { id: 'h5',  title: 'Independence Day',    date: `${new Date().getFullYear()}-10-01`, type: 'Holiday' },
-  { id: 'h6',  title: 'Christmas Day',       date: `${new Date().getFullYear()}-12-25`, type: 'Holiday' },
-  { id: 'h7',  title: 'Boxing Day',          date: `${new Date().getFullYear()}-12-26`, type: 'Holiday' },
-];
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -89,23 +80,33 @@ export default function CalendarPage() {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
 
-  // Fetch events
+  // Fetch user-created events
   const { data: eventsData } = useQuery({
     queryKey: ['calendar-events', format(monthStart, 'yyyy-MM'), format(monthEnd, 'yyyy-MM')],
-    queryFn: async () => {
-      try {
-        return await apiClient.get<CalendarEvent[]>('/calendar/events', {
-          start: format(monthStart, 'yyyy-MM-dd'),
-          end: format(monthEnd, 'yyyy-MM-dd'),
-        });
-      } catch {
-        return NIGERIAN_HOLIDAYS;
-      }
-    },
+    queryFn: () => apiClient.get<CalendarEvent[]>('/calendar/events', {
+      start: format(monthStart, 'yyyy-MM-dd'),
+      end: format(monthEnd, 'yyyy-MM-dd'),
+    }).catch(() => [] as CalendarEvent[]),
     placeholderData: (prev) => prev,
   });
 
-  const events: CalendarEvent[] = eventsData ?? NIGERIAN_HOLIDAYS;
+  // Fetch public holidays from DB
+  const { data: holidaysData } = useQuery({
+    queryKey: ['calendar-holidays', new Date().getFullYear()],
+    queryFn: () => apiClient.get<any[]>('/calendar/holidays').catch(() => [] as any[]),
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const rawHolidays: CalendarEvent[] = (Array.isArray(holidaysData) ? holidaysData : []).map((h: any) => ({
+    id: String(h.id ?? h.uuid ?? `hol-${h.holidayDate}`),
+    title: h.holidayName ?? h.name ?? 'Holiday',
+    date: (h.holidayDate ?? h.date ?? '').slice(0, 10),
+    type: 'Holiday' as EventType,
+    description: h.description ?? '',
+  })).filter(h => h.date);
+
+  const userEvents: CalendarEvent[] = Array.isArray(eventsData) ? eventsData : [];
+  const events: CalendarEvent[] = [...userEvents, ...rawHolidays];
 
   // Create event
   const createMutation = useMutation({
@@ -434,7 +435,7 @@ export default function CalendarPage() {
                   <button onClick={() => setSelectedEvent(null)} className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition">
                     Close
                   </button>
-                  {!selectedEvent.id.startsWith('h') && (
+                  {selectedEvent.type !== 'Holiday' && (
                     <button
                       onClick={() => deleteMutation.mutate(selectedEvent.id)}
                       disabled={deleteMutation.isPending}

@@ -38,7 +38,7 @@ export interface PeriodListParams {
 }
 
 export interface SalaryListParams {
-  page?: number; limit?: number; periodId?: number; staffId?: number; status?: string;
+  page?: number; limit?: number; periodId?: number; staffId?: number; status?: string; search?: string;
 }
 
 export const payrollService = {

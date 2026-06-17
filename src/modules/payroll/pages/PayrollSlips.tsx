@@ -131,14 +131,16 @@ export default function PayrollSlips() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [periodFilter, setPeriodFilter] = useState('');
+  const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['payroll-salaries', { page, statusFilter, periodFilter }],
+    queryKey: ['payroll-salaries', { page, statusFilter, periodFilter, search }],
     queryFn: () => payrollService.getSalaries({
       page, limit: 15,
       status: statusFilter || undefined,
       periodId: periodFilter ? Number(periodFilter) : undefined,
+      search: search || undefined,
     }),
   });
 
@@ -175,6 +177,11 @@ export default function PayrollSlips() {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>
+          <input type="text" placeholder="Search employee name..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white placeholder-gray-400" />
+        </div>
         <select value={periodFilter} onChange={e => { setPeriodFilter(e.target.value); setPage(1); }}
           className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
           <option value="">All Periods</option>

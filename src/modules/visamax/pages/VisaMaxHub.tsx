@@ -67,13 +67,6 @@ interface Application {
   notes?: string;
 }
 
-const SAMPLE_APPS: Application[] = [
-  { id: 1, clientName: 'Tunde Adewale', clientPhone: '+234 801 234 5678', clientEmail: 'tunde@email.com', serviceType: 'Overseas Study', destination: 'United Kingdom', status: 'Processing', assignedTo: 'Joy Osei', applicationDate: '2026-05-10', processingDate: '2026-05-12', expectedCompletion: '2026-06-30', notes: 'Northumbria University - Computer Science' },
-  { id: 2, clientName: 'Mrs Ngozi Obi', clientPhone: '+234 802 345 6789', clientEmail: 'ngozi@email.com', serviceType: 'Tourism Package', destination: 'Dubai, UAE', status: 'Approved', assignedTo: 'Ahmed Musa', applicationDate: '2026-05-15', processingDate: '2026-05-16', expectedCompletion: '2026-06-01', actualCompletion: '2026-06-05', notes: '5 nights package, Burj Khalifa tour' },
-  { id: 3, clientName: 'Emeka Chukwu', clientPhone: '+234 803 456 7890', clientEmail: 'emeka@email.com', serviceType: 'Flight Booking', destination: 'Lagos → London', status: 'Completed', assignedTo: 'Joy Osei', applicationDate: '2026-06-01', processingDate: '2026-06-01', expectedCompletion: '2026-06-02', actualCompletion: '2026-06-02', notes: 'British Airways BA78' },
-  { id: 4, clientName: 'Sola Fashola', clientPhone: '+234 804 567 8901', clientEmail: 'sola@email.com', serviceType: 'Work Visa / Job Travel', destination: 'Canada', status: 'Awaiting Docs', assignedTo: 'Ahmed Musa', applicationDate: '2026-06-05', processingDate: '2026-06-07', expectedCompletion: '2026-08-15', notes: 'Healthcare worker visa - Ontario' },
-  { id: 5, clientName: 'Amaka Eze', clientPhone: '+234 805 678 9012', clientEmail: 'amaka@email.com', serviceType: 'Holiday Package', destination: 'Maldives', status: 'Pending', applicationDate: '2026-06-10', expectedCompletion: '2026-07-10', notes: 'Honeymoon package - 7 nights' },
-];
 
 const INIT_FORM = {
   clientName: '', clientPhone: '', clientEmail: '',
@@ -116,30 +109,23 @@ export default function VisaMaxHub() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['visamax-applications', { serviceFilter, statusFilter }],
-    queryFn: async () => {
-      try {
-        return await apiClient.get('/visamax/applications', {
-          params: { serviceType: serviceFilter || undefined, status: statusFilter || undefined },
-        } as any);
-      } catch {
-        return SAMPLE_APPS;
-      }
-    },
+    queryFn: () => apiClient.get('/visamax/applications', {
+      params: { status: statusFilter || undefined },
+    } as any),
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload: typeof INIT_FORM) =>
-      apiClient.post('/visamax/applications', payload).catch(() => ({ ...payload, id: Date.now() })),
+    mutationFn: (payload: typeof INIT_FORM) => apiClient.post('/visamax/applications', payload),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['visamax-applications'] }); closeModal(); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: Partial<Application> }) =>
-      apiClient.put(`/visamax/applications/${id}`, payload).catch(() => payload),
+      apiClient.put(`/visamax/applications/${id}`, payload),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['visamax-applications'] }); closeModal(); },
   });
 
-  const apps: Application[] = Array.isArray(data) ? data : (data as any)?.data || SAMPLE_APPS;
+  const apps: Application[] = Array.isArray(data) ? data : (data as any)?.data ?? [];
 
   const filtered = apps.filter(a => {
     const q = search.toLowerCase();

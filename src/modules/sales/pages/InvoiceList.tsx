@@ -34,13 +34,6 @@ function getInvoiceBranding(department?: string) {
 
 const INIT_FORM = { clientName: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', taxRate: 7.5, discountRate: 0, notes: '', department: 'Kurios SAT', items: [{ description: '', qty: 1, unitPrice: 0 }] as LineItem[] };
 
-const SAMPLE: Invoice[] = [
-  { id: 1, invoiceCode: 'INV-000001', clientName: 'Acme Corp', issueDate: '2025-05-01', dueDate: '2025-05-31', total: 450000, status: 'Paid' },
-  { id: 2, invoiceCode: 'INV-000002', clientName: 'TechSoft Ltd', issueDate: '2025-05-15', dueDate: '2025-06-14', total: 285000, status: 'Sent' },
-  { id: 3, invoiceCode: 'INV-000003', clientName: 'GlobalVisa Inc', issueDate: '2025-04-01', dueDate: '2025-04-30', total: 175000, status: 'Overdue' },
-  { id: 4, invoiceCode: 'INV-000004', clientName: 'Bead Lovers NG', issueDate: '2025-05-20', dueDate: '2025-06-19', total: 95000, status: 'Draft' },
-  { id: 5, invoiceCode: 'INV-000005', clientName: 'Embassy Services', issueDate: '2025-05-10', dueDate: '2025-06-09', total: 320000, status: 'Sent' },
-];
 
 function calcLine(item: LineItem) { return item.qty * item.unitPrice; }
 function calcTotal(items: LineItem[], tax: number, discount: number) {
@@ -184,14 +177,6 @@ interface FeeReceipt {
   status: FeeStatus;
 }
 
-const SAMPLE_RECEIPTS: FeeReceipt[] = [
-  { id: 1, receiptNumber: 'REC-2026-0001', studentName: 'Amaka Chibueze', studentId: 'STU-001', program: 'Fashion Design', school: 'Bead Max Vocational School', session: '2026/2027', term: 'First Term', amountPaid: 45000, paymentMethod: 'Bank Transfer', paymentDate: '2026-06-01', notes: '', status: 'Paid' },
-  { id: 2, receiptNumber: 'REC-2026-0002', studentName: 'Yusuf Garba', studentId: 'STU-002', program: 'Digital Marketing', school: 'Kurios SAT School', session: '2026/2027', term: 'First Term', amountPaid: 60000, paymentMethod: 'POS', paymentDate: '2026-06-03', notes: 'Full payment', status: 'Paid' },
-  { id: 3, receiptNumber: 'REC-2026-0003', studentName: 'Sandra Effiong', studentId: 'STU-003', program: 'Beadwork & Jewellery', school: 'Bead Max Vocational School', session: '2026/2027', term: 'First Term', amountPaid: 25000, paymentMethod: 'Cash', paymentDate: '2026-06-05', notes: 'Balance of ₦20,000 outstanding', status: 'Part-Payment' },
-  { id: 4, receiptNumber: 'REC-2026-0004', studentName: 'Philip Okafor', studentId: 'STU-004', program: 'SAT Prep', school: 'Kurios SAT School', session: '2026/2027', term: 'First Term', amountPaid: 0, paymentMethod: '', paymentDate: '2026-06-10', notes: 'Awaiting payment', status: 'Pending' },
-  { id: 5, receiptNumber: 'REC-2026-0005', studentName: 'Zara Mohammed', studentId: 'STU-005', program: 'Graphics Design', school: 'Kurios SAT School', session: '2026/2027', term: 'Second Term', amountPaid: 55000, paymentMethod: 'Online', paymentDate: '2026-06-08', notes: '', status: 'Paid' },
-  { id: 6, receiptNumber: 'REC-2026-0006', studentName: 'Kelechi Eze', studentId: 'STU-006', program: 'Web Development', school: 'Kurios SAT School', session: '2026/2027', term: 'First Term', amountPaid: 30000, paymentMethod: 'Bank Transfer', paymentDate: '2026-06-12', notes: 'Installment 1 of 2', status: 'Part-Payment' },
-];
 
 const PROGRAMS = ['Fashion Design', 'Digital Marketing', 'Beadwork & Jewellery', 'Graphics Design', 'SAT Prep', 'Web Development'];
 const SCHOOLS = ['Kurios SAT School', 'Bead Max Vocational School'];
@@ -350,7 +335,7 @@ function downloadFeeReceipt(receipt: FeeReceipt) {
 function SchoolFeeReceiptsTab() {
   const [showGenerate, setShowGenerate] = useState(false);
   const [form, setForm] = useState(INIT_FEE_FORM);
-  const [receipts, setReceipts] = useState<FeeReceipt[]>(SAMPLE_RECEIPTS);
+  const [receipts, setReceipts] = useState<FeeReceipt[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
@@ -611,21 +596,13 @@ export default function InvoiceList() {
   const { data, isLoading } = useQuery({
     queryKey: ['invoices', tab, search, page],
     queryFn: async () => {
-      try {
-        return await apiClient.getRaw('/invoices', { page, limit: LIMIT, ...(tab !== 'All' && { status: tab }), ...(search && { search }) }) as any;
-      } catch {
-        const filtered = SAMPLE.filter(i =>
-          (tab === 'All' || i.status === tab) &&
-          (!search || i.clientName.toLowerCase().includes(search.toLowerCase()) || i.invoiceCode.includes(search))
-        );
-        return { data: filtered, pagination: { total: filtered.length, totalPages: 1 } };
-      }
+      return await apiClient.getRaw('/invoices', { page, limit: LIMIT, ...(tab !== 'All' && { status: tab }), ...(search && { search }) }) as any;
     },
     enabled: mainTab === 'invoices',
   });
 
-  const invoices: Invoice[] = (data as any)?.data || SAMPLE;
-  const pagination = (data as any)?.pagination || { total: invoices.length, totalPages: 1 };
+  const invoices: Invoice[] = (data as any)?.data ?? [];
+  const pagination = (data as any)?.pagination ?? { total: invoices.length, totalPages: 1 };
 
   const createMutation = useMutation({
     mutationFn: (payload: any) => apiClient.post('/invoices', payload),
@@ -638,7 +615,7 @@ export default function InvoiceList() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices'] }),
   });
 
-  const stats = { total: SAMPLE.length, paid: SAMPLE.filter(i => i.status === 'Paid').length, pending: SAMPLE.filter(i => i.status === 'Sent').length, overdue: SAMPLE.filter(i => i.status === 'Overdue').length, revenue: SAMPLE.filter(i => i.status === 'Paid').reduce((s, i) => s + i.total, 0) };
+  const stats = { total: invoices.length, paid: invoices.filter(i => i.status === 'Paid').length, pending: invoices.filter(i => i.status === 'Sent').length, overdue: invoices.filter(i => i.status === 'Overdue').length, revenue: invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.total, 0) };
 
   const setItem = (idx: number, key: keyof LineItem, val: string | number) => {
     setForm(f => ({ ...f, items: f.items.map((item, i) => i === idx ? { ...item, [key]: val } : item) }));

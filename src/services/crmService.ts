@@ -36,7 +36,7 @@ export interface ContactListParams {
 }
 
 export interface OpportunityListParams {
-  page?: number; limit?: number; stage?: string; contactId?: number; ownerId?: number;
+  page?: number; limit?: number; stage?: string; contactId?: number; ownerId?: number; search?: string;
 }
 
 export const crmService = {

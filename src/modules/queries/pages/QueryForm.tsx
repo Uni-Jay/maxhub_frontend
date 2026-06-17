@@ -9,14 +9,6 @@ import { queryService } from '@services/queryService';
 import { apiClient } from '@services/apiClient';
 import { ArrowLeft } from 'lucide-react';
 
-const SAMPLE_STAFF = [
-  { id: 1, firstName: 'Adaeze', lastName: 'Okonkwo' },
-  { id: 2, firstName: 'Chukwuemeka', lastName: 'Eze' },
-  { id: 3, firstName: 'Fatima', lastName: 'Usman' },
-  { id: 4, firstName: 'Ngozi', lastName: 'Obi' },
-  { id: 5, firstName: 'Tunde', lastName: 'Adebayo' },
-  { id: 6, firstName: 'Emeka', lastName: 'Nwachukwu' },
-];
 
 const DEPARTMENTS = ['HR', 'Finance', 'Kurios SAT', 'BeadMax Design', 'VisaMax Travel Ltd'];
 
@@ -43,16 +35,14 @@ export default function QueryForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
-  const [staffList, setStaffList] = useState<StaffMember[]>(SAMPLE_STAFF);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
 
   useEffect(() => {
     apiClient.get<StaffMember[]>('/staff')
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) setStaffList(data);
+        if (Array.isArray(data)) setStaffList(data);
       })
-      .catch(() => {
-        setStaffList(SAMPLE_STAFF);
-      });
+      .catch(() => {});
   }, []);
 
   const { data: existing } = useApiQuery(

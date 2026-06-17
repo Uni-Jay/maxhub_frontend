@@ -47,8 +47,8 @@ export const authApi = {
    * @param sessionId - Current session ID
    * @returns Void on success
    */
-  async logout(sessionId?: string): Promise<void> {
-    await apiClient.post('/auth/logout', { sessionId });
+  async logout(sessionId?: string, refreshToken?: string): Promise<void> {
+    await apiClient.post('/auth/logout', { sessionId, refreshToken });
   },
 
   /**

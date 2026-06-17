@@ -64,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const state = get();
           if (state.tokens?.refreshToken) {
-            await authApi.logout();
+            await authApi.logout(undefined, state.tokens.refreshToken);
           }
         } finally {
           set({

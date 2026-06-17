@@ -36,14 +36,6 @@ interface MyPayslip {
   payDate: string;
 }
 
-const SAMPLE: MyPayslip[] = [
-  { id: 1, salaryCode: 'SAL-000015', periodName: 'June 2026', baseSalary: 350000, bonus: 25000, grossSalary: 375000, incomeTax: 37500, providentFund: 17500, healthInsurance: 7500, otherDeductions: 0, totalDeductions: 62500, netSalary: 312500, status: 'Paid', payDate: '2026-06-25' },
-  { id: 2, salaryCode: 'SAL-000009', periodName: 'May 2026', baseSalary: 350000, bonus: 0, grossSalary: 350000, incomeTax: 35000, providentFund: 17500, healthInsurance: 7500, otherDeductions: 5000, totalDeductions: 65000, netSalary: 285000, status: 'Paid', payDate: '2026-05-25' },
-  { id: 3, salaryCode: 'SAL-000003', periodName: 'April 2026', baseSalary: 350000, bonus: 15000, grossSalary: 365000, incomeTax: 36500, providentFund: 17500, healthInsurance: 7500, otherDeductions: 0, totalDeductions: 61500, netSalary: 303500, status: 'Paid', payDate: '2026-04-25' },
-  { id: 4, salaryCode: 'SAL-000018', periodName: 'March 2026', baseSalary: 330000, bonus: 0, grossSalary: 330000, incomeTax: 33000, providentFund: 16500, healthInsurance: 7500, otherDeductions: 0, totalDeductions: 57000, netSalary: 273000, status: 'Paid', payDate: '2026-03-25' },
-  { id: 5, salaryCode: 'SAL-000022', periodName: 'February 2026', baseSalary: 330000, bonus: 10000, grossSalary: 340000, incomeTax: 34000, providentFund: 16500, healthInsurance: 7500, otherDeductions: 0, totalDeductions: 58000, netSalary: 282000, status: 'Paid', payDate: '2026-02-25' },
-  { id: 6, salaryCode: 'SAL-000027', periodName: 'January 2026', baseSalary: 330000, bonus: 50000, grossSalary: 380000, incomeTax: 38000, providentFund: 16500, healthInsurance: 7500, otherDeductions: 0, totalDeductions: 62000, netSalary: 318000, status: 'Paid', payDate: '2026-01-25' },
-];
 
 function generatePayslipHTML(slip: MyPayslip, employeeName: string, employeeId: string) {
   const today = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -153,22 +145,28 @@ export default function MyPayslips() {
     queryKey: ['my-payslips'],
     queryFn: async () => {
       try { return await apiClient.get('/payroll/my-slips') as any; }
-      catch { return SAMPLE; }
+      catch { return []; }
     },
   });
 
-  const slips: MyPayslip[] = Array.isArray(data) ? data : (data as any)?.data || SAMPLE;
+  const slips: MyPayslip[] = Array.isArray(data) ? data : (data as any)?.data || [];
 
   const ytdGross = slips.filter(s => s.status === 'Paid').reduce((sum, s) => sum + s.grossSalary, 0);
   const ytdDeductions = slips.filter(s => s.status === 'Paid').reduce((sum, s) => sum + s.totalDeductions, 0);
   const ytdNet = slips.filter(s => s.status === 'Paid').reduce((sum, s) => sum + s.netSalary, 0);
   const latest = slips[0];
 
+  const nextPayDate = (() => {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth() + 1, 25);
+    return next.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
+  })();
+
   const STATS = [
     { label: 'YTD Earnings', value: fmt(ytdGross), icon: TrendingUp, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
     { label: 'YTD Deductions', value: fmt(ytdDeductions), icon: Wallet, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20' },
     { label: 'YTD Net Received', value: fmt(ytdNet), icon: Wallet, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-    { label: 'Next Pay Date', value: '25 July 2026', icon: Calendar, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/20' },
+    { label: 'Next Pay Date', value: nextPayDate, icon: Calendar, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/20' },
   ];
 
   const handleDownload = (slip: MyPayslip) => {

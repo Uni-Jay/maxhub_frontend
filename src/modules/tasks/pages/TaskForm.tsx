@@ -11,13 +11,6 @@ import { taskService } from '@services/taskService';
 import { apiClient } from '@services/apiClient';
 import type { CreateTaskPayload } from '@services/taskService';
 
-const SAMPLE_STAFF = [
-  { id: 1, firstName: 'Adaeze', lastName: 'Okonkwo', employeeId: 'EMP-001' },
-  { id: 2, firstName: 'Chukwuemeka', lastName: 'Eze', employeeId: 'EMP-002' },
-  { id: 3, firstName: 'Fatima', lastName: 'Usman', employeeId: 'EMP-003' },
-  { id: 4, firstName: 'Ngozi', lastName: 'Obi', employeeId: 'EMP-004' },
-  { id: 5, firstName: 'Tunde', lastName: 'Adebayo', employeeId: 'EMP-005' },
-];
 
 interface StaffMember { id: number; firstName: string; lastName: string; employeeId?: string; }
 
@@ -41,15 +34,16 @@ export default function TaskForm() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
-  const [staffList, setStaffList] = useState<StaffMember[]>(SAMPLE_STAFF);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [staffError, setStaffError] = useState(false);
 
   useEffect(() => {
     apiClient.get<StaffMember[]>('/staff')
       .then((data: any) => {
         const arr = Array.isArray(data) ? data : data?.data;
-        if (Array.isArray(arr) && arr.length > 0) setStaffList(arr);
+        if (Array.isArray(arr)) setStaffList(arr);
       })
-      .catch(() => setStaffList(SAMPLE_STAFF));
+      .catch(() => setStaffError(true));
   }, []);
 
   const { data: existing } = useApiQuery(
@@ -96,6 +90,11 @@ export default function TaskForm() {
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error.message}</AlertDescription>
+        </Alert>
+      )}
+      {staffError && (
+        <Alert variant="destructive">
+          <AlertDescription>Could not load staff list. Check your connection and refresh.</AlertDescription>
         </Alert>
       )}
 

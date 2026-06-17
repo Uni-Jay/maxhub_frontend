@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { TrendingUp, Plus, X, Check, DollarSign, Calendar, ArrowRight, Target } from 'lucide-react';
+import { TrendingUp, Plus, X, Check, DollarSign, Calendar, ArrowRight, Target, Search } from 'lucide-react';
 import { crmService, type Opportunity } from '@services/crmService';
 
 const STAGES = ['Lead','Qualified','Proposal','Negotiation','ClosedWon','ClosedLost'] as const;
@@ -29,10 +29,11 @@ export default function OpportunityPipeline() {
   const [form, setForm] = useState(INIT_FORM);
   const [lostReason, setLostReason] = useState('');
   const [showLostModal, setShowLostModal] = useState<{ id: number } | null>(null);
+  const [search, setSearch] = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['crm-opportunities'],
-    queryFn: () => crmService.getOpportunities({ limit: 200 }),
+    queryKey: ['crm-opportunities', { search }],
+    queryFn: () => crmService.getOpportunities({ limit: 200, search: search || undefined }),
   });
 
   useQuery({
@@ -107,6 +108,18 @@ export default function OpportunityPipeline() {
             </motion.div>
           );
         })}
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search opportunities..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+        />
       </div>
 
       {/* Kanban Board */}

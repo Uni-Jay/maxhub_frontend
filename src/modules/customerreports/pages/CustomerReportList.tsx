@@ -72,102 +72,6 @@ interface CustomerReport {
   createdAt: string;
 }
 
-const SAMPLE_REPORTS: CustomerReport[] = [
-  // VisaMax Travels Ltd
-  {
-    id: 1, clientName: 'Tunde Adewale', clientPhone: '+234 801 234 5678', clientEmail: 'tunde@email.com',
-    assignedStaff: 'Joy Osei', servicePurchased: 'UK Study Visa Processing', department: 'VisaMax Travels Ltd', businessUnit: 'VisaMax Travels Ltd',
-    currentStatus: 'Application submitted, awaiting embassy decision', pendingActions: 'Biometrics appointment', completedActions: 'Documents verified, Application fee paid',
-    totalAmount: 250000, amountPaid: 250000, outstandingBalance: 0,
-    notes: [{ date: '2026-06-01', text: 'Documents received in full. Application filed.', author: 'Joy Osei' }, { date: '2026-06-10', text: 'Biometrics scheduled for 15 June.', author: 'Joy Osei' }],
-    payments: [{ date: '2026-05-28', amount: 250000, description: 'Full service fee' }],
-    attachments: [], approvalStatus: 'Approved', submittedBy: 'Joy Osei', submittedAt: '2026-06-01', approvedBy: 'CEO', approvedAt: '2026-06-02', createdAt: '2026-05-28',
-  },
-  {
-    id: 2, clientName: 'Ngozi Obi', clientPhone: '+234 802 345 6789', clientEmail: 'ngozi@email.com',
-    assignedStaff: 'Ahmed Musa', servicePurchased: 'Canada Tourist Package', department: 'VisaMax Travels Ltd', businessUnit: 'VisaMax Travels Ltd',
-    currentStatus: 'Hotel booked. Flight confirmed. Visa awaiting.', pendingActions: 'Visa approval pending', completedActions: 'Hotel & flight booked',
-    totalAmount: 400000, amountPaid: 200000, outstandingBalance: 200000,
-    notes: [{ date: '2026-06-08', text: 'Client paid 50% deposit. Balance before travel.', author: 'Ahmed Musa' }],
-    payments: [{ date: '2026-06-08', amount: 200000, description: '50% deposit' }],
-    attachments: [], approvalStatus: 'Submitted', submittedBy: 'Ahmed Musa', submittedAt: '2026-06-09', createdAt: '2026-06-07',
-  },
-  {
-    id: 3, clientName: 'Emeka Chukwu', clientPhone: '+234 803 456 7890', clientEmail: 'emeka@email.com',
-    assignedStaff: 'Fatima Bello', servicePurchased: 'Schengen Multi-Entry Visa', department: 'VisaMax Travels Ltd', businessUnit: 'VisaMax Travels Ltd',
-    currentStatus: 'Supporting documents under review', pendingActions: 'Bank statement resubmission', completedActions: 'Application form submitted',
-    totalAmount: 180000, amountPaid: 90000, outstandingBalance: 90000,
-    notes: [{ date: '2026-06-12', text: 'Embassy requested updated bank statement.', author: 'Fatima Bello' }],
-    payments: [{ date: '2026-06-10', amount: 90000, description: 'Initial deposit' }],
-    attachments: [], approvalStatus: 'Revision Requested', submittedBy: 'Fatima Bello', submittedAt: '2026-06-10', createdAt: '2026-06-09',
-  },
-  // Kurios SAT
-  {
-    id: 4, clientName: 'Amara Nwosu', clientPhone: '+234 804 567 8901', clientEmail: 'amara@email.com',
-    assignedStaff: 'Chidi Okeke', servicePurchased: 'SAT Prep — Full Package', department: 'Kurios SAT', businessUnit: 'Kurios SAT',
-    currentStatus: 'Completed 6 of 12 sessions. Practice test score: 1280', pendingActions: 'Math module completion', completedActions: 'Reading & Writing completed',
-    totalAmount: 150000, amountPaid: 150000, outstandingBalance: 0,
-    notes: [{ date: '2026-05-20', text: 'Student showing strong improvement in verbal section.', author: 'Chidi Okeke' }, { date: '2026-06-05', text: 'Mock exam score up by 120 points.', author: 'Chidi Okeke' }],
-    payments: [{ date: '2026-05-10', amount: 150000, description: 'Full tuition fee' }],
-    attachments: [], approvalStatus: 'Approved', submittedBy: 'Chidi Okeke', submittedAt: '2026-05-20', approvedBy: 'HOD', approvedAt: '2026-05-21', createdAt: '2026-05-10',
-  },
-  {
-    id: 5, clientName: 'Seun Adesanya', clientPhone: '+234 805 678 9012', clientEmail: 'seun@email.com',
-    assignedStaff: 'Blessing Eze', servicePurchased: 'IELTS Preparation — 8-Week Course', department: 'Kurios SAT', businessUnit: 'Kurios SAT',
-    currentStatus: 'Week 3 of 8. Listening & Reading modules in progress', pendingActions: 'Speaking module starts Week 5', completedActions: 'Diagnostic test, Listening module',
-    totalAmount: 120000, amountPaid: 60000, outstandingBalance: 60000,
-    notes: [{ date: '2026-06-11', text: 'Client requested extra speaking practice sessions.', author: 'Blessing Eze' }],
-    payments: [{ date: '2026-06-01', amount: 60000, description: '50% upfront' }],
-    attachments: [], approvalStatus: 'Draft', submittedBy: undefined, submittedAt: undefined, createdAt: '2026-06-01',
-  },
-  {
-    id: 6, clientName: 'Kemi Adeyemi', clientPhone: '+234 806 789 0123', clientEmail: 'kemi@email.com',
-    assignedStaff: 'Chidi Okeke', servicePurchased: 'GRE Private Tutoring — 10 Sessions', department: 'Kurios SAT', businessUnit: 'Kurios SAT',
-    currentStatus: 'Sessions ongoing. Target score: 320+', pendingActions: 'Quantitative reasoning sessions 6–10', completedActions: 'Verbal & Analytical Writing sessions done',
-    totalAmount: 200000, amountPaid: 200000, outstandingBalance: 0,
-    notes: [{ date: '2026-06-08', text: 'Student excelling. Estimated target achievable.', author: 'Chidi Okeke' }],
-    payments: [{ date: '2026-06-01', amount: 200000, description: 'Full payment' }],
-    attachments: [], approvalStatus: 'Submitted', submittedBy: 'Chidi Okeke', submittedAt: '2026-06-09', createdAt: '2026-06-01',
-  },
-  // Beadmax Design
-  {
-    id: 7, clientName: 'Ifeoma Okafor', clientPhone: '+234 807 890 1234', clientEmail: 'ifeoma@email.com',
-    assignedStaff: 'Tope Akintola', servicePurchased: 'Brand Identity Design Package', department: 'Beadmax Design', businessUnit: 'Beadmax Design',
-    currentStatus: 'Logo concepts delivered, awaiting client feedback', pendingActions: 'Stationery & brand guide after logo approval', completedActions: 'Brand strategy session, Logo drafts x3',
-    totalAmount: 350000, amountPaid: 175000, outstandingBalance: 175000,
-    notes: [{ date: '2026-06-09', text: 'Client loves concept 2. Minor tweaks requested.', author: 'Tope Akintola' }],
-    payments: [{ date: '2026-06-02', amount: 175000, description: '50% project deposit' }],
-    attachments: [], approvalStatus: 'Under Review', submittedBy: 'Tope Akintola', submittedAt: '2026-06-09', createdAt: '2026-06-01',
-  },
-  {
-    id: 8, clientName: 'Dele Fashola', clientPhone: '+234 808 901 2345', clientEmail: 'dele@email.com',
-    assignedStaff: 'Tope Akintola', servicePurchased: 'Website UI/UX Design', department: 'Beadmax Design', businessUnit: 'Beadmax Design',
-    currentStatus: 'Wireframes approved. High-fidelity mockups in progress', pendingActions: 'Mobile screens delivery', completedActions: 'Discovery, Wireframes, Desktop screens',
-    totalAmount: 500000, amountPaid: 500000, outstandingBalance: 0,
-    notes: [{ date: '2026-06-07', text: 'Desktop mockups approved by client.', author: 'Tope Akintola' }],
-    payments: [{ date: '2026-05-30', amount: 250000, description: 'Project deposit' }, { date: '2026-06-06', amount: 250000, description: 'Balance payment' }],
-    attachments: [], approvalStatus: 'Approved', submittedBy: 'Tope Akintola', submittedAt: '2026-06-07', approvedBy: 'HOD', approvedAt: '2026-06-08', createdAt: '2026-05-28',
-  },
-  // Beadmax Vocational School
-  {
-    id: 9, clientName: 'Yinka Balogun', clientPhone: '+234 809 012 3456', clientEmail: 'yinka@email.com',
-    assignedStaff: 'Ngozi Peters', servicePurchased: 'Fashion Design — 3-Month Course', department: 'Beadmax Vocational School', businessUnit: 'Beadmax Vocational School',
-    currentStatus: 'Month 2 of 3. Pattern making module ongoing', pendingActions: 'Final project submission — Month 3', completedActions: 'Fabric selection, Basic sewing, Pattern basics',
-    totalAmount: 120000, amountPaid: 80000, outstandingBalance: 40000,
-    notes: [{ date: '2026-06-10', text: 'Student very talented. Already producing sellable items.', author: 'Ngozi Peters' }],
-    payments: [{ date: '2026-04-01', amount: 80000, description: 'Upfront payment' }],
-    attachments: [], approvalStatus: 'Approved', submittedBy: 'Ngozi Peters', submittedAt: '2026-05-01', approvedBy: 'HOD', approvedAt: '2026-05-02', createdAt: '2026-04-01',
-  },
-  {
-    id: 10, clientName: 'Chisom Eze', clientPhone: '+234 810 123 4567', clientEmail: 'chisom@email.com',
-    assignedStaff: 'Ngozi Peters', servicePurchased: 'Catering & Confectionery — 6 Weeks', department: 'Beadmax Vocational School', businessUnit: 'Beadmax Vocational School',
-    currentStatus: 'Week 4 of 6. Pastry & baking module', pendingActions: 'Practical exam Week 6', completedActions: 'Kitchen safety, Nigerian dishes, Continental cuisine',
-    totalAmount: 85000, amountPaid: 85000, outstandingBalance: 0,
-    notes: [{ date: '2026-06-11', text: 'Student passed mid-course practical with distinction.', author: 'Ngozi Peters' }],
-    payments: [{ date: '2026-05-01', amount: 85000, description: 'Full fee paid' }],
-    attachments: [], approvalStatus: 'Submitted', submittedBy: 'Ngozi Peters', submittedAt: '2026-06-12', createdAt: '2026-05-01',
-  },
-];
 
 const INIT_FORM = {
   clientName: '', clientPhone: '', clientEmail: '',
@@ -205,7 +109,7 @@ export default function CustomerReportList() {
     queryKey: ['customer-reports', { statusFilter }],
     queryFn: async () => {
       try { return await apiClient.get('/customer-reports', { params: { status: statusFilter || undefined } } as any); }
-      catch { return SAMPLE_REPORTS; }
+      catch { return []; }
     },
   });
 
@@ -225,7 +129,7 @@ export default function CustomerReportList() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer-reports'] }); setActionTarget(null); setActionReason(''); },
   });
 
-  const reports: CustomerReport[] = Array.isArray(data) ? data : (data as any)?.data || SAMPLE_REPORTS;
+  const reports: CustomerReport[] = Array.isArray(data) ? data : (data as any)?.data || [];
 
   const filtered = reports.filter(r => {
     const q = search.toLowerCase();

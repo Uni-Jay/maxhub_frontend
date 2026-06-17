@@ -6,6 +6,7 @@ export interface LeaveRequestParams {
   limit?: number;
   status?: string;
   staffId?: number;
+  search?: string;
 }
 
 export interface CreateLeavePayload {

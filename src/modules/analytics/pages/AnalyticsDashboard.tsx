@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   TrendingUp, Users, Briefcase, GraduationCap, DollarSign, Calendar,
-  Download, BarChart3, Target, Clock, CheckCircle,
+  Download, BarChart3, Target, Clock, CheckCircle, Loader2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiClient } from '@services/apiClient';
@@ -56,48 +56,15 @@ function ChartCard({ title, children, className }: { title: string; children: Re
   );
 }
 
-// ─── Fallback data ──────────────────────────────────────
-const REVENUE_FALLBACK = [
-  { month: 'Jan', revenue: 450000, target: 500000 },
-  { month: 'Feb', revenue: 520000, target: 500000 },
-  { month: 'Mar', revenue: 480000, target: 520000 },
-  { month: 'Apr', revenue: 610000, target: 550000 },
-  { month: 'May', revenue: 550000, target: 560000 },
-  { month: 'Jun', revenue: 670000, target: 600000 },
-  { month: 'Jul', revenue: 720000, target: 650000 },
-  { month: 'Aug', revenue: 690000, target: 680000 },
-  { month: 'Sep', revenue: 750000, target: 700000 },
-  { month: 'Oct', revenue: 810000, target: 750000 },
-  { month: 'Nov', revenue: 780000, target: 780000 },
-  { month: 'Dec', revenue: 920000, target: 800000 },
-];
+function EmptyChart({ height = 240 }: { height?: number }) {
+  return (
+    <div className="flex flex-col items-center justify-center text-gray-300 dark:text-gray-600" style={{ height }}>
+      <BarChart3 className="h-10 w-10 mb-2" />
+      <p className="text-sm">No data yet</p>
+    </div>
+  );
+}
 
-const ATTENDANCE_FALLBACK = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date(); d.setDate(d.getDate() - (6 - i));
-  return { date: d.toLocaleDateString('en', { weekday: 'short' }), present: 38 + Math.floor(Math.random() * 10), absent: Math.floor(Math.random() * 4), late: Math.floor(Math.random() * 3) };
-});
-
-const DEPT_FALLBACK = [
-  { name: 'Kurios SAT', value: 32 }, { name: 'Visa Max', value: 18 },
-  { name: 'Bead Max', value: 24 }, { name: 'HR', value: 8 }, { name: 'Finance', value: 10 },
-];
-
-const PROJECT_STATUS_FALLBACK = [
-  { name: 'Active', value: 12 }, { name: 'Completed', value: 28 },
-  { name: 'On Hold', value: 4 }, { name: 'Delayed', value: 3 },
-];
-
-const ENROLLMENT_TREND_FALLBACK = [
-  { month: 'Sep', enrolled: 45 }, { month: 'Oct', enrolled: 62 }, { month: 'Nov', enrolled: 58 },
-  { month: 'Dec', enrolled: 40 }, { month: 'Jan', enrolled: 75 }, { month: 'Feb', enrolled: 88 },
-];
-
-const LEAVE_FALLBACK = [
-  { type: 'Annual', used: 45, total: 100 }, { type: 'Sick', used: 28, total: 80 },
-  { type: 'Maternity', used: 5, total: 10 }, { type: 'Emergency', used: 12, total: 30 },
-];
-
-// ─── Export helpers ─────────────────────────────────────────
 function exportCSV(rows: Record<string, unknown>[], filename: string) {
   if (!rows.length) return;
   const headers = Object.keys(rows[0]);
@@ -120,40 +87,74 @@ export default function AnalyticsDashboard() {
   const [range, setRange] = useState<Range>('month');
   const [exportOpen, setExportOpen] = useState(false);
 
-  const { data: revenueData = REVENUE_FALLBACK } = useQuery({
+  const { data: revenueRaw, isLoading: revLoading } = useQuery({
     queryKey: ['analytics-revenue', range],
-    queryFn: async () => {
-      try { return await apiClient.get('/dashboards/super-admin/revenue?months=12') as any; } catch { return REVENUE_FALLBACK; }
-    },
+    queryFn: () => apiClient.get<any[]>('/dashboards/super-admin/revenue?months=12').catch(() => []),
   });
 
-  const { data: attendanceData = ATTENDANCE_FALLBACK } = useQuery({
+  const { data: attendanceRaw, isLoading: attLoading } = useQuery({
     queryKey: ['analytics-attendance', range],
-    queryFn: async () => {
-      try { return await apiClient.get('/dashboards/super-admin/attendance?days=30') as any; } catch { return ATTENDANCE_FALLBACK; }
-    },
+    queryFn: () => apiClient.get<any[]>('/dashboards/super-admin/attendance?days=7').catch(() => []),
   });
 
-  const { data: deptData = DEPT_FALLBACK } = useQuery({
+  const { data: deptRaw, isLoading: deptLoading } = useQuery({
     queryKey: ['analytics-departments'],
-    queryFn: async () => {
-      try { return await apiClient.get('/dashboards/super-admin/departments') as any; } catch { return DEPT_FALLBACK; }
-    },
+    queryFn: () => apiClient.get<any[]>('/dashboards/super-admin/departments').catch(() => []),
   });
 
-  const { data: statsData } = useQuery({
+  const { data: statsRaw } = useQuery({
     queryKey: ['analytics-stats'],
-    queryFn: async () => {
-      try { return await apiClient.get('/dashboards/super-admin/stats'); } catch { return null; }
-    },
+    queryFn: () => apiClient.get<any>('/dashboards/super-admin/stats').catch(() => null),
   });
 
-  const { data: crmData } = useQuery({
+  const { data: crmRaw } = useQuery({
     queryKey: ['analytics-crm'],
-    queryFn: async () => {
-      try { return await apiClient.get('/dashboards/super-admin/crm'); } catch { return null; }
-    },
+    queryFn: () => apiClient.get<any>('/dashboards/super-admin/crm').catch(() => null),
   });
+
+  const { data: projectsRaw, isLoading: projLoading } = useQuery({
+    queryKey: ['analytics-projects'],
+    queryFn: () => apiClient.get<any>('/dashboards/super-admin/projects').catch(() => null),
+  });
+
+  const { data: studentsRaw, isLoading: studLoading } = useQuery({
+    queryKey: ['analytics-students'],
+    queryFn: () => apiClient.get<any>('/dashboards/super-admin/students').catch(() => null),
+  });
+
+  const { data: leaveSummaryRaw } = useQuery({
+    queryKey: ['analytics-leave-summary'],
+    queryFn: () => apiClient.get<any>('/dashboards/head-of-admin/leave-summary').catch(() => null),
+  });
+
+  const revenueData: any[] = Array.isArray(revenueRaw) ? revenueRaw : [];
+  const attendanceData: any[] = Array.isArray(attendanceRaw) ? attendanceRaw : [];
+  const deptData: any[] = Array.isArray(deptRaw) ? deptRaw : [];
+  const stats = statsRaw as any;
+  const crm = crmRaw as any;
+  const projects = projectsRaw as any;
+  const students = studentsRaw as any;
+  const leave = leaveSummaryRaw as any;
+
+  // Project status chart data
+  const projectStatusData = projects ? [
+    { name: 'Active', value: projects.active ?? 0 },
+    { name: 'Completed', value: projects.completed ?? 0 },
+    { name: 'On Hold', value: projects.onHold ?? 0 },
+    { name: 'Cancelled', value: projects.cancelled ?? 0 },
+  ].filter(d => d.value > 0) : [];
+
+  // Student status data
+  const studentStatusData = students ? Object.entries(students)
+    .filter(([k]) => !['total'].includes(k))
+    .map(([name, value]) => ({ name, value: Number(value) }))
+    .filter(d => d.value > 0) : [];
+
+  // Leave data from summary
+  const leaveData = leave ? [
+    { type: 'Annual', used: leave.approved ?? 0, total: (leave.approved ?? 0) + (leave.pending ?? 0) + (leave.rejected ?? 0) },
+    { type: 'Pending', used: leave.pending ?? 0, total: leave.total ?? 0 },
+  ].filter(d => d.total > 0) : [];
 
   const TABS: { key: Tab; label: string; icon: any }[] = [
     { key: 'overview', label: 'Overview', icon: BarChart3 },
@@ -165,7 +166,6 @@ export default function AnalyticsDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Analytics & Reports</h1>
@@ -203,8 +203,7 @@ export default function AnalyticsDashboard() {
         </div>
       </div>
 
-      {/* Tab nav */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit flex-wrap">
         {TABS.map(t => {
           const Icon = t.icon;
           return (
@@ -216,298 +215,325 @@ export default function AnalyticsDashboard() {
         })}
       </div>
 
-      {/* ── OVERVIEW ── */}
       {tab === 'overview' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <KpiCard title="Total Revenue" value={`₦${((statsData as any)?.totalRevenue || 4200000).toLocaleString()}`} icon={DollarSign} color="green" change={12} />
-            <KpiCard title="Staff Count" value={(statsData as any)?.totalEmployees || 92} icon={Users} color="indigo" change={5} />
-            <KpiCard title="Active Projects" value={(statsData as any)?.activeProjects || 18} icon={Briefcase} color="amber" change={-2} />
-            <KpiCard title="Students" value={(statsData as any)?.totalStudents || 340} icon={GraduationCap} color="blue" change={18} />
-            <KpiCard title="CRM Leads" value={(crmData as any)?.totalLeads || 87} icon={Target} color="purple" change={9} />
-            <KpiCard title="Attendance Rate" value={`${(statsData as any)?.attendanceRate || 94}%`} icon={Calendar} color="green" change={2} />
+            <KpiCard title="Total Revenue" value={stats?.totalRevenue ? `₦${Number(stats.totalRevenue).toLocaleString()}` : '—'} icon={DollarSign} color="green" />
+            <KpiCard title="Staff Count" value={stats?.totalEmployees ?? '—'} icon={Users} color="indigo" />
+            <KpiCard title="Active Projects" value={stats?.activeProjects ?? projects?.active ?? '—'} icon={Briefcase} color="amber" />
+            <KpiCard title="Students" value={stats?.totalStudents ?? students?.total ?? '—'} icon={GraduationCap} color="blue" />
+            <KpiCard title="CRM Leads" value={crm?.totalLeads ?? '—'} icon={Target} color="purple" />
+            <KpiCard title="Pending Leaves" value={stats?.pendingLeaves ?? '—'} icon={Calendar} color="green" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <ChartCard title="Revenue vs Target (Monthly)">
-              <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={revenueData}>
-                  <defs>
-                    <linearGradient id="gradRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `₦${(v/1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(v: any) => `₦${Number(v).toLocaleString()}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Area type="monotone" dataKey="revenue" stroke="#6366f1" fill="url(#gradRev)" name="Revenue" strokeWidth={2} />
-                  <Line type="monotone" dataKey="target" stroke="#f59e0b" name="Target" strokeDasharray="4 4" strokeWidth={2} dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {revLoading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div> :
+               revenueData.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <AreaChart data={revenueData}>
+                    <defs>
+                      <linearGradient id="gradRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `₦${(v/1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: any) => `₦${Number(v).toLocaleString()}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Area type="monotone" dataKey="revenue" stroke="#6366f1" fill="url(#gradRev)" name="Revenue" strokeWidth={2} />
+                    {revenueData[0]?.target !== undefined && <Line type="monotone" dataKey="target" stroke="#f59e0b" name="Target" strokeDasharray="4 4" strokeWidth={2} dot={false} />}
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
 
             <ChartCard title="Attendance Overview (Last 7 Days)">
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={attendanceData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="present" fill="#10b981" name="Present" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="absent" fill="#ef4444" name="Absent" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="late" fill="#f59e0b" name="Late" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {attLoading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div> :
+               attendanceData.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={attendanceData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="present" fill="#10b981" name="Present" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="absent" fill="#ef4444" name="Absent" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="late" fill="#f59e0b" name="Late" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <ChartCard title="Staff by Department">
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={deptData} cx="50%" cy="50%" outerRadius={80} dataKey="value" nameKey="name"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                    {deptData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                </PieChart>
-              </ResponsiveContainer>
+              {deptLoading ? <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div> :
+               deptData.length === 0 ? <EmptyChart height={220} /> : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={deptData} cx="50%" cy="50%" outerRadius={80} dataKey="value" nameKey="name"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                      {deptData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
 
             <ChartCard title="Project Status Distribution">
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={PROJECT_STATUS_FALLBACK} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" nameKey="name">
-                    {PROJECT_STATUS_FALLBACK.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
+              {projLoading ? <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div> :
+               projectStatusData.length === 0 ? <EmptyChart height={220} /> : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={projectStatusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" nameKey="name">
+                      {projectStatusData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
           </div>
         </motion.div>
       )}
 
-      {/* ── HR ANALYTICS ── */}
       {tab === 'hr' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KpiCard title="Total Staff" value={92} icon={Users} color="indigo" />
-            <KpiCard title="New Hires (Month)" value={4} icon={Users} color="green" change={33} />
-            <KpiCard title="Pending Leaves" value={12} icon={Clock} color="amber" />
-            <KpiCard title="Avg Attendance" value="94%" icon={CheckCircle} color="blue" />
+            <KpiCard title="Total Staff" value={stats?.totalEmployees ?? '—'} icon={Users} color="indigo" />
+            <KpiCard title="Active Departments" value={stats?.totalDepartments ?? deptData.length} icon={Users} color="green" />
+            <KpiCard title="Pending Leaves" value={stats?.pendingLeaves ?? leave?.pending ?? '—'} icon={Clock} color="amber" />
+            <KpiCard title="Total Attendance" value={stats?.todayAttendance ?? '—'} icon={CheckCircle} color="blue" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <ChartCard title="Leave Utilization by Type">
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={LEAVE_FALLBACK} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="type" type="category" tick={{ fontSize: 11 }} width={70} />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="used" fill="#6366f1" name="Used" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="total" fill="#e5e7eb" name="Quota" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <ChartCard title="Leave Summary">
+              {leaveData.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={leaveData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="type" type="category" tick={{ fontSize: 11 }} width={70} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="used" fill="#6366f1" name="Count" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="total" fill="#e5e7eb" name="Total" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
 
             <ChartCard title="Attendance Trend">
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={ATTENDANCE_FALLBACK}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="present" stroke="#10b981" name="Present" strokeWidth={2} />
-                  <Line type="monotone" dataKey="late" stroke="#f59e0b" name="Late" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
+              {attendanceData.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart data={attendanceData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Line type="monotone" dataKey="present" stroke="#10b981" name="Present" strokeWidth={2} />
+                    <Line type="monotone" dataKey="late" stroke="#f59e0b" name="Late" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <ChartCard title="Staff Distribution by Department">
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={deptData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Bar dataKey="value" name="Staff Count" radius={[4, 4, 0, 0]}>
-                    {deptData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              {deptData.length === 0 ? <EmptyChart height={220} /> : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={deptData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Bar dataKey="value" name="Staff Count" radius={[4, 4, 0, 0]}>
+                      {deptData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
 
-            <ChartCard title="Turnover & Retention">
-              <div className="space-y-4 pt-4">
-                {[{ label: 'Retention Rate', value: 95, color: 'bg-emerald-500' }, { label: 'Satisfaction Score', value: 82, color: 'bg-indigo-500' }, { label: 'Training Completion', value: 74, color: 'bg-amber-500' }].map(m => (
-                  <div key={m.label}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600 dark:text-gray-400">{m.label}</span>
-                      <span className="font-semibold">{m.value}%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
-                      <div className={cn('h-2 rounded-full', m.color)} style={{ width: `${m.value}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <ChartCard title="Leave Status Breakdown">
+              {!leave ? <EmptyChart height={220} /> : (
+                <div className="space-y-4 pt-4">
+                  {[
+                    { label: 'Approved Leaves', value: leave.approved ?? 0, total: leave.total ?? 1, color: 'bg-emerald-500' },
+                    { label: 'Pending Leaves', value: leave.pending ?? 0, total: leave.total ?? 1, color: 'bg-amber-500' },
+                    { label: 'Rejected Leaves', value: leave.rejected ?? 0, total: leave.total ?? 1, color: 'bg-red-500' },
+                  ].map(m => {
+                    const pct = m.total > 0 ? Math.round((m.value / m.total) * 100) : 0;
+                    return (
+                      <div key={m.label}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-gray-600 dark:text-gray-400">{m.label}</span>
+                          <span className="font-semibold">{m.value} ({pct}%)</span>
+                        </div>
+                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
+                          <div className={cn('h-2 rounded-full', m.color)} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </ChartCard>
           </div>
         </motion.div>
       )}
 
-      {/* ── SALES ANALYTICS ── */}
       {tab === 'sales' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KpiCard title="Total Revenue" value="₦4.2M" icon={DollarSign} color="green" change={12} />
-            <KpiCard title="Pipeline Value" value="₦8.7M" icon={TrendingUp} color="indigo" />
-            <KpiCard title="Win Rate" value={`${(crmData as any)?.conversionRate || 26}%`} icon={Target} color="amber" change={3} />
-            <KpiCard title="Avg Deal Size" value="₦480K" icon={DollarSign} color="blue" />
+            <KpiCard title="Total Revenue" value={stats?.totalRevenue ? `₦${Number(stats.totalRevenue).toLocaleString()}` : '—'} icon={DollarSign} color="green" />
+            <KpiCard title="Total Leads" value={crm?.totalLeads ?? '—'} icon={TrendingUp} color="indigo" />
+            <KpiCard title="Win Rate" value={crm?.conversionRate ? `${crm.conversionRate}%` : '—'} icon={Target} color="amber" />
+            <KpiCard title="Won Deals" value={crm?.convertedDeals ?? '—'} icon={DollarSign} color="blue" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <ChartCard title="Revenue Trend (12 Months)">
-              <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={REVENUE_FALLBACK}>
-                  <defs>
-                    <linearGradient id="grad2" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `₦${(v/1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(v: any) => `₦${Number(v).toLocaleString()}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Area type="monotone" dataKey="revenue" stroke="#10b981" fill="url(#grad2)" name="Revenue" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {revLoading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div> :
+               revenueData.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <AreaChart data={revenueData}>
+                    <defs>
+                      <linearGradient id="grad2" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `₦${(v/1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: any) => `₦${Number(v).toLocaleString()}`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Area type="monotone" dataKey="revenue" stroke="#10b981" fill="url(#grad2)" name="Revenue" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
 
             <ChartCard title="CRM Pipeline Funnel">
-              <div className="space-y-3 pt-3">
-                {[
-                  { stage: 'Leads', count: (crmData as any)?.totalLeads || 87, color: 'bg-blue-400' },
-                  { stage: 'Qualified', count: 54, color: 'bg-indigo-400' },
-                  { stage: 'Proposal', count: 32, color: 'bg-purple-400' },
-                  { stage: 'Negotiation', count: 18, color: 'bg-amber-400' },
-                  { stage: 'Won', count: (crmData as any)?.convertedDeals || 23, color: 'bg-emerald-500' },
-                ].map((s, _i, arr) => (
-                  <div key={s.stage} className="flex items-center gap-3">
-                    <span className="text-xs text-gray-500 w-20">{s.stage}</span>
-                    <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-7 overflow-hidden">
-                      <div className={cn('h-full rounded-full flex items-center px-3 transition-all', s.color)}
-                        style={{ width: `${Math.round((s.count / arr[0].count) * 100)}%` }}>
-                        <span className="text-white text-xs font-semibold">{s.count}</span>
+              {!crm ? <EmptyChart /> : (
+                <div className="space-y-3 pt-3">
+                  {[
+                    { stage: 'Leads', count: crm.totalLeads ?? 0, color: 'bg-blue-400' },
+                    { stage: 'Prospects', count: crm.totalProspects ?? 0, color: 'bg-indigo-400' },
+                    { stage: 'Won', count: crm.convertedDeals ?? crm.wonDeals ?? 0, color: 'bg-emerald-500' },
+                    { stage: 'Lost', count: crm.lostDeals ?? 0, color: 'bg-red-400' },
+                  ].map((s, _i, arr) => {
+                    const max = Math.max(...arr.map(a => a.count)) || 1;
+                    return (
+                      <div key={s.stage} className="flex items-center gap-3">
+                        <span className="text-xs text-gray-500 w-20">{s.stage}</span>
+                        <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-7 overflow-hidden">
+                          <div className={cn('h-full rounded-full flex items-center px-3 transition-all', s.color)}
+                            style={{ width: `${Math.round((s.count / max) * 100)}%` }}>
+                            <span className="text-white text-xs font-semibold">{s.count}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </ChartCard>
           </div>
         </motion.div>
       )}
 
-      {/* ── STUDENT ANALYTICS ── */}
       {tab === 'students' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KpiCard title="Total Enrolled" value={340} icon={GraduationCap} color="blue" change={18} />
-            <KpiCard title="Active Students" value={298} icon={Users} color="green" />
-            <KpiCard title="Completions" value={124} icon={CheckCircle} color="indigo" change={22} />
-            <KpiCard title="Avg Score" value="78%" icon={Target} color="amber" />
+            <KpiCard title="Total Enrolled" value={students?.total ?? stats?.totalStudents ?? '—'} icon={GraduationCap} color="blue" />
+            <KpiCard title="Active Students" value={students?.Active ?? students?.enrolled ?? '—'} icon={Users} color="green" />
+            <KpiCard title="Graduated" value={students?.Graduated ?? students?.completed ?? '—'} icon={CheckCircle} color="indigo" />
+            <KpiCard title="Pending" value={students?.Pending ?? students?.pending ?? '—'} icon={Target} color="amber" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <ChartCard title="Enrollment Trend">
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={ENROLLMENT_TREND_FALLBACK}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Bar dataKey="enrolled" fill="#6366f1" name="Enrolled" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <ChartCard title="Enrollment by Status">
+              {studLoading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div> :
+               studentStatusData.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={studentStatusData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Bar dataKey="value" fill="#6366f1" name="Students" radius={[4, 4, 0, 0]}>
+                      {studentStatusData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
 
-            <ChartCard title="Course Completion Rates">
-              <div className="space-y-4 pt-2">
-                {[
-                  { course: 'Fashion Design', completion: 85 },
-                  { course: 'Bead Making', completion: 72 },
-                  { course: 'Bag Crafting', completion: 68 },
-                  { course: 'Business Skills', completion: 91 },
-                  { course: 'Digital Marketing', completion: 60 },
-                ].map(c => (
-                  <div key={c.course}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600 dark:text-gray-400">{c.course}</span>
-                      <span className="font-semibold text-gray-900 dark:text-white">{c.completion}%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
-                      <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${c.completion}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <ChartCard title="Student Status Distribution">
+              {studentStatusData.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <PieChart>
+                    <Pie data={studentStatusData} cx="50%" cy="50%" outerRadius={90} dataKey="value" nameKey="name">
+                      {studentStatusData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
           </div>
         </motion.div>
       )}
 
-      {/* ── PROJECTS ANALYTICS ── */}
       {tab === 'projects' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KpiCard title="Total Projects" value={47} icon={Briefcase} color="indigo" />
-            <KpiCard title="Active" value={12} icon={TrendingUp} color="green" />
-            <KpiCard title="Completed" value={28} icon={CheckCircle} color="blue" />
-            <KpiCard title="Overdue" value={3} icon={Clock} color="red" />
+            <KpiCard title="Total Projects" value={(projects?.active ?? 0) + (projects?.completed ?? 0) + (projects?.onHold ?? 0) + (projects?.cancelled ?? 0) || '—'} icon={Briefcase} color="indigo" />
+            <KpiCard title="Active" value={projects?.active ?? '—'} icon={TrendingUp} color="green" />
+            <KpiCard title="Completed" value={projects?.completed ?? '—'} icon={CheckCircle} color="blue" />
+            <KpiCard title="On Hold" value={projects?.onHold ?? '—'} icon={Clock} color="amber" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <ChartCard title="Projects by Status">
-              <ResponsiveContainer width="100%" height={240}>
-                <PieChart>
-                  <Pie data={PROJECT_STATUS_FALLBACK} cx="50%" cy="50%" innerRadius={55} outerRadius={90} dataKey="value" nameKey="name">
-                    {PROJECT_STATUS_FALLBACK.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
+              {projLoading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div> :
+               projectStatusData.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <PieChart>
+                    <Pie data={projectStatusData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} dataKey="value" nameKey="name">
+                      {projectStatusData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
 
-            <ChartCard title="Task Completion by Month">
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={[
-                  { month: 'Oct', done: 42, open: 18 }, { month: 'Nov', done: 38, open: 22 },
-                  { month: 'Dec', done: 55, open: 14 }, { month: 'Jan', done: 48, open: 20 },
-                  { month: 'Feb', done: 61, open: 12 }, { month: 'Mar', done: 52, open: 16 },
-                ]}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="done" fill="#10b981" name="Completed" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="open" fill="#e5e7eb" name="Open" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <ChartCard title="Project Status Breakdown">
+              {projectStatusData.length === 0 ? <EmptyChart /> : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={projectStatusData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Bar dataKey="value" name="Projects" radius={[4, 4, 0, 0]}>
+                      {projectStatusData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </ChartCard>
           </div>
         </motion.div>

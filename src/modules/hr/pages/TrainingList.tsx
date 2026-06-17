@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { GraduationCap, Plus, Users, Calendar, X, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { GraduationCap, Plus, Users, Calendar, X, Check, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { hrService, type TrainingProgram } from '@services/hrService';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -27,12 +27,13 @@ export default function TrainingList() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(INIT_FORM);
   const [statusFilter, setStatusFilter] = useState('');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['training-programs', { statusFilter, page }],
-    queryFn: () => hrService.getTrainingPrograms({ page, limit: 10, status: statusFilter || undefined }),
+    queryKey: ['training-programs', { statusFilter, search, page }],
+    queryFn: () => hrService.getTrainingPrograms({ page, limit: 10, status: statusFilter || undefined, search: search || undefined }),
   });
 
   const { data: statsRaw } = useQuery({
@@ -108,7 +109,17 @@ export default function TrainingList() {
         </div>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search training programs..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 dark:text-white placeholder-gray-400"
+          />
+        </div>
         <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
           <option value="">All Statuses</option>
           {['Draft','Active','Completed','Cancelled'].map(s => <option key={s}>{s}</option>)}

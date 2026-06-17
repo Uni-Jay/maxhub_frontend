@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { notificationService } from '@services/notificationService';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -322,6 +324,14 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const { isDark, toggle: toggleTheme } = useThemeStore();
 
+  const { data: unreadData } = useQuery({
+    queryKey: ['notification-unread-count'],
+    queryFn: () => notificationService.getUnreadCount(),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const unreadCount = unreadData?.count ?? 0;
+
   const handleAnswerCall = (call: IncomingCall) => {
     navigate('/calls', { state: { incomingCall: call } });
   };
@@ -376,8 +386,15 @@ export function DashboardLayout() {
             <Menu className="h-5 w-5" />
           </button>
 
+          {/* Logo (mobile only — hidden on desktop since sidebar has it) */}
+          <img
+            src="/images/maxhublogo.jpeg"
+            alt="MaxHub"
+            className="lg:hidden h-8 w-auto object-contain flex-shrink-0"
+          />
+
           {/* Breadcrumb / Title */}
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="hidden sm:flex items-center gap-2 min-w-0">
             <Home className="h-4 w-4 text-gray-400 flex-shrink-0" />
             <ChevronRight className="h-3 w-3 text-gray-300 flex-shrink-0" />
             <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{pageTitle}</span>
@@ -403,7 +420,11 @@ export function DashboardLayout() {
             {/* Notifications */}
             <NavLink to="/notifications" className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition">
               <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 flex items-center justify-center bg-red-500 rounded-full text-[10px] font-bold text-white leading-none">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </NavLink>
 
             {/* Messages */}

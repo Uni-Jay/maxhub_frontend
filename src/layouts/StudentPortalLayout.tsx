@@ -51,9 +51,7 @@ export const StudentPortalLayout: React.FC = () => {
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow">
-            <span className="text-violet-700 font-black text-sm">B</span>
-          </div>
+          <img src="/images/beadmaxlogo.jpeg" alt="Beadmax" className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 shadow flex-shrink-0" />
           <div>
             <p className="text-white font-bold text-sm leading-tight">Beadmax</p>
             <p className="text-violet-300 text-xs">Vocational School</p>

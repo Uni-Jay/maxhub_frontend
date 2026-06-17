@@ -13,7 +13,7 @@ import { taskService } from '@/services/taskService';
 import { leaveService } from '@/services/leaveService';
 import { payrollService } from '@/services/payrollService';
 import { notificationService } from '@/services/notificationService';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const TASK_STATUS: Record<string, string> = {
   Todo: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
@@ -43,6 +43,12 @@ export function StaffDashboard() {
   const { user } = useAuthStore();
   const [checkedIn, setCheckedIn] = useState(false);
   const [checkInTime, setCheckInTime] = useState<string | null>(null);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const { data: tasksData, isLoading: tasksLoading } = useApiQuery(
     ['staff-tasks'],
@@ -69,7 +75,7 @@ export function StaffDashboard() {
     </div>
   );
 
-  const hour = new Date().getHours();
+  const hour = now.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   const tasks = tasksData?.data ?? [];
@@ -89,7 +95,7 @@ export function StaffDashboard() {
             {user?.firstName ?? 'Team member'}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5">
-            {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+            {now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
             {user?.businessUnit && (
               <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full ml-2">
                 <Building2 className="w-3 h-3" /> {user.businessUnit}
@@ -100,7 +106,7 @@ export function StaffDashboard() {
         <div className="text-right">
           <p className="text-xs text-gray-400">Today</p>
           <p className="text-sm font-bold text-gray-900 dark:text-white">
-            {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+            {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
       </motion.div>
