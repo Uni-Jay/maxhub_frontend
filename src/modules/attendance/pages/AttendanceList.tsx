@@ -147,7 +147,7 @@ export default function AttendanceList() {
                 {/* Date */}
                 <div className="w-28 text-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {new Date(a.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    {new Date(a.attendanceDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                   </span>
                 </div>
 

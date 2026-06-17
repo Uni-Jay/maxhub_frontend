@@ -226,7 +226,7 @@ export type AttendanceStatus = 'Present' | 'Absent' | 'Late' | 'HalfDay' | 'WFH'
 export interface AttendanceRecord extends BaseEntity {
   staffId: number;
   shiftId?: number;
-  date: string;
+  attendanceDate: string;
   checkInTime?: string;
   checkOutTime?: string;
   status: AttendanceStatus;
