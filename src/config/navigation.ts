@@ -25,6 +25,7 @@ import {
   UserCircle,
   Send,
   HelpCircle,
+  RefreshCw,
   LucideIcon,
 } from 'lucide-react';
 import { PermissionCode } from '@constants/permissions';
@@ -222,8 +223,14 @@ const masterMenu: MenuItem[] = [
       },
       {
         name: 'Job Postings',
-        path: '/crm/jobs',
+        path: '/hr/jobs',
         icon: Briefcase,
+        requiredPermission: PermissionCode.ORG_JOB_POSTING_READ,
+      },
+      {
+        name: 'Job Sync Dashboard',
+        path: '/hr/job-sync',
+        icon: RefreshCw,
         requiredPermission: PermissionCode.ORG_JOB_POSTING_READ,
       },
     ],

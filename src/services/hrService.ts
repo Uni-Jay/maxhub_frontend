@@ -1,5 +1,10 @@
 import { apiClient } from './apiClient';
 
+export type BusinessUnitCode = 'KS' | 'VM' | 'BM';
+export const BUSINESS_UNIT_LABELS: Record<BusinessUnitCode, string> = {
+  KS: 'Kurios SAT', VM: 'VisaMax Travels', BM: 'BeadMax',
+};
+
 export interface JobPosting {
   id: number; uuid: string; jobCode: string; title: string; description?: string;
   departmentId: number; designationId: number; noOfPositions: number;
@@ -10,6 +15,19 @@ export interface JobPosting {
   status: 'Draft' | 'Open' | 'Closed' | 'OnHold' | 'Filled';
   applicationCount?: number;
   department?: { name: string }; designation?: { name: string };
+  businessUnit?: BusinessUnitCode;
+  syncStatus?: 'Pending' | 'Synced' | 'Failed';
+  externalJobId?: string;
+  syncAttempts?: number;
+  lastSyncedAt?: string;
+  lastSyncError?: string;
+  createdAt: string;
+}
+
+export interface JobSyncLog {
+  id: number; uuid: string; jobPostingId: number; businessUnit: string;
+  action: 'Create' | 'Update' | 'Delete'; status: 'Success' | 'Failed';
+  httpStatusCode?: number; errorMessage?: string; attemptNumber: number;
   createdAt: string;
 }
 
@@ -63,7 +81,7 @@ export const hrService = {
 
   getJobPostingById: (id: number | string) => apiClient.get<JobPosting>(`/job-postings/${id}`),
 
-  createJobPosting: (payload: Partial<JobPosting> & { title: string; departmentId: number; designationId: number; noOfPositions: number; jobType: string; postedDate: string; closingDate: string }) =>
+  createJobPosting: (payload: Partial<JobPosting> & { title: string; departmentId: number; designationId: number; noOfPositions: number; jobType: string; postedDate: string; closingDate: string; businessUnit: BusinessUnitCode }) =>
     apiClient.post<JobPosting>('/job-postings', payload),
 
   updateJobPosting: (id: number | string, payload: Partial<JobPosting>) =>
@@ -125,4 +143,14 @@ export const hrService = {
 
   recordAttendance: (trainingId: number | string, payload: { staffId: number; attendanceDate: string; status: string; notes?: string }) =>
     apiClient.post<TrainingAttendance>(`/training/${trainingId}/attendance`, payload),
+
+  // Job Sync Dashboard
+  getJobSyncStats: () => apiClient.get<{ total: number; synced: number; pending: number; failed: number }>('/job-sync/stats'),
+
+  getJobSyncList: (params: { page?: number; limit?: number; syncStatus?: string; businessUnit?: string } = {}) =>
+    apiClient.getRaw('/job-sync', params) as Promise<{ data: JobPosting[]; pagination: any }>,
+
+  retryJobSync: (id: number | string) => apiClient.patch<JobPosting>(`/job-sync/${id}/retry`, {}),
+
+  getJobSyncLogs: (id: number | string) => apiClient.get<JobSyncLog[]>(`/job-sync/${id}/logs`),
 };

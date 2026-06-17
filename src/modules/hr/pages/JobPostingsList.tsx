@@ -5,7 +5,7 @@ import {
   Briefcase, Plus, Search, Clock, Users, MapPin,
   ChevronRight, DollarSign, ToggleRight, X, Check,
 } from 'lucide-react';
-import { hrService, type JobPosting } from '@services/hrService';
+import { hrService, type JobPosting, type BusinessUnitCode, BUSINESS_UNIT_LABELS } from '@services/hrService';
 import { departmentService, designationService } from '@services/departmentService';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -29,7 +29,7 @@ const INITIAL_FORM = {
   jobType: 'Full-time' as 'Contract' | 'Full-time' | 'Part-time' | 'Temporary' | 'Internship', salaryMin: '', salaryMax: '', location: '',
   requiredExperience: '', qualifications: '', skills: '', benefits: '',
   description: '', postedDate: new Date().toISOString().split('T')[0],
-  closingDate: '',
+  closingDate: '', businessUnit: '' as BusinessUnitCode | '',
 };
 
 export default function JobPostingsList() {
@@ -68,6 +68,7 @@ export default function JobPostingsList() {
       noOfPositions: Number(payload.noOfPositions),
       salaryMin: payload.salaryMin ? Number(payload.salaryMin) : undefined,
       salaryMax: payload.salaryMax ? Number(payload.salaryMax) : undefined,
+      businessUnit: payload.businessUnit as BusinessUnitCode,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['job-postings'] }); setShowModal(false); setForm(INITIAL_FORM); },
   });
@@ -177,6 +178,20 @@ export default function JobPostingsList() {
               </div>
 
               <div className="space-y-1.5 mb-4">
+                {job.businessUnit && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <Briefcase className="h-3.5 w-3.5 text-gray-400" /> {BUSINESS_UNIT_LABELS[job.businessUnit]}
+                    {job.syncStatus && (
+                      <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                        job.syncStatus === 'Synced' ? 'bg-green-100 text-green-700'
+                          : job.syncStatus === 'Failed' ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {job.syncStatus}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {job.department && (
                   <div className="flex items-center gap-1.5 text-xs text-gray-600">
                     <Users className="h-3.5 w-3.5 text-gray-400" /> {job.department.name}
@@ -265,6 +280,15 @@ export default function JobPostingsList() {
                   </select>
                 </div>
                 <div>
+                  <label className="text-xs font-medium text-gray-700">Business Unit *</label>
+                  <select value={form.businessUnit} onChange={e => setForm(f => ({ ...f, businessUnit: e.target.value as BusinessUnitCode | '' }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Select business unit</option>
+                    {(Object.entries(BUSINESS_UNIT_LABELS) as [BusinessUnitCode, string][]).map(([code, label]) => (
+                      <option key={code} value={code}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <label className="text-xs font-medium text-gray-700">Positions *</label>
                   <input type="number" min={1} value={form.noOfPositions} onChange={e => setForm(f => ({ ...f, noOfPositions: Number(e.target.value) }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
@@ -308,7 +332,7 @@ export default function JobPostingsList() {
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
               <button
                 onClick={() => createMutation.mutate(form)}
-                disabled={createMutation.isPending || !form.title || !form.departmentId || !form.designationId || !form.closingDate}
+                disabled={createMutation.isPending || !form.title || !form.departmentId || !form.designationId || !form.closingDate || !form.businessUnit}
                 className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"
               >
                 {createMutation.isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check className="h-4 w-4" />}
