@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
 import { StatCard } from '@components/charts/ChartComponents';
-import { ApprovalCenter } from '@components/dashboard/ApprovalCenter';
 import { apiClient } from '@services/apiClient';
 import { useAuthStore } from '@store/authStore';
 
@@ -227,11 +226,6 @@ export function HODDashboard() {
         <StatCard label="Attendance %" value={`${s.attendancePct}%`} icon={<Percent className="w-7 h-7" />} color="purple" />
         <StatCard label="Pending Approvals" value={s.pendingApprovals} icon={<Bell className="w-7 h-7" />} color="yellow" />
         <StatCard label="Reports Waiting Review" value={s.reportsWaitingReview ?? '—'} icon={<ListTodo className="w-7 h-7" />} color="red" />
-      </motion.div>
-
-      {/* ── Approval Center ── */}
-      <motion.div variants={item}>
-        <ApprovalCenter endpoint="/dashboards/hod/approvals-queue" />
       </motion.div>
 
       {/* ── My Team + Approval Requests ── */}

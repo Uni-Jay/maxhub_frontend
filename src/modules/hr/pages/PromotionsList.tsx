@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowUpCircle, CheckCircle2, XCircle, Trash2, TrendingUp } from 'lucide-react';
+import { ArrowUpCircle, CheckCircle2, XCircle, Trash2, TrendingUp, Plus, X } from 'lucide-react';
 import { hrService, type EmployeePromotion } from '@services/hrService';
+import { staffService } from '@services/staffService';
+import { designationService } from '@services/departmentService';
+import { useAuthStore } from '@store/authStore';
+import type { StaffMember } from '@/types';
 
 const errMsg = (error: unknown): string =>
   (error as any)?.response?.data?.message || (error as any)?.message || 'Something went wrong';
@@ -17,6 +21,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function PromotionsList() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('');
+  const [showRecommendModal, setShowRecommendModal] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['promotions', statusFilter],
@@ -59,12 +64,22 @@ export default function PromotionsList() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Promotions</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Proposed and processed staff promotions</p>
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          <option value="">All Statuses</option>
-          {['Proposed', 'Effective', 'Rejected', 'Completed'].map(s => <option key={s}>{s}</option>)}
-        </select>
+        <div className="flex items-center gap-3">
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">All Statuses</option>
+            {['Proposed', 'Effective', 'Rejected', 'Completed'].map(s => <option key={s}>{s}</option>)}
+          </select>
+          <button onClick={() => setShowRecommendModal(true)}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
+            <Plus className="h-4 w-4" /> Recommend
+          </button>
+        </div>
       </div>
+
+      {showRecommendModal && (
+        <RecommendPromotionModal onClose={() => setShowRecommendModal(false)} />
+      )}
 
       {promotions.length === 0 ? (
         <div className="text-center py-16 text-gray-400 dark:text-gray-600">
@@ -117,6 +132,96 @@ export default function PromotionsList() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function RecommendPromotionModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const { user } = useAuthStore();
+  const [staffId, setStaffId] = useState('');
+  const [toDesignationId, setToDesignationId] = useState('');
+  const [effectiveDate, setEffectiveDate] = useState('');
+  const [reason, setReason] = useState('');
+  const [salaryIncreasePercentage, setSalaryIncreasePercentage] = useState('');
+
+  // Backend already scopes this list to the caller's own department for HOD-style callers.
+  const { data: staffData } = useQuery({
+    queryKey: ['promotion-staff-options'],
+    queryFn: () => staffService.getAll({ limit: 100 }),
+  });
+  const { data: designations } = useQuery({
+    queryKey: ['promotion-designation-options'],
+    queryFn: () => designationService.getAll(),
+  });
+
+  // Exclude self — a recommender can never appear in their own candidate list.
+  const staffOptions: StaffMember[] = (staffData?.data ?? []).filter(s => s.email !== user?.email);
+
+  const { mutate: create, isPending, error } = useMutation({
+    mutationFn: () => hrService.createPromotion({
+      staffId: Number(staffId),
+      toDesignationId: Number(toDesignationId),
+      effectiveDate,
+      reason: reason || undefined,
+      salaryIncreasePercentage: salaryIncreasePercentage ? Number(salaryIncreasePercentage) : undefined,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['promotions'] }); onClose(); },
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Recommend for Promotion</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={e => { e.preventDefault(); if (staffId && toDesignationId && effectiveDate) create(); }} className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Staff Member *</label>
+            <select value={staffId} onChange={e => setStaffId(e.target.value)} required
+              className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">Select staff…</option>
+              {staffOptions.map(s => (
+                <option key={s.id} value={s.id}>{s.firstName} {s.lastName}{s.employeeId ? ` (${s.employeeId})` : ''}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">New Designation *</label>
+            <select value={toDesignationId} onChange={e => setToDesignationId(e.target.value)} required
+              className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">Select designation…</option>
+              {(designations ?? []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Effective Date *</label>
+            <input type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} required
+              className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Salary Increase (%)</label>
+            <input type="number" min="0" step="0.1" value={salaryIncreasePercentage} onChange={e => setSalaryIncreasePercentage(e.target.value)}
+              className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Reason</label>
+            <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
+              className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          {error && <p className="text-red-500 text-xs">{errMsg(error)}</p>}
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">Cancel</button>
+            <button type="submit" disabled={isPending || !staffId || !toDesignationId || !effectiveDate}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              {isPending ? 'Submitting…' : 'Submit Recommendation'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
