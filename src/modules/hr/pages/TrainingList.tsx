@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { GraduationCap, Plus, Users, Calendar, X, Check, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { GraduationCap, Plus, Users, Calendar, X, Check, ChevronDown, ChevronUp, Search, Pencil, Trash2 } from 'lucide-react';
 import { hrService, type TrainingProgram } from '@services/hrService';
+
+const errMsg = (error: unknown): string =>
+  (error as any)?.response?.data?.message || (error as any)?.message || 'Something went wrong';
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'bg-gray-100 text-gray-600',
@@ -25,11 +28,31 @@ const INIT_FORM = {
 export default function TrainingList() {
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(INIT_FORM);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<number | null>(null);
+
+  const closeModal = () => { setShowModal(false); setEditingId(null); setForm(INIT_FORM); };
+
+  const openEdit = (p: TrainingProgram) => {
+    setEditingId(p.id);
+    setForm({
+      trainingName: p.trainingName,
+      trainingCode: p.trainingCode || '',
+      description: p.description || '',
+      trainingType: p.trainingType as typeof INIT_FORM['trainingType'],
+      duration: p.duration,
+      durationUnit: p.durationUnit as typeof INIT_FORM['durationUnit'],
+      startDate: p.startDate?.slice(0, 10) || '',
+      endDate: p.endDate?.slice(0, 10) || '',
+      location: p.location || '',
+      budget: p.budget != null ? String(p.budget) : '',
+    });
+    setShowModal(true);
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['training-programs', { statusFilter, search, page }],
@@ -61,13 +84,35 @@ export default function TrainingList() {
         location: payload.location || undefined,
         budget: payload.budget ? Number(payload.budget) : undefined,
       } as any),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['training-programs'] }); setShowModal(false); setForm(INIT_FORM); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['training-programs'] }); closeModal(); },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: typeof form) =>
+      hrService.updateTraining(editingId!, {
+        trainingName: payload.trainingName, trainingType: payload.trainingType,
+        duration: Number(payload.duration), durationUnit: payload.durationUnit,
+        startDate: payload.startDate, endDate: payload.endDate,
+        description: payload.description || undefined, location: payload.location || undefined,
+        budget: payload.budget ? Number(payload.budget) : undefined,
+      } as any),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['training-programs'] }); closeModal(); },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => hrService.deleteTrainingProgram(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['training-programs'] }); qc.invalidateQueries({ queryKey: ['training-stats'] }); },
   });
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) => hrService.updateTrainingStatus(id, status),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['training-programs'] }); qc.invalidateQueries({ queryKey: ['training-stats'] }); },
   });
+
+  const handleDelete = (p: TrainingProgram) => {
+    if (!window.confirm(`Delete "${p.trainingName}"? This cannot be undone.`)) return;
+    deleteMutation.mutate(p.id);
+  };
 
   const programs: TrainingProgram[] = (data as any)?.data || [];
   const pagination = (data as any)?.pagination;
@@ -126,6 +171,12 @@ export default function TrainingList() {
         </select>
       </div>
 
+      {(statusMutation.isError || deleteMutation.isError) && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5">
+          {errMsg(statusMutation.error || deleteMutation.error)}
+        </div>
+      )}
+
       {programs.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <GraduationCap className="h-12 w-12 mx-auto mb-3 opacity-30" />
@@ -172,6 +223,12 @@ export default function TrainingList() {
                       → {STATUS_NEXT[p.status]}
                     </button>
                   )}
+                  <button onClick={e => { e.stopPropagation(); openEdit(p); }} className="p-1 text-gray-400 hover:text-indigo-600 transition" title="Edit">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); handleDelete(p); }} className="p-1 text-gray-400 hover:text-red-600 transition" title="Delete">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                   {expanded === p.id ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
                 </div>
               </div>
@@ -217,8 +274,8 @@ export default function TrainingList() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
-              <h2 className="text-lg font-semibold">New Training Program</h2>
-              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="h-4 w-4" /></button>
+              <h2 className="text-lg font-semibold">{editingId ? 'Edit Training Program' : 'New Training Program'}</h2>
+              <button onClick={closeModal} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="h-4 w-4" /></button>
             </div>
             <div className="p-6">
               <div className="grid grid-cols-2 gap-4">
@@ -245,16 +302,19 @@ export default function TrainingList() {
                 <div><label className="text-xs font-medium text-gray-700">Budget (₦)</label><input type="number" value={form.budget} onChange={e => setForm(f => ({ ...f, budget: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" /></div>
                 <div className="col-span-2"><label className="text-xs font-medium text-gray-700">Description</label><textarea rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" /></div>
               </div>
+              {(createMutation.isError || updateMutation.isError) && (
+                <p className="text-red-500 text-xs mt-3">{errMsg(createMutation.error || updateMutation.error)}</p>
+              )}
             </div>
             <div className="flex justify-end gap-3 p-6 border-t">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
+              <button onClick={closeModal} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
               <button
-                onClick={() => createMutation.mutate(form)}
-                disabled={createMutation.isPending || !form.trainingName || !form.startDate}
+                onClick={() => editingId ? updateMutation.mutate(form) : createMutation.mutate(form)}
+                disabled={createMutation.isPending || updateMutation.isPending || !form.trainingName || !form.startDate}
                 className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"
               >
-                {createMutation.isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check className="h-4 w-4" />}
-                Create
+                {(createMutation.isPending || updateMutation.isPending) ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check className="h-4 w-4" />}
+                {editingId ? 'Save Changes' : 'Create'}
               </button>
             </div>
           </motion.div>

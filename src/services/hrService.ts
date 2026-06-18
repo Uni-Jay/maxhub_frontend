@@ -138,6 +138,8 @@ export const hrService = {
   updateTrainingStatus: (id: number | string, status: string) =>
     apiClient.patch<TrainingProgram>(`/training/${id}/status`, { status }),
 
+  deleteTrainingProgram: (id: number | string) => apiClient.delete<null>(`/training/${id}`),
+
   getAttendance: (trainingId: number | string) =>
     apiClient.get<TrainingAttendance[]>(`/training/${trainingId}/attendance`),
 

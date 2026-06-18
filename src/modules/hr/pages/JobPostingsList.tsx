@@ -3,10 +3,13 @@ import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Briefcase, Plus, Search, Clock, Users, MapPin,
-  ChevronRight, DollarSign, ToggleRight, X, Check,
+  ChevronRight, DollarSign, ToggleRight, X, Check, Pencil, Trash2,
 } from 'lucide-react';
 import { hrService, type JobPosting, type BusinessUnitCode, BUSINESS_UNIT_LABELS } from '@services/hrService';
 import { departmentService } from '@services/departmentService';
+
+const errMsg = (error: unknown): string =>
+  (error as any)?.response?.data?.message || (error as any)?.message || 'Something went wrong';
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'bg-gray-100 text-gray-700',
@@ -38,7 +41,32 @@ export default function JobPostingsList() {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(INITIAL_FORM);
+
+  const closeModal = () => { setShowModal(false); setEditingId(null); setForm(INITIAL_FORM); };
+
+  const openEdit = (job: JobPosting) => {
+    setEditingId(job.id);
+    setForm({
+      title: job.title,
+      departmentId: String(job.departmentId),
+      noOfPositions: job.noOfPositions,
+      jobType: job.jobType,
+      salaryMin: job.salaryMin != null ? String(job.salaryMin) : '',
+      salaryMax: job.salaryMax != null ? String(job.salaryMax) : '',
+      location: job.location || '',
+      requiredExperience: job.requiredExperience || '',
+      qualifications: job.qualifications || '',
+      skills: job.skills || '',
+      benefits: job.benefits || '',
+      description: job.description || '',
+      postedDate: job.postedDate?.slice(0, 10) || '',
+      closingDate: job.closingDate?.slice(0, 10) || '',
+      businessUnit: job.businessUnit || '',
+    });
+    setShowModal(true);
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['job-postings', { search, statusFilter, page }],
@@ -63,13 +91,36 @@ export default function JobPostingsList() {
       salaryMax: payload.salaryMax ? Number(payload.salaryMax) : undefined,
       businessUnit: payload.businessUnit as BusinessUnitCode,
     }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['job-postings'] }); setShowModal(false); setForm(INITIAL_FORM); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['job-postings'] }); closeModal(); },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: typeof form) => hrService.updateJobPosting(editingId!, {
+      title: payload.title, description: payload.description,
+      noOfPositions: Number(payload.noOfPositions), jobType: payload.jobType,
+      salaryMin: payload.salaryMin ? Number(payload.salaryMin) : undefined,
+      salaryMax: payload.salaryMax ? Number(payload.salaryMax) : undefined,
+      location: payload.location, requiredExperience: payload.requiredExperience,
+      qualifications: payload.qualifications, skills: payload.skills, benefits: payload.benefits,
+      closingDate: payload.closingDate, businessUnit: payload.businessUnit as BusinessUnitCode,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['job-postings'] }); closeModal(); },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => hrService.deleteJobPosting(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['job-postings'] }); qc.invalidateQueries({ queryKey: ['job-postings-stats'] }); },
   });
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) => hrService.updateJobPostingStatus(id, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['job-postings'] }),
   });
+
+  const handleDelete = (job: JobPosting) => {
+    if (!window.confirm(`Delete "${job.title}"? This cannot be undone.`)) return;
+    deleteMutation.mutate(job.id);
+  };
 
   const postings: JobPosting[] = (data as any)?.data || [];
   const pagination = (data as any)?.pagination;
@@ -143,6 +194,12 @@ export default function JobPostingsList() {
           ))}
         </select>
       </div>
+
+      {(statusMutation.isError || deleteMutation.isError) && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5">
+          {errMsg(statusMutation.error || deleteMutation.error)}
+        </div>
+      )}
 
       {/* Postings Grid */}
       {postings.length === 0 ? (
@@ -227,6 +284,14 @@ export default function JobPostingsList() {
                       Close
                     </button>
                   )}
+                  <button onClick={() => openEdit(job)} className="p-1 text-gray-400 hover:text-indigo-600 transition" title="Edit">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  {job.status === 'Draft' && (
+                    <button onClick={() => handleDelete(job)} className="p-1 text-gray-400 hover:text-red-600 transition" title="Delete">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   <ChevronRight className="h-4 w-4 text-gray-400" />
                 </div>
               </div>
@@ -249,8 +314,8 @@ export default function JobPostingsList() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-lg font-semibold">New Job Posting</h2>
-              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="h-4 w-4" /></button>
+              <h2 className="text-lg font-semibold">{editingId ? 'Edit Job Posting' : 'New Job Posting'}</h2>
+              <button onClick={closeModal} className="p-1.5 rounded-lg hover:bg-gray-100"><X className="h-4 w-4" /></button>
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -260,10 +325,11 @@ export default function JobPostingsList() {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-700">Department *</label>
-                  <select value={form.departmentId} onChange={e => setForm(f => ({ ...f, departmentId: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <select disabled={!!editingId} value={form.departmentId} onChange={e => setForm(f => ({ ...f, departmentId: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50">
                     <option value="">Select department</option>
                     {(departments || []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
+                  {editingId && <p className="text-[11px] text-gray-400 mt-0.5">Department can't be changed after creation</p>}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-700">Business Unit *</label>
@@ -294,7 +360,7 @@ export default function JobPostingsList() {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-700">Posted Date *</label>
-                  <input type="date" value={form.postedDate} onChange={e => setForm(f => ({ ...f, postedDate: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <input disabled={!!editingId} type="date" value={form.postedDate} onChange={e => setForm(f => ({ ...f, postedDate: e.target.value }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-700">Closing Date *</label>
@@ -313,16 +379,19 @@ export default function JobPostingsList() {
                   <input value={form.skills} onChange={e => setForm(f => ({ ...f, skills: e.target.value }))} placeholder="e.g. React, Node.js, SQL" className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>
+              {(createMutation.isError || updateMutation.isError) && (
+                <p className="text-red-500 text-xs mt-3">{errMsg(createMutation.error || updateMutation.error)}</p>
+              )}
             </div>
             <div className="flex justify-end gap-3 p-6 border-t">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+              <button onClick={closeModal} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
               <button
-                onClick={() => createMutation.mutate(form)}
-                disabled={createMutation.isPending || !form.title || !form.departmentId || !form.closingDate || !form.businessUnit}
+                onClick={() => editingId ? updateMutation.mutate(form) : createMutation.mutate(form)}
+                disabled={createMutation.isPending || updateMutation.isPending || !form.title || !form.departmentId || !form.closingDate || !form.businessUnit}
                 className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"
               >
-                {createMutation.isPending ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check className="h-4 w-4" />}
-                Create Posting
+                {(createMutation.isPending || updateMutation.isPending) ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check className="h-4 w-4" />}
+                {editingId ? 'Save Changes' : 'Create Posting'}
               </button>
             </div>
           </motion.div>
