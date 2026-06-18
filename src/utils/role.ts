@@ -103,6 +103,16 @@ export function hasPermission(roles: Set<CanonicalRole>, permissions: Set<string
   return permissions.has(code.toLowerCase());
 }
 
+/**
+ * Job position (e.g. "Accountant", "Receptionist") — not an RBAC role, just a Staff field.
+ * Only reaches the client via the login response's stored user object today (not the JWT —
+ * same as businessUnit), so this reads the auth store directly rather than decoding the JWT.
+ */
+export function useCurrentPosition(): string | undefined {
+  const { user } = useAuthStore();
+  return user?.position ?? undefined;
+}
+
 /** Map a normalised-role set → its dedicated dashboard URL. */
 export function resolveRolePath(roles: Set<CanonicalRole>): string {
   if (roles.has('superadmin')) return '/dashboard/superadmin';
@@ -111,4 +121,14 @@ export function resolveRolePath(roles: Set<CanonicalRole>): string {
   if (roles.has('hod')) return '/dashboard/hod';
   if (roles.has('student')) return '/student/dashboard';
   return '/dashboard/staff';
+}
+
+/** Same as resolveRolePath, but a plain-staff user with a recognised position gets routed to their position-specific dashboard instead. */
+export function resolveDashboardPath(roles: Set<CanonicalRole>, position?: string | null): string {
+  const base = resolveRolePath(roles);
+  if (base !== '/dashboard/staff') return base;
+  const pos = position?.toLowerCase();
+  if (pos === 'accountant') return '/dashboard/accountant';
+  if (pos === 'receptionist') return '/dashboard/receptionist';
+  return base;
 }

@@ -1,22 +1,17 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import {
   DollarSign, FileText, TrendingUp, CreditCard,
   Receipt, BarChart3, ArrowUpRight, Wallet, PieChart,
 } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
+import { accountantDashboardService } from '@services/dashboardService';
 
 const container = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
 
 const fmt = (n: number) => `₦${n.toLocaleString('en-NG')}`;
-
-const STATS = [
-  { label: 'Monthly Payroll', value: fmt(4_850_000), icon: Wallet, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20', href: '/payroll' },
-  { label: 'Pending Invoices', value: '12', icon: FileText, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20', href: '/invoices' },
-  { label: 'Revenue (MTD)', value: fmt(12_400_000), icon: TrendingUp, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20', href: '/analytics' },
-  { label: 'Expenses (MTD)', value: fmt(3_200_000), icon: CreditCard, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20', href: '/analytics' },
-];
 
 const QUICK_LINKS = [
   { label: 'Payroll Dashboard', href: '/payroll', icon: Wallet, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' },
@@ -27,23 +22,33 @@ const QUICK_LINKS = [
   { label: 'Analytics', href: '/analytics', icon: TrendingUp, color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-900/20' },
 ];
 
-const RECENT_INVOICES = [
-  { id: 'INV-2026-041', client: 'Tunde Adewale', amount: 450000, status: 'Paid' },
-  { id: 'INV-2026-040', client: 'Ngozi Obi', amount: 280000, status: 'Pending' },
-  { id: 'INV-2026-039', client: 'Chukwuemeka Ltd', amount: 850000, status: 'Overdue' },
-  { id: 'INV-2026-038', client: 'Sola Fashola', amount: 120000, status: 'Paid' },
-];
-
 const STATUS_STYLE: Record<string, string> = {
   Paid: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  Pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  Issued: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  PartiallyPaid: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   Overdue: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  Draft: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+  Cancelled: 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500',
 };
 
 export default function AccountantDashboard() {
   const { user } = useAuthStore();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['accountant-dashboard-stats'],
+    queryFn: () => accountantDashboardService.getStats(),
+  });
+
+  const STATS = [
+    { label: 'Monthly Payroll', value: fmt(stats?.monthlyPayroll ?? 0), icon: Wallet, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20', href: '/payroll' },
+    { label: 'Pending Invoices', value: String(stats?.pendingInvoices ?? 0), icon: FileText, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20', href: '/invoices' },
+    { label: 'Revenue (MTD)', value: fmt(stats?.revenueMTD ?? 0), icon: TrendingUp, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20', href: '/analytics' },
+    { label: 'Dept. Budget Used', value: stats?.departmentBudget ? `${stats.departmentBudget.utilization}%` : '—', icon: CreditCard, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20', href: '/analytics' },
+  ];
+
+  const recentInvoices = stats?.recentInvoices ?? [];
 
   return (
     <motion.div initial="hidden" animate="visible" variants={container} className="space-y-6">
@@ -88,14 +93,15 @@ export default function AccountantDashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {RECENT_INVOICES.map(inv => (
+            {isLoading ? (
+              <p className="text-sm text-gray-400">Loading…</p>
+            ) : recentInvoices.length === 0 ? (
+              <p className="text-sm text-gray-400">No invoices yet.</p>
+            ) : recentInvoices.map(inv => (
               <div key={inv.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{inv.id}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{inv.client}</p>
-                </div>
+                <p className="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">{inv.id}</p>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{fmt(inv.amount)}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${STATUS_STYLE[inv.status]}`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${STATUS_STYLE[inv.status] ?? STATUS_STYLE.Draft}`}>
                   {inv.status}
                 </span>
               </div>
@@ -121,6 +127,37 @@ export default function AccountantDashboard() {
           </div>
         </motion.div>
       </div>
+
+      {/* My Department Budget — genuinely department-scoped, unlike the org-wide stats above */}
+      <motion.div variants={item} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
+        <h2 className="font-semibold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
+          <PieChart className="h-5 w-5 text-amber-500" /> My Department Budget
+        </h2>
+        {stats?.departmentBudget ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500 dark:text-gray-400">
+                {fmt(stats.departmentBudget.spent)} of {fmt(stats.departmentBudget.amount)} spent
+              </span>
+              <span className="font-semibold text-gray-900 dark:text-white">{stats.departmentBudget.utilization}%</span>
+            </div>
+            <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-2 rounded-full ${stats.departmentBudget.utilization > 90 ? 'bg-red-500' : stats.departmentBudget.utilization > 70 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                style={{ width: `${Math.min(100, stats.departmentBudget.utilization)}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-400">{fmt(stats.departmentBudget.remaining)} remaining</p>
+            {stats.pendingExpenseApprovals > 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 pt-1">
+                {stats.pendingExpenseApprovals} expense{stats.pendingExpenseApprovals !== 1 ? 's' : ''} awaiting approval in your department
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400">No active budget set for your department yet.</p>
+        )}
+      </motion.div>
     </motion.div>
   );
 }

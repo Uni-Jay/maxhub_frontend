@@ -21,8 +21,8 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
 
   const NAV = useMemo(() => {
     const role = getPrimaryRole(user, tokens?.accessToken);
-    return getNavForRole(role);
-  }, [user?.roles, tokens?.accessToken]);
+    return getNavForRole(role, user?.position);
+  }, [user?.roles, user?.position, tokens?.accessToken]);
 
   const [expanded, setExpanded] = useState<string | null>(() => {
     const match = NAV.find(n => n.children && location.pathname.startsWith(n.path));

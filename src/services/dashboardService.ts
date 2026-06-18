@@ -237,6 +237,41 @@ export const headOfAdminDashboardService = {
   },
 };
 
+export interface AccountantStats {
+  monthlyPayroll: number;
+  pendingInvoices: number;
+  revenueMTD: number;
+  departmentBudget: { amount: number; spent: number; remaining: number; utilization: number } | null;
+  pendingExpenseApprovals: number;
+  recentInvoices: { id: string; amount: number; status: string }[];
+}
+
+export interface ReceptionistStats {
+  clientsOnFile: number;
+  todaysAppointments: number;
+  unreadMessages: number;
+  queriesOpen: number;
+  schedule: { time: string; title: string; type: string }[];
+}
+
+/**
+ * Accountant Dashboard Service (position-specific, not an RBAC role)
+ */
+export const accountantDashboardService = {
+  getStats: async (): Promise<AccountantStats> => {
+    return apiClient.get('/dashboards/accountant/stats');
+  },
+};
+
+/**
+ * Receptionist Dashboard Service (position-specific, not an RBAC role)
+ */
+export const receptionistDashboardService = {
+  getStats: async (): Promise<ReceptionistStats> => {
+    return apiClient.get('/dashboards/receptionist/stats');
+  },
+};
+
 /**
  * Common Dashboard Utilities
  */
@@ -265,5 +300,7 @@ export const dashboardService = {
 export default {
   superAdminDashboardService,
   headOfAdminDashboardService,
+  accountantDashboardService,
+  receptionistDashboardService,
   dashboardService,
 };

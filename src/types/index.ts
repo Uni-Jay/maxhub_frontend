@@ -31,6 +31,8 @@ export interface AuthUser {
   // Business unit assignment (required for data isolation)
   businessUnit?: string;        // Primary business unit name
   additionalUnits?: string[];   // Extra units granted by CEO only
+  // Job position (e.g. "Accountant", "Receptionist") — not an RBAC role, just a Staff field
+  position?: string | null;
 }
 
 export interface AuthResponse {

@@ -22,6 +22,9 @@ const AdminDashboard       = React.lazy(() => import('@pages/dashboards/HeadOfAd
 const HRDashboard          = React.lazy(() => import('@pages/dashboards/HRDashboard'));
 const HODDashboard         = React.lazy(() => import('@pages/dashboards/HODDashboard'));
 const StaffDashboard       = React.lazy(() => import('@pages/dashboards/StaffDashboard'));
+// ─── Position-specific staff dashboards (not RBAC roles — gated on Staff.position) ───
+const AccountantDashboard   = React.lazy(() => import('@pages/dashboards/AccountantDashboard'));
+const ReceptionistDashboard = React.lazy(() => import('@pages/dashboards/ReceptionistDashboard'));
 
 // ─── Staff ───
 const StaffList = React.lazy(() => import('@modules/staff/pages/StaffList'));
@@ -235,11 +238,12 @@ function App() {
               <Route path="/dashboard/hr"         element={<HRDashboard />} />
               <Route path="/dashboard/hod"        element={<HODDashboard />} />
               <Route path="/dashboard/staff"      element={<StaffDashboard />} />
+              {/* Position-specific staff dashboards (Staff.position, not an RBAC role) */}
+              <Route path="/dashboard/accountant"   element={<AccountantDashboard />} />
+              <Route path="/dashboard/receptionist" element={<ReceptionistDashboard />} />
               {/* Legacy URL redirects for old bookmarks */}
               <Route path="/dashboard/ceo"               element={<Navigate to="/dashboard/superadmin" replace />} />
               <Route path="/dashboard/head-of-admin"     element={<Navigate to="/dashboard/admin" replace />} />
-              <Route path="/dashboard/accountant"        element={<Navigate to="/dashboard/staff" replace />} />
-              <Route path="/dashboard/receptionist"      element={<Navigate to="/dashboard/staff" replace />} />
               <Route path="/dashboard/instructor"        element={<Navigate to="/dashboard/staff" replace />} />
               <Route path="/dashboard/travel-consultant" element={<Navigate to="/dashboard/staff" replace />} />
 

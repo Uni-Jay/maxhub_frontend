@@ -3,7 +3,7 @@ import {
   FileText, MessageSquare, BarChart3, HelpCircle, UserCircle, Send,
   GraduationCap, Video, DollarSign, Package, UserCheck, ShoppingCart,
   FolderOpen, Receipt, BarChart2, Bot, ShoppingBag, Building2, Globe,
-  Award, ArrowUpCircle,
+  Award, ArrowUpCircle, Wallet, ClipboardList,
 } from 'lucide-react';
 import type { CanonicalRole } from '@utils/role';
 
@@ -225,8 +225,30 @@ export const SIDEBAR_CONFIG: Record<CanonicalRole, SidebarItem[]> = {
   student: [],
 };
 
-export function getNavForRole(role: CanonicalRole): SidebarItem[] {
-  return SIDEBAR_CONFIG[role] ?? STAFF_NAV;
+// ─── Position-specific extras (Staff.position, not an RBAC role) — spliced
+// into STAFF_NAV since the generic staff sidebar has no path to these pages today.
+const ACCOUNTANT_EXTRA_NAV: SidebarItem[] = [
+  { label: 'Finance', path: '/payroll', icon: Wallet, children: [
+    { label: 'Payroll Dashboard', path: '/payroll' },
+    { label: 'Pay Periods', path: '/payroll/periods' },
+    { label: 'Salary Structures', path: '/payroll/structures' },
+    { label: 'Invoices', path: '/invoices' },
+    { label: 'All Payslips', path: '/payroll/slips' },
+  ]},
+];
+
+const RECEPTIONIST_EXTRA_NAV: SidebarItem[] = [
+  { label: 'Clients', path: '/clients', icon: Users },
+  { label: 'Staff Queries', path: '/queries', icon: ClipboardList },
+];
+
+export function getNavForRole(role: CanonicalRole, position?: string | null): SidebarItem[] {
+  const base = SIDEBAR_CONFIG[role] ?? STAFF_NAV;
+  if (role !== 'staff' || !position) return base;
+  const pos = position.toLowerCase();
+  if (pos === 'accountant') return [...base, ...ACCOUNTANT_EXTRA_NAV];
+  if (pos === 'receptionist') return [...base, ...RECEPTIONIST_EXTRA_NAV];
+  return base;
 }
 
 /** Every item across every role's config, deduped by path — used only for page-title/breadcrumb lookups. */

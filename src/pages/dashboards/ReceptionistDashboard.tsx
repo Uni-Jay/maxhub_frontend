@@ -1,28 +1,15 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import {
   Phone, Users, Calendar, ClipboardList, MessageSquare,
-  ArrowUpRight, Clock, CheckCircle2, Bell,
+  ArrowUpRight, Clock,
 } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
+import { receptionistDashboardService } from '@services/dashboardService';
 
 const container = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
-
-const STATS = [
-  { label: 'Clients on File', value: '142', icon: Users, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20', href: '/clients' },
-  { label: "Today's Appointments", value: '8', icon: Calendar, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20', href: '/calendar' },
-  { label: 'Messages', value: '5', icon: MessageSquare, color: 'text-violet-600 bg-violet-50 dark:bg-violet-900/20', href: '/messages' },
-  { label: 'Queries Open', value: '3', icon: ClipboardList, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20', href: '/queries' },
-];
-
-const APPOINTMENTS = [
-  { time: '09:00', name: 'Ayo Okafor', purpose: 'Visa Consultation', status: 'confirmed' },
-  { time: '10:30', name: 'Mrs Abimbola', purpose: 'Document Pickup', status: 'confirmed' },
-  { time: '12:00', name: 'James Obi', purpose: 'Admission Enquiry', status: 'pending' },
-  { time: '14:00', name: 'Ngozi Eze', purpose: 'Flight Booking', status: 'confirmed' },
-  { time: '15:30', name: 'Emeka Nwachukwu', purpose: 'General Enquiry', status: 'pending' },
-];
 
 const QUICK_LINKS = [
   { label: 'Client List', href: '/clients', icon: Users, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' },
@@ -35,6 +22,20 @@ export default function ReceptionistDashboard() {
   const { user } = useAuthStore();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['receptionist-dashboard-stats'],
+    queryFn: () => receptionistDashboardService.getStats(),
+  });
+
+  const STATS = [
+    { label: 'Clients on File', value: String(stats?.clientsOnFile ?? 0), icon: Users, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20', href: '/clients' },
+    { label: "Today's Appointments", value: String(stats?.todaysAppointments ?? 0), icon: Calendar, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20', href: '/calendar' },
+    { label: 'Messages', value: String(stats?.unreadMessages ?? 0), icon: MessageSquare, color: 'text-violet-600 bg-violet-50 dark:bg-violet-900/20', href: '/messages' },
+    { label: 'Queries Open', value: String(stats?.queriesOpen ?? 0), icon: ClipboardList, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20', href: '/queries' },
+  ];
+
+  const schedule = stats?.schedule ?? [];
 
   return (
     <motion.div initial="hidden" animate="visible" variants={container} className="space-y-6">
@@ -79,17 +80,16 @@ export default function ReceptionistDashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {APPOINTMENTS.map((a, i) => (
+            {isLoading ? (
+              <p className="text-sm text-gray-400">Loading…</p>
+            ) : schedule.length === 0 ? (
+              <p className="text-sm text-gray-400">Nothing scheduled for today.</p>
+            ) : schedule.map((a, i) => (
               <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
                 <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400 w-12 flex-shrink-0">{a.time}</div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{a.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{a.purpose}</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  {a.status === 'confirmed'
-                    ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    : <Bell className="h-4 w-4 text-amber-500" />}
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{a.title}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{a.type}</p>
                 </div>
               </div>
             ))}
