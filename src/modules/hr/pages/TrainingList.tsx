@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { GraduationCap, Plus, Users, Calendar, X, Check, ChevronDown, ChevronUp, Search, Pencil, Trash2 } from 'lucide-react';
+import { GraduationCap, Plus, Users, Calendar, X, Check, ChevronDown, ChevronUp, Search, Pencil, Trash2, ShieldCheck } from 'lucide-react';
 import { hrService, type TrainingProgram } from '@services/hrService';
+import { useCurrentRoles, useCurrentPermissions, hasPermission } from '@utils/role';
 
 const errMsg = (error: unknown): string =>
   (error as any)?.response?.data?.message || (error as any)?.message || 'Something went wrong';
@@ -27,6 +28,11 @@ const INIT_FORM = {
 
 export default function TrainingList() {
   const qc = useQueryClient();
+  const { roles } = useCurrentRoles();
+  const permissions = useCurrentPermissions();
+  const canCreate = hasPermission(roles, permissions, 'train.program.create.all');
+  const canUpdate = hasPermission(roles, permissions, 'train.program.update.all');
+  const canDelete = hasPermission(roles, permissions, 'train.program.delete.all');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(INIT_FORM);
@@ -132,9 +138,11 @@ export default function TrainingList() {
           <h1 className="text-2xl font-bold text-gray-900">Training Programs</h1>
           <p className="text-sm text-gray-500">Manage employee training and development</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
-          <Plus className="h-4 w-4" /> New Training
-        </button>
+        {canCreate && (
+          <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
+            <Plus className="h-4 w-4" /> New Training
+          </button>
+        )}
       </div>
 
       {stats && (
@@ -214,8 +222,13 @@ export default function TrainingList() {
                 </div>
                 <div className="flex items-center gap-3">
                   {p.budget && <span className="text-xs font-medium text-gray-600">₦{Number(p.budget).toLocaleString()}</span>}
+                  {(p as any).approvedAt && (
+                    <span className="flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium bg-emerald-100 text-emerald-700" title={`Approved ${new Date((p as any).approvedAt).toLocaleDateString()}`}>
+                      <ShieldCheck className="h-3 w-3" /> Approved
+                    </span>
+                  )}
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[p.status]}`}>{p.status}</span>
-                  {STATUS_NEXT[p.status] && (
+                  {canUpdate && STATUS_NEXT[p.status] && (
                     <button
                       onClick={e => { e.stopPropagation(); statusMutation.mutate({ id: p.id, status: STATUS_NEXT[p.status]! }); }}
                       className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-lg hover:bg-indigo-200"
@@ -223,12 +236,16 @@ export default function TrainingList() {
                       → {STATUS_NEXT[p.status]}
                     </button>
                   )}
-                  <button onClick={e => { e.stopPropagation(); openEdit(p); }} className="p-1 text-gray-400 hover:text-indigo-600 transition" title="Edit">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(p); }} className="p-1 text-gray-400 hover:text-red-600 transition" title="Delete">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {canUpdate && (
+                    <button onClick={e => { e.stopPropagation(); openEdit(p); }} className="p-1 text-gray-400 hover:text-indigo-600 transition" title="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button onClick={e => { e.stopPropagation(); handleDelete(p); }} className="p-1 text-gray-400 hover:text-red-600 transition" title="Delete">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   {expanded === p.id ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
                 </div>
               </div>

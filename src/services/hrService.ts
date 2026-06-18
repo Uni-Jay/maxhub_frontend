@@ -59,6 +59,7 @@ export interface TrainingProgram {
   provider?: string; location?: string;
   status: 'Draft' | 'Active' | 'Completed' | 'Cancelled';
   startDate: string; endDate: string; budget?: number;
+  approvedAt?: string; approvedById?: number;
   createdAt: string;
 }
 

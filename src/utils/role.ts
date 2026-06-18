@@ -6,6 +6,7 @@ export type CanonicalRole = 'superadmin' | 'admin' | 'hr' | 'hod' | 'staff' | 's
 
 interface JwtPayload {
   roles: string[];
+  permissions?: string[];
   businessUnit?: string;
 }
 
@@ -76,6 +77,30 @@ export function useCurrentRoles(): { roles: Set<CanonicalRole>; businessUnit?: s
     }
     return { roles: normaliseRoles(user?.roles ?? []), businessUnit: user?.businessUnit };
   }, [tokens?.accessToken, user?.roles, user?.businessUnit]);
+}
+
+/** Reads the live JWT's granted permission codes (lowercased), falling back to the stored user object. */
+export function useCurrentPermissions(): Set<string> {
+  const { user, tokens } = useAuthStore();
+
+  return useMemo(() => {
+    const accessToken = tokens?.accessToken;
+    if (accessToken) {
+      try {
+        const decoded = jwtDecode<JwtPayload>(accessToken);
+        if (Array.isArray(decoded.permissions)) {
+          return new Set(decoded.permissions.map((p) => p.toLowerCase()));
+        }
+      } catch { /* fall through */ }
+    }
+    return new Set((user?.permissions ?? []).map((p) => p.toLowerCase()));
+  }, [tokens?.accessToken, user]);
+}
+
+/** Mirrors AuthMiddleware.requirePermission's bypass + check logic, for hiding/disabling UI rather than enforcing access. */
+export function hasPermission(roles: Set<CanonicalRole>, permissions: Set<string>, code: string): boolean {
+  if (roles.has('superadmin') || roles.has('admin')) return true;
+  return permissions.has(code.toLowerCase());
 }
 
 /** Map a normalised-role set → its dedicated dashboard URL. */

@@ -1,0 +1,2 @@
+import{z as e}from"./index-BEVlfAUM.js";const t={getAll:()=>e.get("/departments"),getById:t=>e.get(`/departments/${t}`),create:t=>e.post("/departments",t),update:(t,s)=>e.patch(`/departments/${t}`,s),remove:t=>e.delete(`/departments/${t}`)},s={getAll:t=>e.get("/designations",t?{departmentId:t}:void 0),getById:t=>e.get(`/designations/${t}`),create:t=>e.post("/designations",t),update:(t,s)=>e.patch(`/designations/${t}`,s),remove:t=>e.delete(`/designations/${t}`)};export{s as a,t as d};
+//# sourceMappingURL=departmentService-xQ3naAo7.js.map
