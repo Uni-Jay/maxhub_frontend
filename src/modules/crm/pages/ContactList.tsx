@@ -53,7 +53,7 @@ export default function ContactList() {
 
   const contacts: Contact[] = (data as any)?.data || [];
   const pagination = (data as any)?.pagination;
-  const stats = (statsRaw as any)?.data;
+  const stats = statsRaw;
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-64">

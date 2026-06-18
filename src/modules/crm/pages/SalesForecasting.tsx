@@ -29,11 +29,6 @@ export default function SalesForecasting() {
     queryFn: () => crmService.getOpportunities({ limit: 500 }),
   });
 
-  useQuery({
-    queryKey: ['crm-opp-stats'],
-    queryFn: () => crmService.getOpportunityStats(),
-  });
-
   const opportunities: Opportunity[] = (data as any)?.data || [];
 
   // Monthly forecast: group by expectedCloseDate month for open deals

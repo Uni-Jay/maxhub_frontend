@@ -26,11 +26,6 @@ export interface CrmStats {
   total: number; active: number; leads: number; prospects: number; converted: number;
 }
 
-export interface PipelineStats {
-  byStage: Record<string, { count: number; totalValue: number }>;
-  totalValue: number; totalForecast: number; wonCount: number; lostCount: number;
-}
-
 export interface ContactListParams {
   page?: number; limit?: number; search?: string; status?: string; source?: string;
 }
@@ -66,8 +61,6 @@ export const crmService = {
       data: Opportunity[];
       pagination: { total: number; page: number; limit: number; totalPages: number };
     }>,
-
-  getOpportunityStats: () => apiClient.get<PipelineStats>('/opportunities/stats'),
 
   getOpportunityById: (id: number | string) => apiClient.get<Opportunity>(`/opportunities/${id}`),
 

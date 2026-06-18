@@ -36,11 +36,6 @@ export default function OpportunityPipeline() {
     queryFn: () => crmService.getOpportunities({ limit: 200, search: search || undefined }),
   });
 
-  useQuery({
-    queryKey: ['crm-opp-stats'],
-    queryFn: () => crmService.getOpportunityStats(),
-  });
-
   const createMutation = useMutation({
     mutationFn: (payload: any) => crmService.createOpportunity({ ...payload, contactId: Number(payload.contactId), value: Number(payload.value), probability: Number(payload.probability) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['crm-opportunities'] }); setShowModal(false); setForm(INIT_FORM); },
