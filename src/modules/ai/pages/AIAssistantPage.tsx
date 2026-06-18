@@ -14,7 +14,7 @@ import { useAuthStore } from '@store/authStore';
 import { cn } from '@utils/cn';
 
 type RightTab = 'tasks' | 'report' | 'meeting' | 'email' | 'reminder';
-type GeminiModel = 'gemini-2.0-flash' | 'gemini-1.5-flash' | 'gemini-1.5-pro';
+type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.5-flash-lite' | 'gemini-3.5-flash';
 
 interface ChatMessage {
   id: string;
@@ -32,9 +32,10 @@ interface ConversationSummary {
 }
 
 const MODELS: { value: GeminiModel; label: string }[] = [
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
-  { value: 'gemini-1.5-pro',   label: 'Gemini 1.5 Pro' },
+  { value: 'gemini-2.5-flash',      label: 'Gemini 2.5 Flash' },
+  { value: 'gemini-2.5-pro',        label: 'Gemini 2.5 Pro' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { value: 'gemini-3.5-flash',      label: 'Gemini 3.5 Flash' },
 ];
 
 const QUICK_PROMPTS = [
@@ -83,7 +84,7 @@ export default function AIAssistantPage() {
   const user = useAuthStore(s => s.user);
   const userName = (user as any)?.firstName || 'there';
 
-  const [model, setModel] = useState<GeminiModel>('gemini-2.0-flash');
+  const [model, setModel] = useState<GeminiModel>('gemini-2.5-flash');
   const [available, setAvailable] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<RightTab>('tasks');
   const [copied, setCopied] = useState(false);
