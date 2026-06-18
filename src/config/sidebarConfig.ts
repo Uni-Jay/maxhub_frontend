@@ -46,6 +46,7 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
     { label: 'Periods', path: '/payroll/periods' },
     { label: 'Pay Slips', path: '/payroll/slips' },
     { label: 'Salary Structures', path: '/payroll/structures' },
+    { label: 'My Payslip', path: '/payroll/my-slips' },
   ]},
   { label: 'Projects', path: '/projects', icon: Briefcase, children: [
     { label: 'Projects', path: '/projects' },
@@ -77,10 +78,12 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
     { label: 'Invoices', path: '/invoices' },
     { label: 'Audit Logs', path: '/audit-logs' },
   ]},
+  { label: 'Customer Reports', path: '/customer-reports', icon: BarChart2 },
   { label: 'Analytics', path: '/analytics', icon: BarChart2 },
   { label: 'AI Assistant', path: '/ai-assistant', icon: Bot },
   { label: 'Calendar', path: '/calendar', icon: Calendar },
   { label: 'Files', path: '/files', icon: FolderOpen },
+  { label: 'Messages', path: '/messages', icon: MessageSquare },
   { label: 'Communication', path: '/communication', icon: Send, children: [
     { label: 'Send Message', path: '/communication/send' },
     { label: 'Templates', path: '/communication/templates' },
@@ -94,6 +97,25 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
     { label: 'Security', path: '/settings/security' },
     { label: 'Notification Prefs', path: '/settings/notifications' },
     { label: 'Login History', path: '/login-history' },
+  ]},
+];
+
+// ─── Common items available on every dashboard, regardless of role ───────────
+// (Messages/Calendar/Files/AI Assistant/Meetings/My Payslip/Customer Reports +
+// a personal Settings group with Profile/Security/Notification Prefs. Super
+// Admin keeps its own richer System Settings group instead of this one.)
+const COMMON_TAIL: SidebarItem[] = [
+  { label: 'Messages', path: '/messages', icon: MessageSquare },
+  { label: 'Meetings', path: '/calls', icon: Video },
+  { label: 'Calendar', path: '/calendar', icon: Calendar },
+  { label: 'Files', path: '/files', icon: FolderOpen },
+  { label: 'AI Assistant', path: '/ai-assistant', icon: Bot },
+  { label: 'My Payslip', path: '/payroll/my-slips', icon: DollarSign },
+  { label: 'Customer Reports', path: '/customer-reports', icon: BarChart2 },
+  { label: 'Settings', path: '/settings', icon: Settings, children: [
+    { label: 'Profile', path: '/settings/profile' },
+    { label: 'Security', path: '/settings/security' },
+    { label: 'Notification Prefs', path: '/settings/notifications' },
   ]},
 ];
 
@@ -123,7 +145,6 @@ const ADMIN_NAV: SidebarItem[] = [
     { label: 'History', path: '/communication/history' },
     { label: 'Broadcasts', path: '/communication/broadcasts' },
   ]},
-  { label: 'Meetings', path: '/calls', icon: Video },
   { label: 'Staff Queries', path: '/queries', icon: HelpCircle },
   { label: 'Inventory', path: '/inventory', icon: Package, children: [
     { label: 'Dashboard', path: '/inventory/dashboard' },
@@ -135,6 +156,7 @@ const ADMIN_NAV: SidebarItem[] = [
     { label: 'Contacts', path: '/crm/contacts' },
     { label: 'Pipeline', path: '/crm/pipeline' },
   ]},
+  ...COMMON_TAIL,
 ];
 
 // ─── HR ────────────────────────────────────────────────────────────────────
@@ -158,6 +180,7 @@ const HR_NAV: SidebarItem[] = [
     { label: 'History', path: '/communication/history' },
     { label: 'Broadcasts', path: '/communication/broadcasts' },
   ]},
+  ...COMMON_TAIL,
 ];
 
 // ─── HOD — department only ────────────────────────────────────────────────
@@ -173,12 +196,12 @@ const HOD_NAV: SidebarItem[] = [
     { label: 'Send Message', path: '/communication/send' },
     { label: 'History', path: '/communication/history' },
   ]},
+  ...COMMON_TAIL,
 ];
 
 // ─── STAFF — self-service only ────────────────────────────────────────────
 const STAFF_NAV: SidebarItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'My Profile', path: '/settings/profile', icon: UserCircle },
   { label: 'Attendance', path: '/attendance/check-in', icon: Calendar },
   { label: 'Leave', path: '/leave', icon: FileText, children: [
     { label: 'Apply Leave', path: '/leave/apply' },
@@ -187,11 +210,8 @@ const STAFF_NAV: SidebarItem[] = [
   { label: 'My Tasks', path: '/tasks', icon: CheckSquare },
   { label: 'My Projects', path: '/projects', icon: Briefcase },
   { label: 'My Reports', path: '/hr/weekly-report', icon: FileText },
-  { label: 'My Payslip', path: '/payroll/my-slips', icon: DollarSign },
   { label: 'Training', path: '/hr/training', icon: GraduationCap },
-  { label: 'Messages', path: '/messages', icon: MessageSquare },
-  { label: 'Meetings', path: '/calls', icon: Video },
-  { label: 'Calendar', path: '/calendar', icon: Calendar },
+  ...COMMON_TAIL,
 ];
 
 export const SIDEBAR_CONFIG: Record<CanonicalRole, SidebarItem[]> = {

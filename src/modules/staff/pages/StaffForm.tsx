@@ -17,7 +17,7 @@ import { useAuthStore } from '@store/authStore';
 import CloudinaryUpload from '@components/ui/CloudinaryUpload';
 import type { CloudinaryUploadResult } from '@services/cloudinaryService';
 
-const BUSINESS_UNITS = ['Kurios SAT', 'VisaMax Travels Ltd', 'Beadmax Design', 'Beadmax Vocational School'];
+const BUSINESS_UNITS = ['Kurios SAT Training School', 'Kurios SAT Tech', 'VisaMax Travels Ltd', 'Beadmax Design', 'Beadmax Vocational School'];
 const COMMON_POSITIONS = [
   'Creative Director', 'Travel Consultant', 'Project Coordinator', 'HR Officer',
   'Operations Manager', 'Instructor', 'Admin Officer', 'Software Engineer',

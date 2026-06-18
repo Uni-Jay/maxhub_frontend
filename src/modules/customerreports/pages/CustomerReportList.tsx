@@ -14,19 +14,21 @@ import { cn } from '@utils/cn';
 
 type ApprovalStatus = 'Draft' | 'Submitted' | 'Under Review' | 'Approved' | 'Rejected' | 'Revision Requested' | 'Archived';
 
-const BUSINESS_UNITS = ['VisaMax Travels Ltd', 'Kurios SAT', 'Beadmax Design', 'Beadmax Vocational School'] as const;
+const BUSINESS_UNITS = ['VisaMax Travels Ltd', 'Kurios SAT Training School', 'Kurios SAT Tech', 'Beadmax Design', 'Beadmax Vocational School'] as const;
 type BusinessUnit = typeof BUSINESS_UNITS[number];
 
 const UNIT_LOGO: Record<BusinessUnit, string> = {
   'VisaMax Travels Ltd': '/images/visamax_logo.jpeg',
-  'Kurios SAT': '/images/kuriossatlogo.jpeg',
+  'Kurios SAT Training School': '/images/kuriossatlogo.jpeg',
+  'Kurios SAT Tech': '/images/kuriossatlogo.jpeg',
   'Beadmax Design': '/images/beadmaxlogo.jpeg',
   'Beadmax Vocational School': '/images/beadmaxlogo.jpeg',
 };
 
 const UNIT_COLOR: Record<BusinessUnit, string> = {
   'VisaMax Travels Ltd': 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400',
-  'Kurios SAT': 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+  'Kurios SAT Training School': 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+  'Kurios SAT Tech': 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
   'Beadmax Design': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   'Beadmax Vocational School': 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
 };
