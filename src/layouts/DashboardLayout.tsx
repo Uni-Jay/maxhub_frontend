@@ -123,19 +123,19 @@ const ROLE_PATHS: Record<string, string[]> = {
     '/dashboard','/staff','/hr','/attendance','/leave','/payroll',
     '/projects','/tasks','/queries','/clients','/inventory',
     '/messages','/calls','/communication','/calendar','/files',
-    '/notifications','/invoices','/analytics','/reports','/settings',
+    '/notifications','/invoices','/analytics','/reports','/ai-assistant','/settings',
   ],
   hr: [
     '/dashboard','/staff','/hr','/attendance','/leave','/payroll',
-    '/projects','/messages','/calendar','/notifications','/settings',
+    '/projects','/messages','/calendar','/notifications','/ai-assistant','/settings',
   ],
   hod: [
     '/dashboard','/staff','/hr','/attendance','/leave',
-    '/projects','/tasks','/messages','/calendar','/notifications','/settings',
+    '/projects','/tasks','/messages','/calendar','/notifications','/ai-assistant','/settings',
   ],
   staff: [
     '/dashboard','/attendance','/leave','/tasks',
-    '/messages','/calendar','/notifications','/settings',
+    '/messages','/calendar','/notifications','/ai-assistant','/settings',
   ],
 };
 

@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Bot, Send, Sparkles, FileText, Calendar, Mail, Bell,
   ListTodo, Copy, Check, BrainCircuit, Zap, User,
   AlertCircle, ChevronDown, Loader2,
   CheckCircle, Clock, XCircle, Download,
+  Plus, History, RotateCcw, MessageSquare,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
 import { useAuthStore } from '@store/authStore';
@@ -18,6 +21,14 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   ts: Date;
+}
+
+interface ConversationSummary {
+  id: number;
+  uuid: string;
+  title: string;
+  updatedAt?: string;
+  createdAt?: string;
 }
 
 const MODELS: { value: OllamaModel; label: string }[] = [
@@ -60,17 +71,13 @@ const PRIORITY_COLORS: Record<string, string> = {
   low:    'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
 };
 
-// ── tiny markdown renderer ────────────────────────────────
-function SimpleMarkdown({ text }: { text: string }) {
-  const html = text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^## (.+)$/gm, '<h3 class="font-bold text-sm mt-2 mb-1">$1</h3>')
-    .replace(/^### (.+)$/gm, '<h4 class="font-semibold text-xs mt-1.5 mb-0.5">$1</h4>')
-    .replace(/^• (.+)$/gm, '<li class="ml-3">$1</li>')
-    .replace(/^- (.+)$/gm, '<li class="ml-3">$1</li>')
-    .replace(/\n/g, '<br/>');
-  return <span dangerouslySetInnerHTML={{ __html: html }} />;
+// ── markdown renderer (tables/code/links via remark-gfm) ───
+function ChatMarkdown({ text }: { text: string }) {
+  return (
+    <div className="prose-chat text-sm leading-relaxed [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:ml-3 [&_table]:text-xs [&_table]:border-collapse [&_th]:border [&_th]:border-gray-300 dark:[&_th]:border-gray-600 [&_td]:border [&_td]:border-gray-300 dark:[&_td]:border-gray-600 [&_th]:px-2 [&_td]:px-2 [&_code]:bg-gray-200 dark:[&_code]:bg-gray-900 [&_code]:rounded [&_code]:px-1">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+    </div>
+  );
 }
 
 export default function AIAssistantPage() {
@@ -79,17 +86,61 @@ export default function AIAssistantPage() {
 
   const [model, setModel] = useState<OllamaModel>('llama3');
   const [ollamaOk, setOllamaOk] = useState<boolean | null>(null);
+  const [provider, setProvider] = useState<'gemini' | 'ollama'>('ollama');
   const [activeTab, setActiveTab] = useState<RightTab>('tasks');
   const [copied, setCopied] = useState(false);
+
+  const greeting = useCallback((p: 'gemini' | 'ollama'): ChatMessage => ({
+    id: '0', role: 'assistant', ts: new Date(),
+    content: `Hello ${userName}! I'm MaxHub AI${p === 'gemini' ? ', powered by Gemini' : ', powered by Ollama'}. I can help you with ERP tasks, attendance, payroll, leave, employee search, reports, and more. What would you like to do?`,
+  }), [userName]);
 
   // ── Chat state ────────────────────────────────────────────
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: '0', role: 'assistant', ts: new Date(),
-    content: `Hello ${userName}! I'm MaxHub AI, powered by Ollama. I can help you with ERP tasks, reports, and more. What would you like to do?`,
+    content: `Hello ${userName}! I'm MaxHub AI. I can help you with ERP tasks, reports, and more. What would you like to do?`,
   }]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [conversationId, setConversationId] = useState<string | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // ── Conversation history ──────────────────────────────────
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const loadConversations = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const list = await apiClient.get<ConversationSummary[]>('/ai/conversations?feature=chat');
+      setConversations(Array.isArray(list) ? list : []);
+    } catch {
+      setConversations([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const startNewChat = useCallback(() => {
+    setMessages([greeting(provider)]);
+    setConversationId(undefined);
+    setShowHistory(false);
+  }, [greeting, provider]);
+
+  const openConversation = useCallback(async (uuid: string) => {
+    try {
+      const data = await apiClient.get<{ conversation: { uuid: string }; messages: { id: number; role: 'user' | 'assistant' | 'system'; content: string; createdAt: string }[] }>(`/ai/conversations/${uuid}`);
+      const loaded: ChatMessage[] = data.messages
+        .filter(m => m.role !== 'system')
+        .map(m => ({ id: String(m.id), role: m.role as 'user' | 'assistant', content: m.content, ts: new Date(m.createdAt) }));
+      setMessages(loaded.length ? loaded : [greeting(provider)]);
+      setConversationId(data.conversation.uuid);
+      setShowHistory(false);
+    } catch {
+      // leave current chat untouched if loading fails
+    }
+  }, [greeting, provider]);
 
   // ── Panel state ───────────────────────────────────────────
   const [taskForm, setTaskForm]       = useState({ notes: '' });
@@ -112,11 +163,17 @@ export default function AIAssistantPage() {
   const [reminderResult, setReminderResult] = useState<any>(null);
   const [reminderLoading, setReminderLoading] = useState(false);
 
-  // ── Ollama status check ───────────────────────────────────
+  // ── AI provider status check ──────────────────────────────
   useEffect(() => {
-    apiClient.get<{ ollamaAvailable: boolean }>('/ai/status')
-      .then(d => setOllamaOk(d.ollamaAvailable))
+    apiClient.get<{ provider: 'gemini' | 'ollama'; available: boolean; ollamaAvailable: boolean }>('/ai/status')
+      .then(d => {
+        const p = d.provider ?? 'ollama';
+        setProvider(p);
+        setOllamaOk(p === 'ollama' ? d.available : null);
+        setMessages(prev => (prev.length === 1 && prev[0].id === '0' ? [greeting(p)] : prev));
+      })
       .catch(() => setOllamaOk(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -124,19 +181,21 @@ export default function AIAssistantPage() {
   }, [messages, isTyping]);
 
   // ── Chat ──────────────────────────────────────────────────
-  const sendMessage = useCallback(async (text?: string) => {
+  const sendMessage = useCallback(async (text?: string, history?: ChatMessage[]) => {
     const content = (text ?? input).trim();
     if (!content) return;
+    const base = history ?? messages;
     const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content, ts: new Date() };
-    setMessages(m => [...m, userMsg]);
+    setMessages([...base, userMsg]);
     setInput('');
     setIsTyping(true);
     try {
       const apiMessages = [
-        ...messages.map(m => ({ role: m.role, content: m.content })),
+        ...base.map(m => ({ role: m.role, content: m.content })),
         { role: 'user' as const, content },
       ];
-      const resp = await apiClient.post<{ reply: string; model: string }>('/ai/chat', { messages: apiMessages, model });
+      const resp = await apiClient.post<{ reply: string; model: string; conversationId?: string }>('/ai/chat', { messages: apiMessages, model, conversationId });
+      if (resp.conversationId) setConversationId(resp.conversationId);
       setMessages(m => [...m, { id: (Date.now() + 1).toString(), role: 'assistant', content: resp.reply, ts: new Date() }]);
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? '';
@@ -149,7 +208,18 @@ export default function AIAssistantPage() {
     } finally {
       setIsTyping(false);
     }
-  }, [input, messages, model]);
+  }, [input, messages, model, conversationId]);
+
+  // ── Regenerate last response ──────────────────────────────
+  const regenerate = useCallback(() => {
+    if (isTyping) return;
+    const lastUserIdx = [...messages].reverse().findIndex(m => m.role === 'user');
+    if (lastUserIdx === -1) return;
+    const idx = messages.length - 1 - lastUserIdx;
+    const lastUserMsg = messages[idx];
+    const historyBefore = messages.slice(0, idx);
+    sendMessage(lastUserMsg.content, historyBefore);
+  }, [messages, isTyping, sendMessage]);
 
   // ── Panel API calls ───────────────────────────────────────
   const runTasks = async () => {
@@ -231,8 +301,8 @@ export default function AIAssistantPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden">
-      {/* Ollama status banner */}
-      {ollamaOk === false && (
+      {/* AI provider status banner */}
+      {provider === 'ollama' && ollamaOk === false && (
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-xs">
           <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
           <span>
@@ -241,10 +311,16 @@ export default function AIAssistantPage() {
           </span>
         </div>
       )}
-      {ollamaOk === true && (
+      {provider === 'ollama' && ollamaOk === true && (
         <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs">
           <CheckCircle className="h-3 w-3" />
           <span>Ollama is running — free, local AI</span>
+        </div>
+      )}
+      {provider === 'gemini' && (
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 text-xs">
+          <Sparkles className="h-3 w-3" />
+          <span>Powered by Gemini — can look up attendance, payroll, leave, employees, and dashboard insights for you</span>
         </div>
       )}
 
@@ -259,55 +335,129 @@ export default function AIAssistantPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">MaxHub AI</p>
-                <p className="text-[10px] text-gray-400">Powered by Ollama · Free & Local</p>
+                <p className="text-[10px] text-gray-400">{provider === 'gemini' ? 'Powered by Gemini' : 'Powered by Ollama · Free & Local'}</p>
               </div>
             </div>
-            {/* Model selector */}
-            <div className="relative">
-              <select
-                value={model}
-                onChange={e => setModel(e.target.value as OllamaModel)}
-                className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 pr-6 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={startNewChat}
+                title="New Chat"
+                className="flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
               >
-                {MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
-              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => { setShowHistory(s => !s); if (!showHistory) loadConversations(); }}
+                title="Conversation history"
+                className={cn(
+                  'flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg border transition',
+                  showHistory
+                    ? 'border-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                    : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700',
+                )}
+              >
+                <History className="h-3.5 w-3.5" />
+              </button>
+              {/* Model selector */}
+              {provider === 'ollama' && (
+                <div className="relative">
+                  <select
+                    value={model}
+                    onChange={e => setModel(e.target.value as OllamaModel)}
+                    className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 pr-6 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+                  >
+                    {MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Conversation history panel */}
+          <AnimatePresence>
+            {showHistory && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="border-b border-gray-100 dark:border-gray-700 overflow-hidden"
+              >
+                <div className="max-h-48 overflow-y-auto p-2 space-y-1">
+                  {historyLoading ? (
+                    <div className="flex items-center justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>
+                  ) : conversations.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-3">No past conversations yet</p>
+                  ) : (
+                    conversations.map(c => (
+                      <button
+                        key={c.uuid}
+                        onClick={() => openConversation(c.uuid)}
+                        className={cn(
+                          'w-full flex items-center gap-2 text-left text-xs px-2.5 py-2 rounded-lg transition',
+                          conversationId === c.uuid
+                            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
+                            : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300',
+                        )}
+                      >
+                        <MessageSquare className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{c.title || 'Untitled chat'}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             <AnimatePresence initial={false}>
-              {messages.map(msg => (
+              {messages.map((msg, idx) => {
+                const isLastAssistant = msg.role === 'assistant' && idx === messages.length - 1 && !isTyping;
+                return (
                 <motion.div
                   key={msg.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={cn('flex gap-2.5', msg.role === 'user' ? 'justify-end' : 'justify-start')}
+                  className={cn('flex flex-col', msg.role === 'user' ? 'items-end' : 'items-start')}
                 >
-                  {msg.role === 'assistant' && (
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Bot className="h-3.5 w-3.5 text-white" />
+                  <div className={cn('flex gap-2.5', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                    {msg.role === 'assistant' && (
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Bot className="h-3.5 w-3.5 text-white" />
+                      </div>
+                    )}
+                    <div className={cn(
+                      'max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed',
+                      msg.role === 'user'
+                        ? 'bg-indigo-600 text-white rounded-tr-sm'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm',
+                    )}>
+                      <ChatMarkdown text={msg.content} />
+                      <p className={cn('text-[10px] mt-1', msg.role === 'user' ? 'text-indigo-200' : 'text-gray-400')}>
+                        {msg.ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
-                  )}
-                  <div className={cn(
-                    'max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed',
-                    msg.role === 'user'
-                      ? 'bg-indigo-600 text-white rounded-tr-sm'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm',
-                  )}>
-                    <SimpleMarkdown text={msg.content} />
-                    <p className={cn('text-[10px] mt-1', msg.role === 'user' ? 'text-indigo-200' : 'text-gray-400')}>
-                      {msg.ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    {msg.role === 'user' && (
+                      <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <User className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                    )}
                   </div>
-                  {msg.role === 'user' && (
-                    <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <User className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                  {isLastAssistant && (
+                    <div className="flex items-center gap-2 mt-1 ml-9">
+                      <button onClick={() => copyText(msg.content)} title="Copy" className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
+                        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                      </button>
+                      <button onClick={regenerate} title="Regenerate response" className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
+                        <RotateCcw className="h-3 w-3" />
+                      </button>
                     </div>
                   )}
                 </motion.div>
-              ))}
+                );
+              })}
             </AnimatePresence>
             {isTyping && (
               <div className="flex gap-2.5 items-center">
