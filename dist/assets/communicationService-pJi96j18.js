@@ -1,0 +1,2 @@
+import{M as t}from"./index-Dy2FiW_b.js";const e={getTemplates:()=>t.get("/communication/templates"),createTemplate:e=>t.post("/communication/templates",e),updateTemplate:(e,m)=>t.patch(`/communication/templates/${e}`,m),deleteTemplate:e=>t.delete(`/communication/templates/${e}`),send:e=>t.post("/communication/send",e),getLogs:e=>t.getRaw("/communication/logs",e),getStats:()=>t.get("/communication/stats")};export{e as c};
+//# sourceMappingURL=communicationService-pJi96j18.js.map

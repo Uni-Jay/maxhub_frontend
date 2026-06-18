@@ -233,7 +233,7 @@ export const LoginPage: React.FC = () => {
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Two-factor verification</h2>
                 <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
-                  Enter the 6-digit code sent to your registered email or authenticator app.
+                  Enter the 6-digit code we sent to <span className="font-medium text-gray-700 dark:text-gray-300">{mfaState.user?.email}</span>.
                 </p>
               </div>
 
