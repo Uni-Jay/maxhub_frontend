@@ -1,2 +1,0 @@
-import{M as t}from"./index-Cvf23uLh.js";const e={getTemplates:()=>t.get("/communication/templates"),createTemplate:e=>t.post("/communication/templates",e),updateTemplate:(e,m)=>t.patch(`/communication/templates/${e}`,m),deleteTemplate:e=>t.delete(`/communication/templates/${e}`),send:e=>t.post("/communication/send",e),getLogs:e=>t.getRaw("/communication/logs",e),getStats:()=>t.get("/communication/stats")};export{e as c};
-//# sourceMappingURL=communicationService-D9JYvDe3.js.map

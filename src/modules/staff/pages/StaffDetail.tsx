@@ -2,6 +2,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { useApiMutation } from '@hooks/useApiMutation';
 import { staffService } from '@services/staffService';
+import { useCurrentRoles, useCurrentPermissions, hasPermission } from '@utils/role';
 import {
   ArrowLeft, Pencil, Trash2, Mail, Phone, Building2, Calendar,
   User, Heart, AlertTriangle, Briefcase, MapPin,
@@ -29,6 +30,10 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { roles } = useCurrentRoles();
+  const permissions = useCurrentPermissions();
+  const canEdit = hasPermission(roles, permissions, 'org.staff.update.all');
+  const canDelete = hasPermission(roles, permissions, 'org.staff.delete.all');
 
   const { data: staff, isLoading, isError } = useApiQuery(
     ['staff', id],
@@ -72,21 +77,25 @@ export default function StaffDetail() {
           Staff Directory
         </button>
         <div className="flex items-center gap-2">
-          <Link
-            to={`/staff/${id}/edit`}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Edit
-          </Link>
-          <button
-            onClick={() => { if (confirm('Delete this staff member?')) remove(undefined as never); }}
-            disabled={removing}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition disabled:opacity-50"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            {removing ? 'Deleting...' : 'Delete'}
-          </button>
+          {canEdit && (
+            <Link
+              to={`/staff/${id}/edit`}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Link>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => { if (confirm('Delete this staff member?')) remove(undefined as never); }}
+              disabled={removing}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {removing ? 'Deleting...' : 'Delete'}
+            </button>
+          )}
         </div>
       </div>
 

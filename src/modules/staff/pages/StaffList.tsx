@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { staffService } from '@services/staffService';
+import { useCurrentRoles, useCurrentPermissions, hasPermission } from '@utils/role';
 import type { StaffMember } from '@/types';
 import { Search, Plus, Users, ChevronLeft, ChevronRight, Mail, Phone, Building2 } from 'lucide-react';
 
@@ -28,6 +29,9 @@ function avatarColor(id: number | string) {
 export default function StaffList() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const { roles } = useCurrentRoles();
+  const permissions = useCurrentPermissions();
+  const canCreate = hasPermission(roles, permissions, 'org.staff.create.all');
 
   const { data, isLoading, isError } = useApiQuery(
     ['staff', { search, page }],
@@ -49,13 +53,15 @@ export default function StaffList() {
             {total > 0 ? `${total} team member${total !== 1 ? 's' : ''}` : 'Manage your team'}
           </p>
         </div>
-        <Link
-          to="/staff/create"
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-indigo-100 dark:shadow-none"
-        >
-          <Plus className="h-4 w-4" />
-          Add Staff
-        </Link>
+        {canCreate && (
+          <Link
+            to="/staff/create"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-indigo-100 dark:shadow-none"
+          >
+            <Plus className="h-4 w-4" />
+            Add Staff
+          </Link>
+        )}
       </div>
 
       {/* Search bar */}
