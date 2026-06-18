@@ -1,2 +1,0 @@
-import{z as e}from"./index-CIz7ZMwr.js";const t={getAll:(t={})=>e.getRaw("/projects",t),getById:t=>e.get(`/projects/${t}`),create:t=>e.post("/projects",t),update:(t,s)=>e.patch(`/projects/${t}`,s),remove:t=>e.delete(`/projects/${t}`),getTasks:t=>e.get(`/projects/${t}/tasks`),getMilestones:t=>e.get(`/projects/${t}/milestones`),getTeam:t=>e.get(`/projects/${t}/team`)};export{t as p};
-//# sourceMappingURL=projectService-rzlL2mUm.js.map

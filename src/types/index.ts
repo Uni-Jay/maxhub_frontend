@@ -163,7 +163,8 @@ export interface TaskItem extends BaseEntity {
   taskCode: string;
   title: string;
   description?: string;
-  projectId: number;
+  /** Absent for a personal task (self-created, not tied to a project). */
+  projectId?: number;
   assigneeId?: number;
   reporterId: number;
   milestoneId?: number;

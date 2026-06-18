@@ -5,7 +5,7 @@ import {
   Folder, FileText, Image, Archive, File, Video,
   Upload, Search, Grid3X3, List, Download,
   Share2, Trash2, Edit3, ChevronRight, Home,
-  X, Check, AlertCircle, FolderPlus,
+  X, Check, AlertCircle, Lock,
   Eye, Copy,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
@@ -16,6 +16,7 @@ interface FileFolder {
   id: string;
   name: string;
   parentId: string | null;
+  folderType?: 'Personal' | 'General';
   itemCount?: number;
   children?: FileFolder[];
 }
@@ -34,14 +35,6 @@ interface FileItem {
 type ViewMode = 'grid' | 'list';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const SIDEBAR_FOLDERS = [
-  { id: 'company', name: 'Company Documents', icon: Folder, color: 'text-blue-500' },
-  { id: 'hr', name: 'HR Files', icon: Folder, color: 'text-green-500' },
-  { id: 'projects', name: 'Projects', icon: Folder, color: 'text-purple-500' },
-  { id: 'certificates', name: 'Certificates', icon: Folder, color: 'text-amber-500' },
-  { id: 'shared', name: 'Shared', icon: Folder, color: 'text-rose-500' },
-];
 
 function getFileIcon(mimeType: string) {
   if (!mimeType) return { Icon: File, color: 'text-gray-400', bg: 'bg-gray-100' };
@@ -355,8 +348,6 @@ export default function FileManagerPage() {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [showUpload, setShowUpload] = useState(false);
-  const [showNewFolder, setShowNewFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
   const [shareFile, setShareFile] = useState<FileItem | null>(null);
   const [renameFile, setRenameFile] = useState<FileItem | null>(null);
   const [renameName, setRenameName] = useState('');
@@ -385,15 +376,6 @@ export default function FileManagerPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['files'] }),
   });
 
-  const createFolderMutation = useMutation({
-    mutationFn: (name: string) => apiClient.post('/files/folders', { name, parentId: selectedFolderId }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['file-folders'] });
-      setShowNewFolder(false);
-      setNewFolderName('');
-    },
-  });
-
   const handleRightClick = useCallback((e: React.MouseEvent, file: FileItem) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, file });
@@ -409,7 +391,8 @@ export default function FileManagerPage() {
     }
   };
 
-  const allFolders: FileFolder[] = folders.length > 0 ? folders : SIDEBAR_FOLDERS.map(f => ({ id: f.id, name: f.name, parentId: null }));
+  const myFolder = folders.find(f => f.folderType === 'Personal');
+  const uploadTargetFolderId = selectedFolderId ?? myFolder?.id ?? null;
 
   return (
     <div className="flex h-full min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -431,8 +414,8 @@ export default function FileManagerPage() {
 
         <div className="pt-2">
           <p className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Folders</p>
-          {allFolders.map(folder => {
-            const cfg = SIDEBAR_FOLDERS.find(f => f.id === folder.id);
+          {folders.map(folder => {
+            const isPersonal = folder.folderType === 'Personal';
             return (
               <button
                 key={folder.id}
@@ -443,8 +426,11 @@ export default function FileManagerPage() {
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
               >
-                <Folder className={`w-4 h-4 flex-shrink-0 ${cfg?.color || 'text-amber-500'}`} />
+                {isPersonal
+                  ? <Lock className="w-4 h-4 flex-shrink-0 text-amber-500" />
+                  : <Folder className="w-4 h-4 flex-shrink-0 text-blue-500" />}
                 <span className="truncate">{folder.name}</span>
+                {isPersonal && <span className="ml-auto text-[10px] text-gray-400">Private</span>}
               </button>
             );
           })}
@@ -496,13 +482,6 @@ export default function FileManagerPage() {
               </button>
             ))}
           </div>
-
-          <button
-            onClick={() => setShowNewFolder(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            <FolderPlus className="w-3.5 h-3.5" /> New Folder
-          </button>
 
           <button
             onClick={() => setShowUpload(true)}
@@ -623,47 +602,13 @@ export default function FileManagerPage() {
       <AnimatePresence>
         {showUpload && (
           <UploadZone
-            folderId={selectedFolderId}
+            folderId={uploadTargetFolderId}
             onClose={() => setShowUpload(false)}
             onUploaded={() => { qc.invalidateQueries({ queryKey: ['files'] }); setShowUpload(false); }}
           />
         )}
 
         {shareFile && <ShareModal file={shareFile} onClose={() => setShareFile(null)} />}
-
-        {showNewFolder && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4"
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <FolderPlus className="w-5 h-5 text-indigo-600" />
-                <h2 className="font-semibold text-gray-900 dark:text-white">New Folder</h2>
-              </div>
-              <input
-                autoFocus
-                value={newFolderName}
-                onChange={e => setNewFolderName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && newFolderName && createFolderMutation.mutate(newFolderName)}
-                placeholder="Folder name"
-                className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 dark:text-white"
-              />
-              <div className="flex justify-end gap-3">
-                <button onClick={() => setShowNewFolder(false)} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
-                <button
-                  onClick={() => newFolderName && createFolderMutation.mutate(newFolderName)}
-                  disabled={!newFolderName || createFolderMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {createFolderMutation.isPending && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                  Create
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
 
         {renameFile && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

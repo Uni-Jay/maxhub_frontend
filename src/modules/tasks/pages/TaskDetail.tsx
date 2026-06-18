@@ -5,6 +5,7 @@ import { useApiQuery } from '@hooks/useApiQuery';
 import { useApiMutation } from '@hooks/useApiMutation';
 import { useStatusBadge } from '@hooks/useStatusBadge';
 import { taskService } from '@services/taskService';
+import { Send } from 'lucide-react';
 
 const TASK_STATUSES = ['Todo', 'InProgress', 'InReview', 'Blocked', 'Done', 'Cancelled'];
 
@@ -110,6 +111,69 @@ export default function TaskDetail() {
           {task.createdAt && <Field label="Created" value={new Date(task.createdAt).toLocaleDateString()} />}
         </div>
       </div>
+
+      <TaskReports taskId={id!} />
+    </div>
+  );
+}
+
+function TaskReports({ taskId }: { taskId: string }) {
+  const [content, setContent] = useState('');
+
+  const { data: comments, isLoading } = useApiQuery(
+    ['tasks', taskId, 'comments'],
+    () => taskService.getComments(taskId),
+    { enabled: !!taskId }
+  );
+
+  const { mutate: submitReport, isPending: submitting } = useApiMutation(
+    (text: string) => taskService.addComment(taskId, text),
+    {
+      invalidateKeys: [['tasks', taskId, 'comments']],
+      onSuccess: () => setContent(''),
+    }
+  );
+
+  return (
+    <div className="p-4 border rounded-lg space-y-4">
+      <h3 className="font-semibold text-lg">Reports / Updates</h3>
+
+      <div className="space-y-3 max-h-80 overflow-y-auto">
+        {isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+        {!isLoading && (!comments || comments.length === 0) && (
+          <p className="text-sm text-gray-500">No reports submitted yet.</p>
+        )}
+        {comments?.map(c => (
+          <div key={c.id} className="bg-gray-50 rounded-lg p-3">
+            <div className="flex justify-between items-baseline">
+              <p className="text-sm font-medium">
+                {c.author ? `${c.author.firstName} ${c.author.lastName}` : 'Staff'}
+              </p>
+              <p className="text-xs text-gray-400">{new Date(c.createdAt).toLocaleString()}</p>
+            </div>
+            <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{c.content}</p>
+          </div>
+        ))}
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (content.trim()) submitReport(content.trim());
+        }}
+        className="flex gap-2"
+      >
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Submit a report or update on this task..."
+          rows={2}
+          className="flex-1 border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <Button type="submit" disabled={submitting || !content.trim()} className="self-end">
+          <Send className="w-4 h-4" />
+        </Button>
+      </form>
     </div>
   );
 }

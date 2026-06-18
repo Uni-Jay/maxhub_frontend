@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApiQuery } from '@hooks/useApiQuery';
+import { useApiMutation } from '@hooks/useApiMutation';
 import { projectService } from '@services/projectService';
+import { useCurrentRoles } from '@utils/role';
 import type { ProjectItem } from '@/types';
-import { Search, Plus, Briefcase, ChevronLeft, ChevronRight, Calendar, TrendingUp, CheckCircle2, Trash2 } from 'lucide-react';
+import { Search, Plus, Briefcase, ChevronLeft, ChevronRight, Calendar, TrendingUp, CheckCircle2, Trash2, X } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, { badge: string; bar: string }> = {
   Planning:  { badge: 'bg-blue-50 text-blue-700 border-blue-200',   bar: 'bg-blue-400' },
@@ -28,7 +30,10 @@ export default function ProjectList() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [showPersonalModal, setShowPersonalModal] = useState(false);
   const qc = useQueryClient();
+  const { roles } = useCurrentRoles();
+  const isStaffOnly = roles.has('staff') && !roles.has('superadmin') && !roles.has('admin') && !roles.has('hr') && !roles.has('hod');
 
   const { data, isLoading, isError } = useApiQuery(
     ['projects', { search, page, statusFilter }],
@@ -60,14 +65,28 @@ export default function ProjectList() {
             {total > 0 ? `${total} project${total !== 1 ? 's' : ''}` : 'Track your team projects'}
           </p>
         </div>
-        <Link
-          to="/projects/create"
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-indigo-100 dark:shadow-none"
-        >
-          <Plus className="h-4 w-4" />
-          New Project
-        </Link>
+        {isStaffOnly ? (
+          <button
+            onClick={() => setShowPersonalModal(true)}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-indigo-100 dark:shadow-none"
+          >
+            <Plus className="h-4 w-4" />
+            New Personal Project
+          </button>
+        ) : (
+          <Link
+            to="/projects/create"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-indigo-100 dark:shadow-none"
+          >
+            <Plus className="h-4 w-4" />
+            New Project
+          </Link>
+        )}
       </div>
+
+      {showPersonalModal && (
+        <PersonalProjectModal onClose={() => setShowPersonalModal(false)} />
+      )}
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
@@ -211,6 +230,74 @@ export default function ProjectList() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PersonalProjectModal({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [expectedEndDate, setExpectedEndDate] = useState('');
+  const qc = useQueryClient();
+
+  const { mutate: create, isPending } = useApiMutation(
+    () => projectService.create({ name, description: description || undefined, expectedEndDate: expectedEndDate || undefined }),
+    {
+      onSuccess: () => { qc.invalidateQueries({ queryKey: ['projects'] }); onClose(); },
+    }
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">New Personal Project</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          A project you self-manage — you're automatically set as the project manager.
+        </p>
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (name.trim()) create(undefined); }}
+          className="space-y-3"
+        >
+          <input
+            type="text"
+            placeholder="Project name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <textarea
+            placeholder="Description (optional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <input
+            type="date"
+            value={expectedEndDate}
+            onChange={(e) => setExpectedEndDate(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !name.trim()}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
+            >
+              {isPending ? 'Creating…' : 'Create Project'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

@@ -15,7 +15,8 @@ export interface CreateTaskPayload {
   title: string;
   description?: string;
   taskCode?: string;
-  projectId: number;
+  /** Omit for a personal task — the backend self-assigns it when the caller lacks task.create.all. */
+  projectId?: number;
   assigneeId?: number;
   priority?: string;
   status?: string;
@@ -29,6 +30,17 @@ export type UpdateTaskPayload = Partial<CreateTaskPayload> & {
   progress?: number;
   actualHours?: number;
 };
+
+export interface TaskComment {
+  id: number;
+  uuid: string;
+  taskId: number;
+  projectId?: number;
+  staffId: number;
+  content: string;
+  createdAt: string;
+  author?: { id: number; firstName: string; lastName: string };
+}
 
 export const taskService = {
   getAll: (params: TaskListParams = {}) =>
@@ -54,4 +66,10 @@ export const taskService = {
 
   remove: (id: number | string) =>
     apiClient.delete<null>(`/tasks/${id}`),
+
+  getComments: (id: number | string) =>
+    apiClient.get<TaskComment[]>(`/tasks/${id}/comments`),
+
+  addComment: (id: number | string, content: string) =>
+    apiClient.post<TaskComment>(`/tasks/${id}/comments`, { content }),
 };

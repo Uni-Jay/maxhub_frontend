@@ -58,7 +58,7 @@ export default function TaskForm() {
       title: existing.title,
       description: existing.description ?? '',
       taskCode: existing.taskCode ?? '',
-      projectId: existing.projectId,
+      projectId: existing.projectId ?? 0,
       assigneeId: existing.assigneeId ?? undefined,
       priority: existing.priority as FormData['priority'],
       status: existing.status as FormData['status'],

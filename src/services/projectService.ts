@@ -14,9 +14,10 @@ export interface CreateProjectPayload {
   name: string;
   description?: string;
   projectCode?: string;
-  departmentId: number;
-  projectManagerId: number;
-  startDate: string;
+  /** Omit for a personal project — the backend self-assigns these when the caller lacks project.create.all. */
+  departmentId?: number;
+  projectManagerId?: number;
+  startDate?: string;
   endDate?: string;
   expectedEndDate?: string;
   budget?: number;
@@ -25,6 +26,17 @@ export interface CreateProjectPayload {
 }
 
 export type UpdateProjectPayload = Partial<CreateProjectPayload> & { progress?: number };
+
+export interface ProjectComment {
+  id: number;
+  uuid: string;
+  taskId?: number;
+  projectId: number;
+  staffId: number;
+  content: string;
+  createdAt: string;
+  author?: { id: number; firstName: string; lastName: string };
+}
 
 export const projectService = {
   getAll: (params: ProjectListParams = {}) =>
@@ -53,4 +65,10 @@ export const projectService = {
 
   getTeam: (id: number | string) =>
     apiClient.get<unknown[]>(`/projects/${id}/team`),
+
+  getComments: (id: number | string) =>
+    apiClient.get<ProjectComment[]>(`/projects/${id}/comments`),
+
+  addComment: (id: number | string, content: string) =>
+    apiClient.post<ProjectComment>(`/projects/${id}/comments`, { content }),
 };
