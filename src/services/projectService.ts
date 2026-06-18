@@ -42,6 +42,9 @@ export const projectService = {
   update: (id: number | string, payload: UpdateProjectPayload) =>
     apiClient.patch<ProjectItem>(`/projects/${id}`, payload),
 
+  remove: (id: number | string) =>
+    apiClient.delete<null>(`/projects/${id}`),
+
   getTasks: (id: number | string) =>
     apiClient.get<unknown[]>(`/projects/${id}/tasks`),
 

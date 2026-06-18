@@ -62,6 +62,20 @@ export interface TrainingProgram {
   createdAt: string;
 }
 
+export interface EmployeePromotion {
+  id: number; uuid: string; staffId: number;
+  fromDesignationId: number; toDesignationId: number;
+  fromDepartmentId?: number; toDepartmentId?: number;
+  promotionDate: string; effectiveDate: string; reason?: string;
+  promotedBy: number; salaryIncreasePercentage?: number; newSalary?: number;
+  status: 'Proposed' | 'Approved' | 'Rejected' | 'Effective' | 'Completed';
+  approvalDate?: string; approvalRemarks?: string; rejectionReason?: string;
+  staff?: { firstName: string; lastName: string; employeeId?: string };
+  fromDesignation?: { id: number; name: string };
+  toDesignation?: { id: number; name: string };
+  createdAt: string;
+}
+
 export interface TrainingAttendance {
   id: number; trainingProgramId: number; staffId: number;
   attendanceDate: string; status: 'Present' | 'Absent' | 'Late'; notes?: string;
@@ -155,4 +169,19 @@ export const hrService = {
   retryJobSync: (id: number | string) => apiClient.patch<JobPosting>(`/job-sync/${id}/retry`, {}),
 
   getJobSyncLogs: (id: number | string) => apiClient.get<JobSyncLog[]>(`/job-sync/${id}/logs`),
+
+  // Promotions
+  getPromotions: (status?: string) =>
+    apiClient.get<EmployeePromotion[]>('/promotions', status ? { status } : undefined),
+
+  createPromotion: (payload: { staffId: number; toDesignationId: number; toDepartmentId?: number; effectiveDate: string; reason?: string; salaryIncreasePercentage?: number; newSalary?: number }) =>
+    apiClient.post<EmployeePromotion>('/promotions', payload),
+
+  approvePromotion: (id: number | string, approvalRemarks?: string) =>
+    apiClient.patch<EmployeePromotion>(`/promotions/${id}/approve`, { approvalRemarks }),
+
+  rejectPromotion: (id: number | string, rejectionReason?: string) =>
+    apiClient.patch<EmployeePromotion>(`/promotions/${id}/reject`, { rejectionReason }),
+
+  deletePromotion: (id: number | string) => apiClient.delete<null>(`/promotions/${id}`),
 };

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { projectService } from '@services/projectService';
 import type { ProjectItem } from '@/types';
-import { Search, Plus, Briefcase, ChevronLeft, ChevronRight, Calendar, TrendingUp } from 'lucide-react';
+import { Search, Plus, Briefcase, ChevronLeft, ChevronRight, Calendar, TrendingUp, CheckCircle2, Trash2 } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, { badge: string; bar: string }> = {
   Planning:  { badge: 'bg-blue-50 text-blue-700 border-blue-200',   bar: 'bg-blue-400' },
@@ -27,12 +28,23 @@ export default function ProjectList() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const qc = useQueryClient();
 
   const { data, isLoading, isError } = useApiQuery(
     ['projects', { search, page, statusFilter }],
     () => projectService.getAll({ search, page, limit: 20, status: statusFilter || undefined }),
     { placeholderData: (prev) => prev }
   );
+
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => projectService.update(id, { status: 'Active' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => projectService.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+  });
 
   const projects: ProjectItem[] = data?.data ?? [];
   const total = data?.pagination?.total ?? 0;
@@ -147,6 +159,28 @@ export default function ProjectList() {
                       className={`h-1.5 rounded-full transition-all ${statusStyle.bar}`}
                       style={{ width: `${progress}%` }}
                     />
+                  </div>
+
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50 dark:border-gray-700/50">
+                    {p.status === 'Planning' && (
+                      <button
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); approveMutation.mutate(p.id); }}
+                        disabled={approveMutation.isPending}
+                        className="flex items-center gap-1 text-xs bg-green-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                      </button>
+                    )}
+                    <button
+                      onClick={e => {
+                        e.preventDefault(); e.stopPropagation();
+                        if (window.confirm(`Delete project "${p.name}"?`)) deleteMutation.mutate(p.id);
+                      }}
+                      disabled={deleteMutation.isPending}
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-600 px-2.5 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </button>
                   </div>
                 </div>
               </Link>

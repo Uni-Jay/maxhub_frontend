@@ -31,6 +31,7 @@ const StaffDetail = React.lazy(() => import('@modules/staff/pages/StaffDetail'))
 // ─── Attendance ───
 const AttendanceList = React.lazy(() => import('@modules/attendance/pages/AttendanceList'));
 const CheckIn = React.lazy(() => import('@modules/attendance/pages/CheckIn'));
+const ManualAttendance = React.lazy(() => import('@modules/attendance/pages/ManualAttendance'));
 
 // ─── Projects ───
 const ProjectList = React.lazy(() => import('@modules/projects/pages/ProjectList'));
@@ -60,6 +61,7 @@ const ClientProfile = React.lazy(() => import('@modules/clients/pages/ClientProf
 // ─── Communication ───
 const SendMessage = React.lazy(() => import('@modules/communication/pages/SendMessage'));
 const MessageTemplates = React.lazy(() => import('@modules/communication/pages/MessageTemplates'));
+const BroadcastList = React.lazy(() => import('@modules/communication/pages/BroadcastList'));
 const CommunicationHistory = React.lazy(() => import('@modules/communication/pages/CommunicationHistory'));
 
 // ─── LMS ───
@@ -106,6 +108,7 @@ const WarehouseList = React.lazy(() => import('@modules/inventory/pages/Warehous
 const JobPostingsList = React.lazy(() => import('@modules/hr/pages/JobPostingsList'));
 const JobSyncDashboard = React.lazy(() => import('@modules/hr/pages/JobSyncDashboard'));
 const AppraisalList = React.lazy(() => import('@modules/hr/pages/AppraisalList'));
+const PromotionsList = React.lazy(() => import('@modules/hr/pages/PromotionsList'));
 const TrainingList = React.lazy(() => import('@modules/hr/pages/TrainingList'));
 
 // ─── Messaging ───
@@ -243,6 +246,7 @@ function App() {
               {/* Attendance */}
               <Route path="/attendance" element={<AttendanceList />} />
               <Route path="/attendance/check-in" element={<CheckIn />} />
+              <Route path="/attendance/manual-mark" element={<ManualAttendance />} />
 
               {/* Projects */}
               <Route path="/projects" element={<ProjectList />} />
@@ -277,6 +281,7 @@ function App() {
               <Route path="/communication/send" element={<SendMessage />} />
               <Route path="/communication/templates" element={<MessageTemplates />} />
               <Route path="/communication/history" element={<CommunicationHistory />} />
+              <Route path="/communication/broadcasts" element={<BroadcastList />} />
 
               {/* LMS */}
               <Route path="/lms/courses" element={<CourseList />} />
@@ -305,6 +310,7 @@ function App() {
               <Route path="/hr/jobs" element={<JobPostingsList />} />
               <Route path="/hr/job-sync" element={<JobSyncDashboard />} />
               <Route path="/hr/appraisals" element={<AppraisalList />} />
+              <Route path="/hr/promotions" element={<PromotionsList />} />
               <Route path="/hr/training" element={<TrainingList />} />
 
               {/* Messaging */}

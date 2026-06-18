@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { taskService } from '@services/taskService';
 import type { TaskItem } from '@/types';
-import { Search, Plus, CheckSquare, ChevronLeft, ChevronRight, User, Calendar } from 'lucide-react';
+import { Search, Plus, CheckSquare, ChevronLeft, ChevronRight, User, Calendar, CheckCircle2, Undo2 } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, string> = {
   Todo:       'bg-gray-50 text-gray-600 border-gray-200',
@@ -52,6 +53,12 @@ export default function TaskList() {
   const tasks: TaskItem[] = data?.data ?? [];
   const total = data?.pagination?.total ?? 0;
   const totalPages = data?.pagination?.totalPages ?? 1;
+
+  const qc = useQueryClient();
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) => taskService.updateStatus(id, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+  });
 
   return (
     <div className="space-y-6">
@@ -168,6 +175,25 @@ export default function TaskList() {
                           </div>
                         )}
                       </div>
+
+                      {t.status === 'InReview' && (
+                        <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-gray-50 dark:border-gray-700/50">
+                          <button
+                            onClick={e => { e.preventDefault(); e.stopPropagation(); statusMutation.mutate({ id: t.id, status: 'Done' }); }}
+                            disabled={statusMutation.isPending}
+                            className="flex items-center gap-1 text-xs bg-green-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Approve & Complete
+                          </button>
+                          <button
+                            onClick={e => { e.preventDefault(); e.stopPropagation(); statusMutation.mutate({ id: t.id, status: 'InProgress' }); }}
+                            disabled={statusMutation.isPending}
+                            className="flex items-center gap-1 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                          >
+                            <Undo2 className="h-3.5 w-3.5" /> Send Back
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

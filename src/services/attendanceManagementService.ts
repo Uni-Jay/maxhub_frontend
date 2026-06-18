@@ -81,6 +81,17 @@ export const attendanceManagementService = {
   },
 
   /**
+   * Manually mark (or correct) attendance for any staff member on any date
+   */
+  manualMark: async (data: {
+    staffId: number; attendanceDate: string; status: string;
+    checkInTime?: string; checkOutTime?: string; remarks?: string;
+  }): Promise<AttendanceRecord> => {
+    const response = await apiClient.post<AttendanceRecord>('/attendance/manual-mark', data);
+    return response;
+  },
+
+  /**
    * Generate attendance report
    */
   generateAttendanceReport: async (staffId: string, startDate: Date, endDate: Date): Promise<any> => {

@@ -94,6 +94,13 @@ export interface StudentAnalytics {
   droppedStudents: number;
 }
 
+export interface ApprovalsQueue {
+  weeklyReports: { count: number; items: any[] };
+  leaveRequests: { count: number; items: any[] };
+  promotions: { count: number; items: any[] };
+  jobPostings: { count: number; items: any[] };
+}
+
 /**
  * Super Admin Dashboard Services
  */
@@ -144,6 +151,11 @@ export const superAdminDashboardService = {
   // Get notifications
   getNotifications: async (limit: number = 5): Promise<NotificationData[]> => {
     return apiClient.get(`/dashboards/super-admin/notifications?limit=${limit}`);
+  },
+
+  // Get the consolidated pending-approvals queue (weekly reports, leave, promotions, job postings)
+  getApprovalsQueue: async (): Promise<ApprovalsQueue> => {
+    return apiClient.get('/dashboards/super-admin/approvals-queue');
   },
 
   // Get calendar events

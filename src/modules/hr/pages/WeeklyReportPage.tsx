@@ -34,6 +34,7 @@ interface PastReport {
   approvalStatus?: 'Pending' | 'Approved' | 'Rejected';
   approvedBy?: string;
   rejectionReason?: string;
+  comments?: string;
   forwardedToCEO?: boolean;
 }
 
@@ -146,6 +147,15 @@ export default function WeeklyReportPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['weekly-reports-past'] }),
     onError: (error) => window.alert(errMsg(error)),
   });
+
+  const commentMutation = useMutation({
+    mutationFn: ({ id, comments }: { id: string; comments: string }) =>
+      apiClient.patch(`/hr/weekly-reports/${id}/comment`, { comments }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['weekly-reports-past'] }),
+    onError: (error) => window.alert(errMsg(error)),
+  });
+
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
 
   const handleReject = (id: string) => {
     const reason = window.prompt('Reason for rejecting this report:');
@@ -426,6 +436,32 @@ export default function WeeklyReportPage() {
                     )}
                     {r.approvedBy && (
                       <p className="text-xs text-gray-400 dark:text-gray-500">Approved by {r.approvedBy}</p>
+                    )}
+                    {/* Super Admin feedback — independent of approve/reject, never edits the report itself */}
+                    {isSuperAdmin && (
+                      <div className="pt-2 space-y-1.5">
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Feedback / Comment</label>
+                        <textarea
+                          rows={2}
+                          value={commentDrafts[r.id] ?? r.comments ?? ''}
+                          onChange={e => setCommentDrafts(d => ({ ...d, [r.id]: e.target.value }))}
+                          placeholder="Leave feedback for this report..."
+                          className={inputClass}
+                        />
+                        <button
+                          onClick={() => commentMutation.mutate({ id: r.id, comments: commentDrafts[r.id] ?? r.comments ?? '' })}
+                          disabled={commentMutation.isPending}
+                          className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
+                        >
+                          Save Comment
+                        </button>
+                      </div>
+                    )}
+                    {!isSuperAdmin && r.comments && (
+                      <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 mt-2">
+                        <p className="text-xs font-medium text-indigo-700 dark:text-indigo-300 mb-1">Super Admin feedback</p>
+                        <p className="text-xs text-indigo-600 dark:text-indigo-400">{r.comments}</p>
+                      </div>
                     )}
                   </motion.div>
                 )}

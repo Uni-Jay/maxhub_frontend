@@ -35,12 +35,14 @@ const ALL_NAV: NavItem[] = [
   { label: 'HR', path: '/hr', icon: UserCheck, children: [
     { label: 'Job Postings', path: '/hr/jobs' },
     { label: 'Appraisals', path: '/hr/appraisals' },
+    { label: 'Promotions', path: '/hr/promotions' },
     { label: 'Training', path: '/hr/training' },
     { label: 'Weekly Report', path: '/hr/weekly-report' },
   ]},
   { label: 'Attendance', path: '/attendance', icon: Calendar, children: [
     { label: 'Records', path: '/attendance' },
     { label: 'Check In', path: '/attendance/check-in' },
+    { label: 'Mark Attendance', path: '/attendance/manual-mark' },
   ]},
   { label: 'Leave', path: '/leave', icon: FileText, children: [
     { label: 'Apply Leave', path: '/leave/apply' },
@@ -93,6 +95,7 @@ const ALL_NAV: NavItem[] = [
     { label: 'Send Message', path: '/communication/send' },
     { label: 'Templates', path: '/communication/templates' },
     { label: 'History', path: '/communication/history' },
+    { label: 'Broadcasts', path: '/communication/broadcasts' },
   ]},
   { label: 'AI Assistant', path: '/ai-assistant', icon: Bot },
   { label: 'Calendar', path: '/calendar', icon: Calendar },

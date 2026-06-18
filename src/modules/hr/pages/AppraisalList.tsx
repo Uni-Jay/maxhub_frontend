@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart2, Plus, ChevronDown, ChevronUp, X, Check,
-  Star, TrendingUp, Award, AlertTriangle, BookOpen, Target,
+  Star, TrendingUp, Award, AlertTriangle, BookOpen, Target, ArrowUpCircle,
 } from 'lucide-react';
 import { hrService, type Appraisal } from '@services/hrService';
 
@@ -171,6 +171,21 @@ export default function AppraisalList() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['appraisals'] }); qc.invalidateQueries({ queryKey: ['appraisal-stats'] }); },
   });
 
+  const [promoteFor, setPromoteFor] = useState<number | null>(null);
+  const [promoteForm, setPromoteForm] = useState({ toDesignationId: '', salaryIncreasePercentage: '', effectiveDate: today() });
+
+  const promoteMutation = useMutation({
+    mutationFn: (staffId: number) => hrService.createPromotion({
+      staffId,
+      toDesignationId: Number(promoteForm.toDesignationId),
+      effectiveDate: promoteForm.effectiveDate,
+      salaryIncreasePercentage: promoteForm.salaryIncreasePercentage ? Number(promoteForm.salaryIncreasePercentage) : undefined,
+      reason: 'Promotion recommended by appraisal',
+    }),
+    onSuccess: () => { setPromoteFor(null); setPromoteForm({ toDesignationId: '', salaryIncreasePercentage: '', effectiveDate: today() }); },
+    onError: (error) => window.alert(errMsg(error)),
+  });
+
   const appraisals: Appraisal[] = (data as any)?.data || [];
   const pagination = (data as any)?.pagination;
   const stats = (statsRaw as any)?.data;
@@ -315,6 +330,57 @@ export default function AppraisalList() {
                           </div>
                           <span className={`ml-auto text-lg font-black ${rec.color}`}>{Math.round(pct)}%</span>
                         </div>
+
+                        {/* Promote — only once the appraisal itself is Approved and the score supports it */}
+                        {a.status === 'Approved' && (rec.label === 'Promotion Recommended' || rec.label === 'Outstanding Employee') && (
+                          <div>
+                            {promoteFor !== a.id ? (
+                              <button
+                                onClick={e => { e.stopPropagation(); setPromoteFor(a.id); }}
+                                className="flex items-center gap-1.5 text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700"
+                              >
+                                <ArrowUpCircle className="h-3.5 w-3.5" /> Promote
+                              </button>
+                            ) : (
+                              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3 space-y-2" onClick={e => e.stopPropagation()}>
+                                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Promote {a.staff ? `${a.staff.user.firstName} ${a.staff.user.lastName}` : `Staff #${a.staffId}`}</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <label className="text-[10px] text-gray-500 dark:text-gray-400">New Designation ID *</label>
+                                    <input type="number" value={promoteForm.toDesignationId}
+                                      onChange={e => setPromoteForm(f => ({ ...f, toDesignationId: e.target.value }))}
+                                      className={INPUT_CLS} />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-gray-500 dark:text-gray-400">Salary Increase %</label>
+                                    <input type="number" value={promoteForm.salaryIncreasePercentage}
+                                      onChange={e => setPromoteForm(f => ({ ...f, salaryIncreasePercentage: e.target.value }))}
+                                      className={INPUT_CLS} />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-gray-500 dark:text-gray-400">Effective Date</label>
+                                    <input type="date" value={promoteForm.effectiveDate}
+                                      onChange={e => setPromoteForm(f => ({ ...f, effectiveDate: e.target.value }))}
+                                      className={INPUT_CLS} />
+                                  </div>
+                                </div>
+                                {promoteMutation.isError && <p className="text-xs text-red-600">{errMsg(promoteMutation.error)}</p>}
+                                <div className="flex gap-2">
+                                  <button
+                                    disabled={!promoteForm.toDesignationId || promoteMutation.isPending}
+                                    onClick={() => promoteMutation.mutate(a.staffId)}
+                                    className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                                    {promoteMutation.isPending ? 'Proposing...' : 'Propose Promotion'}
+                                  </button>
+                                  <button onClick={() => setPromoteFor(null)}
+                                    className="text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {/* Notes */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                           {a.performanceNotes && (
