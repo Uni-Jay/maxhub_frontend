@@ -5,6 +5,7 @@ import { useApiQuery } from '@hooks/useApiQuery';
 import { useApiMutation } from '@hooks/useApiMutation';
 import { useStatusBadge } from '@hooks/useStatusBadge';
 import { projectService } from '@services/projectService';
+import { useCurrentRoles, useCurrentPermissions, hasPermission } from '@utils/role';
 import type { TaskItem } from '@/types';
 import { Send } from 'lucide-react';
 
@@ -12,6 +13,10 @@ export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getBadgeClass, formatLabel } = useStatusBadge();
+  const { roles } = useCurrentRoles();
+  const permissions = useCurrentPermissions();
+  const canEdit = hasPermission(roles, permissions, 'project.update.all');
+  const canDelete = hasPermission(roles, permissions, 'project.delete.all');
 
   const { data: project, isLoading, isError } = useApiQuery(
     ['projects', id],
@@ -49,16 +54,20 @@ export default function ProjectDetail() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate('/projects')}>Back</Button>
-          <Link to={`/projects/${id}/edit`}>
-            <Button>Edit</Button>
-          </Link>
-          <Button
-            variant="destructive"
-            disabled={removing}
-            onClick={() => { if (confirm('Delete this project?')) remove(undefined); }}
-          >
-            {removing ? 'Deleting…' : 'Delete'}
-          </Button>
+          {canEdit && (
+            <Link to={`/projects/${id}/edit`}>
+              <Button>Edit</Button>
+            </Link>
+          )}
+          {canDelete && (
+            <Button
+              variant="destructive"
+              disabled={removing}
+              onClick={() => { if (confirm('Delete this project?')) remove(undefined); }}
+            >
+              {removing ? 'Deleting…' : 'Delete'}
+            </Button>
+          )}
         </div>
       </div>
 

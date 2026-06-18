@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { useApiMutation } from '@hooks/useApiMutation';
 import { projectService } from '@services/projectService';
-import { useCurrentRoles } from '@utils/role';
+import { useCurrentRoles, useCurrentPermissions, hasPermission } from '@utils/role';
 import type { ProjectItem } from '@/types';
 import { Search, Plus, Briefcase, ChevronLeft, ChevronRight, Calendar, TrendingUp, CheckCircle2, Trash2, X, User } from 'lucide-react';
 
@@ -33,7 +33,11 @@ export default function ProjectList() {
   const [showPersonalModal, setShowPersonalModal] = useState(false);
   const qc = useQueryClient();
   const { roles } = useCurrentRoles();
-  const isStaffOnly = roles.has('staff') && !roles.has('superadmin') && !roles.has('admin') && !roles.has('hr') && !roles.has('hod');
+  const permissions = useCurrentPermissions();
+  const canCreateAny = hasPermission(roles, permissions, 'project.create.all') || hasPermission(roles, permissions, 'project.create.own_department');
+  const canCreateOwn = hasPermission(roles, permissions, 'project.create.own');
+  const canUpdate = hasPermission(roles, permissions, 'project.update.all');
+  const canDelete = hasPermission(roles, permissions, 'project.delete.all');
 
   const { data, isLoading, isError } = useApiQuery(
     ['projects', { search, page, statusFilter }],
@@ -65,15 +69,7 @@ export default function ProjectList() {
             {total > 0 ? `${total} project${total !== 1 ? 's' : ''}` : 'Track your team projects'}
           </p>
         </div>
-        {isStaffOnly ? (
-          <button
-            onClick={() => setShowPersonalModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-indigo-100 dark:shadow-none"
-          >
-            <Plus className="h-4 w-4" />
-            New Personal Project
-          </button>
-        ) : (
+        {canCreateAny ? (
           <Link
             to="/projects/create"
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-indigo-100 dark:shadow-none"
@@ -81,7 +77,15 @@ export default function ProjectList() {
             <Plus className="h-4 w-4" />
             New Project
           </Link>
-        )}
+        ) : canCreateOwn ? (
+          <button
+            onClick={() => setShowPersonalModal(true)}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-sm shadow-indigo-100 dark:shadow-none"
+          >
+            <Plus className="h-4 w-4" />
+            New Personal Project
+          </button>
+        ) : null}
       </div>
 
       {showPersonalModal && (
@@ -187,27 +191,31 @@ export default function ProjectList() {
                     />
                   </div>
 
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50 dark:border-gray-700/50">
-                    {p.status === 'Planning' && (
-                      <button
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); approveMutation.mutate(p.id); }}
-                        disabled={approveMutation.isPending}
-                        className="flex items-center gap-1 text-xs bg-green-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Approve
-                      </button>
-                    )}
-                    <button
-                      onClick={e => {
-                        e.preventDefault(); e.stopPropagation();
-                        if (window.confirm(`Delete project "${p.name}"?`)) deleteMutation.mutate(p.id);
-                      }}
-                      disabled={deleteMutation.isPending}
-                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-600 px-2.5 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
-                    </button>
-                  </div>
+                  {(canUpdate || canDelete) && (
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50 dark:border-gray-700/50">
+                      {canUpdate && p.status === 'Planning' && (
+                        <button
+                          onClick={e => { e.preventDefault(); e.stopPropagation(); approveMutation.mutate(p.id); }}
+                          disabled={approveMutation.isPending}
+                          className="flex items-center gap-1 text-xs bg-green-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={e => {
+                            e.preventDefault(); e.stopPropagation();
+                            if (window.confirm(`Delete project "${p.name}"?`)) deleteMutation.mutate(p.id);
+                          }}
+                          disabled={deleteMutation.isPending}
+                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-600 px-2.5 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </Link>
             );
