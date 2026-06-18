@@ -14,7 +14,7 @@ import { useAuthStore } from '@store/authStore';
 import { cn } from '@utils/cn';
 
 type RightTab = 'tasks' | 'report' | 'meeting' | 'email' | 'reminder';
-type OllamaModel = 'llama3' | 'deepseek-r1' | 'mistral' | 'gemma';
+type GeminiModel = 'gemini-2.0-flash' | 'gemini-1.5-flash' | 'gemini-1.5-pro';
 
 interface ChatMessage {
   id: string;
@@ -31,11 +31,10 @@ interface ConversationSummary {
   createdAt?: string;
 }
 
-const MODELS: { value: OllamaModel; label: string }[] = [
-  { value: 'llama3',      label: 'Llama 3' },
-  { value: 'deepseek-r1', label: 'DeepSeek-R1' },
-  { value: 'mistral',     label: 'Mistral' },
-  { value: 'gemma',       label: 'Gemma' },
+const MODELS: { value: GeminiModel; label: string }[] = [
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+  { value: 'gemini-1.5-pro',   label: 'Gemini 1.5 Pro' },
 ];
 
 const QUICK_PROMPTS = [
@@ -84,15 +83,14 @@ export default function AIAssistantPage() {
   const user = useAuthStore(s => s.user);
   const userName = (user as any)?.firstName || 'there';
 
-  const [model, setModel] = useState<OllamaModel>('llama3');
-  const [ollamaOk, setOllamaOk] = useState<boolean | null>(null);
-  const [provider, setProvider] = useState<'gemini' | 'ollama'>('ollama');
+  const [model, setModel] = useState<GeminiModel>('gemini-2.0-flash');
+  const [available, setAvailable] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<RightTab>('tasks');
   const [copied, setCopied] = useState(false);
 
-  const greeting = useCallback((p: 'gemini' | 'ollama'): ChatMessage => ({
+  const greeting = useCallback((): ChatMessage => ({
     id: '0', role: 'assistant', ts: new Date(),
-    content: `Hello ${userName}! I'm MaxHub AI${p === 'gemini' ? ', powered by Gemini' : ', powered by Ollama'}. I can help you with ERP tasks, attendance, payroll, leave, employee search, reports, and more. What would you like to do?`,
+    content: `Hello ${userName}! I'm MaxHub AI, powered by Gemini. I can help you with ERP tasks, attendance, payroll, leave, employee search, reports, and more. What would you like to do?`,
   }), [userName]);
 
   // ── Chat state ────────────────────────────────────────────
@@ -123,10 +121,10 @@ export default function AIAssistantPage() {
   }, []);
 
   const startNewChat = useCallback(() => {
-    setMessages([greeting(provider)]);
+    setMessages([greeting()]);
     setConversationId(undefined);
     setShowHistory(false);
-  }, [greeting, provider]);
+  }, [greeting]);
 
   const openConversation = useCallback(async (uuid: string) => {
     try {
@@ -134,13 +132,13 @@ export default function AIAssistantPage() {
       const loaded: ChatMessage[] = data.messages
         .filter(m => m.role !== 'system')
         .map(m => ({ id: String(m.id), role: m.role as 'user' | 'assistant', content: m.content, ts: new Date(m.createdAt) }));
-      setMessages(loaded.length ? loaded : [greeting(provider)]);
+      setMessages(loaded.length ? loaded : [greeting()]);
       setConversationId(data.conversation.uuid);
       setShowHistory(false);
     } catch {
       // leave current chat untouched if loading fails
     }
-  }, [greeting, provider]);
+  }, [greeting]);
 
   // ── Panel state ───────────────────────────────────────────
   const [taskForm, setTaskForm]       = useState({ notes: '' });
@@ -165,14 +163,12 @@ export default function AIAssistantPage() {
 
   // ── AI provider status check ──────────────────────────────
   useEffect(() => {
-    apiClient.get<{ provider: 'gemini' | 'ollama'; available: boolean; ollamaAvailable: boolean }>('/ai/status')
+    apiClient.get<{ available: boolean }>('/ai/status')
       .then(d => {
-        const p = d.provider ?? 'ollama';
-        setProvider(p);
-        setOllamaOk(p === 'ollama' ? d.available : null);
-        setMessages(prev => (prev.length === 1 && prev[0].id === '0' ? [greeting(p)] : prev));
+        setAvailable(d.available);
+        setMessages(prev => (prev.length === 1 && prev[0].id === '0' ? [greeting()] : prev));
       })
-      .catch(() => setOllamaOk(false));
+      .catch(() => setAvailable(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -199,10 +195,8 @@ export default function AIAssistantPage() {
       setMessages(m => [...m, { id: (Date.now() + 1).toString(), role: 'assistant', content: resp.reply, ts: new Date() }]);
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? '';
-      const errorText = msg.includes('not running')
-        ? '⚠️ Ollama is not running. Start it with: `ollama serve`, then pull a model with: `ollama pull llama3`'
-        : msg.includes('not found')
-        ? `⚠️ Model "${model}" not found. Run: \`ollama pull ${model}\``
+      const errorText = msg.includes('429') || msg.toLowerCase().includes('quota')
+        ? '⚠️ Gemini rate limit reached. Please wait a moment and try again.'
         : 'Failed to reach the AI service. Please try again.';
       setMessages(m => [...m, { id: (Date.now() + 1).toString(), role: 'assistant', content: errorText, ts: new Date() }]);
     } finally {
@@ -247,7 +241,7 @@ export default function AIAssistantPage() {
         data: { period: reportForm.period, notes: reportForm.notes, generatedAt: new Date().toISOString() },
       });
       setReportResult(r.report);
-    } catch { setReportResult('Failed to generate report. Ensure Ollama is running.'); }
+    } catch { setReportResult('Failed to generate report. Please try again.'); }
     finally { setReportLoading(false); }
   };
 
@@ -302,22 +296,13 @@ export default function AIAssistantPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden">
       {/* AI provider status banner */}
-      {provider === 'ollama' && ollamaOk === false && (
+      {available === false && (
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-xs">
           <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-          <span>
-            Ollama is not running. Start it: <code className="font-mono bg-amber-100 dark:bg-amber-900/40 px-1 rounded">ollama serve</code>
-            &nbsp;then pull a model: <code className="font-mono bg-amber-100 dark:bg-amber-900/40 px-1 rounded">ollama pull llama3</code>
-          </span>
+          <span>AI Assistant is currently unavailable. Please try again shortly.</span>
         </div>
       )}
-      {provider === 'ollama' && ollamaOk === true && (
-        <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs">
-          <CheckCircle className="h-3 w-3" />
-          <span>Ollama is running — free, local AI</span>
-        </div>
-      )}
-      {provider === 'gemini' && (
+      {available !== false && (
         <div className="flex items-center gap-2 px-4 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 text-xs">
           <Sparkles className="h-3 w-3" />
           <span>Powered by Gemini — can look up attendance, payroll, leave, employees, and dashboard insights for you</span>
@@ -335,7 +320,7 @@ export default function AIAssistantPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">MaxHub AI</p>
-                <p className="text-[10px] text-gray-400">{provider === 'gemini' ? 'Powered by Gemini' : 'Powered by Ollama · Free & Local'}</p>
+                <p className="text-[10px] text-gray-400">Powered by Gemini</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -359,18 +344,16 @@ export default function AIAssistantPage() {
                 <History className="h-3.5 w-3.5" />
               </button>
               {/* Model selector */}
-              {provider === 'ollama' && (
-                <div className="relative">
-                  <select
-                    value={model}
-                    onChange={e => setModel(e.target.value as OllamaModel)}
-                    className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 pr-6 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
-                  >
-                    {MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
-                </div>
-              )}
+              <div className="relative">
+                <select
+                  value={model}
+                  onChange={e => setModel(e.target.value as GeminiModel)}
+                  className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 pr-6 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+                >
+                  {MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
+              </div>
             </div>
           </div>
 
@@ -578,7 +561,7 @@ export default function AIAssistantPage() {
                 {taskResult?.error && (
                   <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
                     <XCircle className="h-4 w-4 flex-shrink-0" />
-                    Failed to get suggestions. Ensure Ollama is running.
+                    Failed to get suggestions. Please try again.
                   </div>
                 )}
               </div>
@@ -723,7 +706,7 @@ export default function AIAssistantPage() {
                 )}
                 {meetResult?.error && (
                   <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
-                    <XCircle className="h-4 w-4" /> Failed to summarize. Ensure Ollama is running.
+                    <XCircle className="h-4 w-4" /> Failed to summarize. Please try again.
                   </div>
                 )}
               </div>
@@ -783,7 +766,7 @@ export default function AIAssistantPage() {
                 )}
                 {emailResult?.error && (
                   <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
-                    <XCircle className="h-4 w-4" /> Failed to draft email. Ensure Ollama is running.
+                    <XCircle className="h-4 w-4" /> Failed to draft email. Please try again.
                   </div>
                 )}
               </div>
@@ -847,7 +830,7 @@ export default function AIAssistantPage() {
                 )}
                 {reminderResult?.error && (
                   <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 dark:bg-red-900/20 rounded-xl p-3">
-                    <XCircle className="h-4 w-4" /> Failed to generate reminder. Ensure Ollama is running.
+                    <XCircle className="h-4 w-4" /> Failed to generate reminder. Please try again.
                   </div>
                 )}
               </div>
