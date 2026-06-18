@@ -31,6 +31,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 interface LocationState {
   from?: { pathname: string };
+  reason?: 'idle';
 }
 
 const features = [
@@ -75,6 +76,7 @@ export const LoginPage: React.FC = () => {
   }, [resendCountdown]);
 
   const from = (location.state as LocationState)?.from?.pathname;
+  const loggedOutIdle = (location.state as LocationState)?.reason === 'idle';
 
   const [showDemo, setShowDemo] = useState(false);
 
@@ -312,6 +314,14 @@ export const LoginPage: React.FC = () => {
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome back</h2>
             <p className="text-gray-500 dark:text-gray-400 mt-2">Sign in to your account to continue</p>
           </div>
+
+          {/* Idle-logout notice */}
+          {loggedOutIdle && !apiError && (
+            <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 rounded-xl px-4 py-3 mb-6 text-sm">
+              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span>You were signed out after 5 minutes of inactivity. Please sign in again.</span>
+            </div>
+          )}
 
           {/* Error banner */}
           {apiError && (

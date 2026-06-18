@@ -12,9 +12,15 @@
  */
 
 import React, { createContext, useContext, ReactNode, useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/services/auth.api';
+import { useIdleTimeout } from '@hooks/useIdleTimeout';
 import type { AuthUser, AuthTokens } from '@/types/index';
+
+// Auto-logout after this long with zero mouse/keyboard/touch activity. Any
+// activity resets the clock, so a user actively working is never logged out.
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
 export interface AuthContextType {
   // State
@@ -70,8 +76,19 @@ interface AuthProviderProps {
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const store = useAuthStore();
+  const navigate = useNavigate();
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-logout after IDLE_TIMEOUT_MS of no activity — never fires while the
+  // user is actually working, since every tracked event resets the clock.
+  useIdleTimeout(
+    IDLE_TIMEOUT_MS,
+    () => {
+      store.logout().finally(() => navigate('/auth/login', { replace: true, state: { reason: 'idle' } }));
+    },
+    store.isAuthenticated,
+  );
 
   // Initialize auth from localStorage on mount
   useEffect(() => {
