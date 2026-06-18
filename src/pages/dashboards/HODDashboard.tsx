@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
 import { StatCard } from '@components/charts/ChartComponents';
+import { ApprovalCenter } from '@components/dashboard/ApprovalCenter';
 import { apiClient } from '@services/apiClient';
 import { useAuthStore } from '@store/authStore';
 
@@ -33,6 +34,7 @@ interface HODStats {
   presentToday: number;
   attendancePct: number;
   pendingApprovals: number;
+  reportsWaitingReview?: number;
 }
 
 interface TeamMember {
@@ -219,11 +221,17 @@ export function HODDashboard() {
       </motion.div>
 
       {/* ── KPI Cards ── */}
-      <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Team Size" value={s.teamSize} icon={<Users className="w-7 h-7" />} color="blue" />
         <StatCard label="Present Today" value={s.presentToday} icon={<UserCheck className="w-7 h-7" />} color="green" />
         <StatCard label="Attendance %" value={`${s.attendancePct}%`} icon={<Percent className="w-7 h-7" />} color="purple" />
         <StatCard label="Pending Approvals" value={s.pendingApprovals} icon={<Bell className="w-7 h-7" />} color="yellow" />
+        <StatCard label="Reports Waiting Review" value={s.reportsWaitingReview ?? '—'} icon={<ListTodo className="w-7 h-7" />} color="red" />
+      </motion.div>
+
+      {/* ── Approval Center ── */}
+      <motion.div variants={item}>
+        <ApprovalCenter endpoint="/dashboards/hod/approvals-queue" />
       </motion.div>
 
       {/* ── My Team + Approval Requests ── */}

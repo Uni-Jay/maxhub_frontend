@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
 import { MultiBarChart, StatCard } from '@components/charts/ChartComponents';
+import { ApprovalCenter } from '@components/dashboard/ApprovalCenter';
 import { apiClient } from '@services/apiClient';
 
 // ─── Animation variants ───────────────────────────────────────────────────────
@@ -266,6 +267,11 @@ export function HRDashboard() {
         <StatCard label="Pending Leaves" value={s.pendingLeaveRequests} icon={<Calendar className="w-7 h-7" />} color="yellow" />
         <StatCard label="Active Job Postings" value={s.activeJobPostings} icon={<Briefcase className="w-7 h-7" />} color="purple" />
         <StatCard label="Today's Attendance" value={s.todayAttendance} icon={<UserCheck className="w-7 h-7" />} color="green" />
+      </motion.div>
+
+      {/* ── Approval Center ── */}
+      <motion.div variants={item}>
+        <ApprovalCenter endpoint="/dashboards/hr/approvals-queue" />
       </motion.div>
 
       {/* ── Recruitment Analytics ── */}

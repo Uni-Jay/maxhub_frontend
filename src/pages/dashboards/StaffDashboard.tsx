@@ -13,6 +13,8 @@ import { taskService } from '@/services/taskService';
 import { leaveService } from '@/services/leaveService';
 import { payrollService } from '@/services/payrollService';
 import { notificationService } from '@/services/notificationService';
+import { projectService } from '@/services/projectService';
+import { videoCallService } from '@/services/videoCallService';
 import { useState, useEffect } from 'react';
 
 const TASK_STATUS: Record<string, string> = {
@@ -66,6 +68,14 @@ export function StaffDashboard() {
     ['staff-notifications'],
     () => notificationService.getAll({ limit: 5 })
   );
+  const { data: projectsData } = useApiQuery(
+    ['staff-projects'],
+    () => projectService.getAll({ limit: 1 })
+  );
+  const { data: meetingsData } = useApiQuery(
+    ['staff-upcoming-meetings'],
+    () => videoCallService.getMeetings({ status: 'Scheduled', limit: 5 })
+  );
 
   const isLoading = tasksLoading && leaveLoading && payslipsLoading && notifLoading;
 
@@ -84,6 +94,8 @@ export function StaffDashboard() {
   const totalLeaveAvailable = leaveBalance?.available ?? 0;
   const payslips = payslipsData?.data ?? [];
   const notifications = notificationsData?.data ?? [];
+  const myProjectsCount = projectsData?.pagination?.total ?? 0;
+  const upcomingMeetings = meetingsData?.data ?? [];
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
@@ -148,12 +160,14 @@ export function StaffDashboard() {
       </motion.div>
 
       {/* KPI Stats */}
-      <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         {[
           { label: 'My Tasks', value: tasks.length.toString(), icon: CheckSquare, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20', href: '/tasks' },
           { label: 'Pending Tasks', value: pendingTasks.toString(), icon: Clock, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20', href: '/tasks' },
           { label: 'Leave Available', value: totalLeaveAvailable > 0 ? `${totalLeaveAvailable}d` : '—', icon: Calendar, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20', href: '/leave/balance' },
           { label: 'Notifications', value: notifications.filter(n => !n.isRead).length.toString(), icon: TrendingUp, color: 'text-violet-600 bg-violet-50 dark:bg-violet-900/20', href: '/notifications' },
+          { label: 'My Projects', value: myProjectsCount.toString(), icon: Building2, color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-900/20', href: '/projects' },
+          { label: 'Upcoming Meetings', value: upcomingMeetings.length.toString(), icon: Send, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20', href: '/calls' },
         ].map((s) => (
           <Link key={s.label} to={s.href}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 hover:shadow-md transition shadow-sm">

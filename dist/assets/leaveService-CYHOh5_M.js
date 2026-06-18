@@ -1,2 +1,0 @@
-import{t as e}from"./index-B3tOpH8j.js";const t={getRequests:(t={})=>e.getRaw("/leave/requests",t),getRequestById:t=>e.get(`/leave/requests/${t}`),createRequest:t=>e.post("/leave/requests",t),approve:(t,s)=>e.patch(`/leave/requests/${t}/approve`,{comments:s}),reject:(t,s)=>e.patch(`/leave/requests/${t}/reject`,{comments:s}),getBalance:()=>e.get("/leave/balance"),getTypes:()=>e.get("/leave/types")};export{t as l};
-//# sourceMappingURL=leaveService-CYHOh5_M.js.map

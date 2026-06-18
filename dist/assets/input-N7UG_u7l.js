@@ -1,0 +1,2 @@
+import{Z as e,j as s,o}from"./index-C3k8c8TR.js";const r=e.forwardRef(({className:e,type:r,...i},t)=>s.jsx("input",{type:r,className:o("flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",e),ref:t,...i}));r.displayName="Input";export{r as I};
+//# sourceMappingURL=input-N7UG_u7l.js.map

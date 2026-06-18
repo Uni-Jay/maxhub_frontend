@@ -28,6 +28,12 @@ const StaffList = React.lazy(() => import('@modules/staff/pages/StaffList'));
 const StaffForm = React.lazy(() => import('@modules/staff/pages/StaffForm'));
 const StaffDetail = React.lazy(() => import('@modules/staff/pages/StaffDetail'));
 
+// ─── Organization ───
+const BranchList = React.lazy(() => import('@modules/organization/pages/BranchList'));
+const UnitList = React.lazy(() => import('@modules/organization/pages/UnitList'));
+const DepartmentList = React.lazy(() => import('@modules/organization/pages/DepartmentList'));
+const DesignationList = React.lazy(() => import('@modules/organization/pages/DesignationList'));
+
 // ─── Attendance ───
 const AttendanceList = React.lazy(() => import('@modules/attendance/pages/AttendanceList'));
 const CheckIn = React.lazy(() => import('@modules/attendance/pages/CheckIn'));
@@ -242,6 +248,12 @@ function App() {
               <Route path="/staff/create" element={<StaffForm />} />
               <Route path="/staff/:id/edit" element={<StaffForm />} />
               <Route path="/staff/:id" element={<StaffDetail />} />
+
+              {/* Organization */}
+              <Route path="/organization/branches" element={<BranchList />} />
+              <Route path="/organization/units" element={<UnitList />} />
+              <Route path="/organization/departments" element={<DepartmentList />} />
+              <Route path="/organization/designations" element={<DesignationList />} />
 
               {/* Attendance */}
               <Route path="/attendance" element={<AttendanceList />} />

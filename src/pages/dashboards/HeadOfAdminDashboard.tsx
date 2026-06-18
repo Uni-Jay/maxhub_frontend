@@ -26,6 +26,7 @@ import {
   StatCard,
   MultiBarChart,
 } from '@components/charts/ChartComponents';
+import { ApprovalCenter } from '@components/dashboard/ApprovalCenter';
 import {
   headOfAdminDashboardService,
   type LeaveApprovalData,
@@ -377,13 +378,13 @@ export function HeadOfAdminDashboard() {
         </motion.button>
       </motion.div>
 
-      {/* ── 4 KPI Stat Cards ── */}
+      {/* ── KPI Stat Cards ── */}
       <motion.div
         variants={itemVariants}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-5"
       >
         {statsQuery.isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
+          Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
               className="rounded-lg p-6 bg-muted/30 space-y-3 animate-pulse"
@@ -422,8 +423,25 @@ export function HeadOfAdminDashboard() {
               icon={<Briefcase className="w-7 h-7" />}
               color="purple"
             />
+            <StatCard
+              label="Overtime Requests"
+              value={stats?.pendingOvertime ?? '—'}
+              icon={<Clock className="w-7 h-7" />}
+              color="yellow"
+            />
+            <StatCard
+              label="Pending Weekly Reports"
+              value={stats?.pendingWeeklyReports ?? '—'}
+              icon={<TrendingUp className="w-7 h-7" />}
+              color="blue"
+            />
           </>
         )}
+      </motion.div>
+
+      {/* ── Approval Center ── */}
+      <motion.div variants={itemVariants}>
+        <ApprovalCenter endpoint="/dashboards/head-of-admin/approvals-queue" />
       </motion.div>
 
       {/* ── Leave Approval Panel ── */}

@@ -32,6 +32,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ApprovalCenter } from '@components/dashboard/ApprovalCenter';
 import {
   StatCard,
   SimpleAreaChart,
@@ -189,11 +190,6 @@ export function SuperAdminDashboard() {
   const notifQuery = useApiQuery(
     ['super-admin', 'notifications', 5],
     () => superAdminDashboardService.getNotifications(5),
-  );
-
-  const approvalsQuery = useApiQuery(
-    ['super-admin', 'approvals-queue'],
-    () => superAdminDashboardService.getApprovalsQueue(),
   );
 
   // ── Refresh all ──────────────────────────────────────────────────────────
@@ -430,46 +426,9 @@ export function SuperAdminDashboard() {
         )}
       </motion.div>
 
-      {/* ── Approvals Center ── */}
-      <motion.div
-        variants={itemVariants}
-        className="bg-card rounded-xl p-6 border border-border shadow-sm"
-      >
-        <h2 className="text-base font-semibold mb-4 flex items-center gap-2">
-          <Clock className="w-4 h-4 text-muted-foreground" />
-          Approvals Center
-        </h2>
-        {approvalsQuery.isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {(
-              [
-                { label: 'Weekly Reports', count: approvalsQuery.data?.weeklyReports.count ?? 0, path: '/hr/weekly-report', icon: TrendingUp, color: 'text-purple-600 bg-purple-50 dark:bg-purple-950' },
-                { label: 'Leave Requests', count: approvalsQuery.data?.leaveRequests.count ?? 0, path: '/leave/requests', icon: Calendar, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950' },
-                { label: 'Promotions', count: approvalsQuery.data?.promotions.count ?? 0, path: '/hr/promotions', icon: ArrowUpCircle, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950' },
-                { label: 'Job Postings', count: approvalsQuery.data?.jobPostings.count ?? 0, path: '/hr/jobs', icon: Briefcase, color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-950' },
-              ] as const
-            ).map(({ label, count, path, icon: Icon, color }) => (
-              <button
-                key={label}
-                onClick={() => navigate(path)}
-                className={cn('rounded-lg p-4 text-left hover:opacity-80 transition-opacity', color)}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium opacity-75">{label}</p>
-                    <p className="text-2xl font-bold mt-1">{count}</p>
-                  </div>
-                  <Icon className="w-6 h-6 opacity-50" />
-                </div>
-                <p className="text-xs mt-2 opacity-60 flex items-center gap-1">View all <ChevronRight className="w-3 h-3" /></p>
-              </button>
-            ))}
-          </div>
-        )}
+      {/* ── Approval Center ── */}
+      <motion.div variants={itemVariants}>
+        <ApprovalCenter endpoint="/dashboards/super-admin/approvals-queue" />
       </motion.div>
 
       {/* ── Charts Row 1: Attendance + Revenue ── */}

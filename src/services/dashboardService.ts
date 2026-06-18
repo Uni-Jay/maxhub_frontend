@@ -12,6 +12,8 @@ export interface DashboardStats {
   activeProjects: number;
   pendingApprovals?: number;
   averageAttendance?: number;
+  pendingOvertime?: number;
+  pendingWeeklyReports?: number;
 }
 
 export interface AttendanceData {

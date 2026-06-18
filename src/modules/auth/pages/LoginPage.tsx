@@ -7,7 +7,7 @@ import { jwtDecode } from 'jwt-decode';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthStore } from '@store/authStore';
 import { authApi } from '@/services/auth.api';
-import { resolveRolePath } from '@pages/Dashboard';
+import { normaliseRoles, resolveRolePath } from '@utils/role';
 import { Eye, EyeOff, Loader2, AlertCircle, BarChart3, Users, Briefcase, TrendingUp, ChevronDown, ShieldCheck, RefreshCw } from 'lucide-react';
 
 const DEMO_ACCOUNTS = [
@@ -40,23 +40,11 @@ const features = [
   { icon: TrendingUp, label: 'Growth Tools', desc: 'Scale your operations' },
 ];
 
-const NORMALISE_ROLE: Record<string, string> = {
-  'SUPER_ADMIN': 'superadmin', 'HEAD_OF_ADMIN': 'admin',
-  'HR': 'hr', 'HOD': 'hod', 'STAFF': 'staff',
-  'ACCOUNTANT': 'staff', 'RECEPTIONIST': 'staff',
-  'INSTRUCTOR': 'staff', 'INTERN': 'staff', 'STUDENT': 'student',
-  'Super Administrator': 'superadmin', 'Head of Administration': 'admin',
-  'Human Resources': 'hr', 'Head of Department': 'hod', 'Staff': 'staff',
-  'Instructor': 'staff', 'Accountant': 'staff', 'Receptionist': 'staff',
-  'Intern': 'staff', 'Student': 'student',
-};
-
 /** Decode the fresh token right after login to get the role-based dashboard URL. */
 function getRoleDashboardPath(accessToken: string): string {
   try {
     const decoded = jwtDecode<{ roles: string[] }>(accessToken);
-    const roles = new Set((decoded.roles ?? []).map((r) => NORMALISE_ROLE[r] ?? r.toLowerCase()));
-    return resolveRolePath(roles);
+    return resolveRolePath(normaliseRoles(decoded.roles ?? []));
   } catch {
     return '/dashboard';
   }
