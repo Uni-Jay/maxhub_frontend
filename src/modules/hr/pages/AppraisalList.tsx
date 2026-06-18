@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import { hrService, type Appraisal } from '@services/hrService';
 
+const errMsg = (error: unknown): string =>
+  (error as any)?.response?.data?.message || (error as any)?.message || 'Something went wrong';
+
 // ─── Score Categories ──────────────────────────────────────
 const SCORECARD_CATEGORIES = [
   { key: 'punctuality',       label: 'Punctuality',              weight: 10 },
@@ -235,6 +238,12 @@ export default function AppraisalList() {
           {['Draft','InProgress','Completed','Approved','Rejected'].map(s => <option key={s}>{s}</option>)}
         </select>
       </div>
+
+      {statusMutation.isError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5">
+          {errMsg(statusMutation.error)}
+        </div>
+      )}
 
       {/* List */}
       {appraisals.length === 0 ? (

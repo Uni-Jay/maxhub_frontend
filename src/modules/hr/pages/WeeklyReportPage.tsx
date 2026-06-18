@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ClipboardList, AlertTriangle, CheckCircle2, Clock,
@@ -79,8 +79,13 @@ function ApprovalBadge({ status }: { status?: string }) {
 }
 
 // ─── Main Page ─────────────────────────────────────────────
+const errMsg = (error: unknown): string =>
+  (error as any)?.response?.data?.message || (error as any)?.message || 'Something went wrong';
+
 export default function WeeklyReportPage() {
   const { user } = useAuthStore();
+  const isSuperAdmin = !!user?.roles?.includes('superadmin');
+  const qc = useQueryClient();
   const thisFriday = getThisFriday();
   const warning = getDeadlineWarning(thisFriday);
   const [form, setForm] = useState({
@@ -128,6 +133,25 @@ export default function WeeklyReportPage() {
     onSuccess: () => setSubmitted(true),
     onError:   () => setSubmitted(true), // optimistic in demo
   });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => apiClient.patch(`/hr/weekly-reports/${id}/approve`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['weekly-reports-past'] }),
+    onError: (error) => window.alert(errMsg(error)),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, rejectionReason }: { id: string; rejectionReason: string }) =>
+      apiClient.patch(`/hr/weekly-reports/${id}/reject`, { rejectionReason }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['weekly-reports-past'] }),
+    onError: (error) => window.alert(errMsg(error)),
+  });
+
+  const handleReject = (id: string) => {
+    const reason = window.prompt('Reason for rejecting this report:');
+    if (reason === null) return;
+    rejectMutation.mutate({ id, rejectionReason: reason });
+  };
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -186,7 +210,7 @@ export default function WeeklyReportPage() {
           <div>
             <p className="font-semibold text-emerald-700 dark:text-emerald-300">Report submitted for week ending {form.weekEnding}</p>
             <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
-              Your manager will review and forward to HOD → CEO. Next report due {format(nextFriday(thisFriday), 'dd MMM yyyy')} by 5:00 PM.
+              Super Admin will review your report. Next report due {format(nextFriday(thisFriday), 'dd MMM yyyy')} by 5:00 PM.
             </p>
           </div>
         </motion.div>
@@ -320,11 +344,7 @@ export default function WeeklyReportPage() {
             <div className="flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400 flex-wrap">
               <span className="bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-700 font-medium">You</span>
               <ArrowRight className="h-3 w-3 flex-shrink-0" />
-              <span className="bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-700 font-medium">Manager</span>
-              <ArrowRight className="h-3 w-3 flex-shrink-0" />
-              <span className="bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-700 font-medium">HOD</span>
-              <ArrowRight className="h-3 w-3 flex-shrink-0" />
-              <span className="bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-700 font-medium">CEO / Super Admin</span>
+              <span className="bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-700 font-medium">Super Admin</span>
             </div>
           </div>
 
@@ -382,17 +402,22 @@ export default function WeeklyReportPage() {
                   <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }}
                     className="px-5 pb-4 pl-16 space-y-2">
                     <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/40 rounded-xl p-3">{r.summary}</p>
-                    {/* Approval actions (HOD/Manager view) */}
-                    {r.approvalStatus === 'Pending' && (
+                    {/* Approval actions (Super Admin only) */}
+                    {r.approvalStatus === 'Pending' && isSuperAdmin && (
                       <div className="flex items-center gap-2 pt-1">
-                        <button className="flex items-center gap-1.5 text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition">
+                        <button
+                          onClick={() => approveMutation.mutate(r.id)}
+                          disabled={approveMutation.isPending || rejectMutation.isPending}
+                          className="flex items-center gap-1.5 text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50 transition"
+                        >
                           <CheckCircle2 className="h-3.5 w-3.5" /> Approve
                         </button>
-                        <button className="flex items-center gap-1.5 text-xs bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600 transition">
+                        <button
+                          onClick={() => handleReject(r.id)}
+                          disabled={approveMutation.isPending || rejectMutation.isPending}
+                          className="flex items-center gap-1.5 text-xs bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600 disabled:opacity-50 transition"
+                        >
                           <AlertCircle className="h-3.5 w-3.5" /> Reject
-                        </button>
-                        <button className="flex items-center gap-1.5 text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition">
-                          <ArrowRight className="h-3.5 w-3.5" /> Forward to CEO
                         </button>
                         <button className="flex items-center gap-1.5 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                           <Eye className="h-3.5 w-3.5" /> View Full Report
