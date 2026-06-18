@@ -139,6 +139,7 @@ const ADMIN_NAV: SidebarItem[] = [
     { label: 'Attendance', path: '/reports/attendance' },
     { label: 'Projects', path: '/reports/projects' },
   ]},
+  { label: 'Weekly Reports', path: '/hr/weekly-report', icon: FileText },
   { label: 'Communication', path: '/communication', icon: Send, children: [
     { label: 'Send Message', path: '/communication/send' },
     { label: 'Templates', path: '/communication/templates' },

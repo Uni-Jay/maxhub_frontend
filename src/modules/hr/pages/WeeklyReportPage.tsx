@@ -11,6 +11,7 @@ import CloudinaryUpload from '@components/ui/CloudinaryUpload';
 import type { CloudinaryUploadResult } from '@services/cloudinaryService';
 import { apiClient } from '@services/apiClient';
 import { useAuthStore } from '@store/authStore';
+import { useCurrentRoles } from '@utils/role';
 import { cn } from '@utils/cn';
 import { format, nextFriday, isFriday, isAfter, setHours, setMinutes } from 'date-fns';
 
@@ -85,7 +86,8 @@ const errMsg = (error: unknown): string =>
 
 export default function WeeklyReportPage() {
   const { user } = useAuthStore();
-  const isSuperAdmin = !!user?.roles?.includes('superadmin');
+  const { roles } = useCurrentRoles();
+  const isSuperAdmin = roles.has('superadmin');
   const qc = useQueryClient();
   const thisFriday = getThisFriday();
   const warning = getDeadlineWarning(thisFriday);
