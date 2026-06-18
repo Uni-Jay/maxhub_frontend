@@ -6,7 +6,7 @@ import { useApiMutation } from '@hooks/useApiMutation';
 import { projectService } from '@services/projectService';
 import { useCurrentRoles } from '@utils/role';
 import type { ProjectItem } from '@/types';
-import { Search, Plus, Briefcase, ChevronLeft, ChevronRight, Calendar, TrendingUp, CheckCircle2, Trash2, X } from 'lucide-react';
+import { Search, Plus, Briefcase, ChevronLeft, ChevronRight, Calendar, TrendingUp, CheckCircle2, Trash2, X, User } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, { badge: string; bar: string }> = {
   Planning:  { badge: 'bg-blue-50 text-blue-700 border-blue-200',   bar: 'bg-blue-400' },
@@ -157,6 +157,13 @@ export default function ProjectList() {
 
                   {p.description && (
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-1">{p.description}</p>
+                  )}
+
+                  {p.projectManager && (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                      <User className="h-3.5 w-3.5" />
+                      <span>{p.projectManager.firstName} {p.projectManager.lastName}</span>
+                    </div>
                   )}
 
                   <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-3">

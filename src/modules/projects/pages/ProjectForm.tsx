@@ -10,6 +10,8 @@ import { useApiQuery } from '@hooks/useApiQuery';
 import { projectService } from '@services/projectService';
 import { departmentService } from '@services/departmentService';
 import { apiClient } from '@services/apiClient';
+import { useAuthStore } from '@store/authStore';
+import { useCurrentRoles, useCurrentPermissions, hasPermission } from '@utils/role';
 import type { CreateProjectPayload } from '@services/projectService';
 
 
@@ -36,6 +38,13 @@ export default function ProjectForm() {
   const isEdit = !!id;
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [staffError, setStaffError] = useState(false);
+  const { user } = useAuthStore();
+  const { roles } = useCurrentRoles();
+  const permissions = useCurrentPermissions();
+  // HOD-style callers can only ever create within their own department — the
+  // backend forces this regardless, but lock the field client-side too so the
+  // picker doesn't imply a choice that doesn't exist.
+  const canPickDepartment = hasPermission(roles, permissions, 'project.create.all');
 
   useEffect(() => {
     apiClient.get<StaffMember[]>('/staff')
@@ -58,6 +67,9 @@ export default function ProjectForm() {
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: (!isEdit && !canPickDepartment && user?.departmentId)
+      ? { departmentId: user.departmentId }
+      : undefined,
     values: existing ? {
       name: existing.name,
       description: existing.description ?? '',
@@ -127,12 +139,24 @@ export default function ProjectForm() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <FormField label="Department *" error={errors.departmentId?.message}>
-            <select {...register('departmentId')} disabled={isPending} className={SEL}>
-              <option value="">Select department</option>
-              {deptList.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
+            {canPickDepartment ? (
+              <select {...register('departmentId')} disabled={isPending} className={SEL}>
+                <option value="">Select department</option>
+                {deptList.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  disabled
+                  value={deptList.find(d => d.id === user?.departmentId)?.name ?? 'Your department'}
+                  className={`${INP} bg-gray-50 dark:bg-gray-800 cursor-not-allowed`}
+                />
+                <input type="hidden" {...register('departmentId')} />
+              </>
+            )}
           </FormField>
           <FormField label="Project Manager *" error={errors.projectManagerId?.message}>
             <select {...register('projectManagerId')} disabled={isPending} className={SEL}>

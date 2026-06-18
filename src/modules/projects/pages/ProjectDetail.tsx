@@ -80,6 +80,10 @@ export default function ProjectDetail() {
           </div>
           <Field label="Department" value={project.department?.name} />
           <Field
+            label="Project Manager"
+            value={project.projectManager ? `${project.projectManager.firstName} ${project.projectManager.lastName}` : undefined}
+          />
+          <Field
             label="Duration"
             value={`${new Date(project.startDate).toLocaleDateString()} → ${project.endDate ? new Date(project.endDate).toLocaleDateString() : 'Ongoing'}`}
           />
