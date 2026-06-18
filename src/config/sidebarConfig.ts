@@ -119,6 +119,16 @@ const COMMON_TAIL: SidebarItem[] = [
   ]},
 ];
 
+// ─── Full CRM group — available to every role (Business Hub/Contacts/Pipeline/Forecast) ───
+const CRM_NAV: SidebarItem[] = [
+  { label: 'CRM', path: '/crm', icon: ShoppingCart, children: [
+    { label: 'Business Hub', path: '/crm/hub' },
+    { label: 'Contacts', path: '/crm/contacts' },
+    { label: 'Pipeline', path: '/crm/pipeline' },
+    { label: 'Forecast', path: '/crm/forecast' },
+  ]},
+];
+
 // ─── ADMIN — daily operations management (branch/business scoped) ────────────
 const ADMIN_NAV: SidebarItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -152,11 +162,7 @@ const ADMIN_NAV: SidebarItem[] = [
     { label: 'Items', path: '/inventory/items' },
     { label: 'Warehouses', path: '/inventory/warehouses' },
   ]},
-  { label: 'CRM', path: '/crm', icon: ShoppingCart, children: [
-    { label: 'Business Hub', path: '/crm/hub' },
-    { label: 'Contacts', path: '/crm/contacts' },
-    { label: 'Pipeline', path: '/crm/pipeline' },
-  ]},
+  ...CRM_NAV,
   ...COMMON_TAIL,
 ];
 
@@ -181,6 +187,7 @@ const HR_NAV: SidebarItem[] = [
     { label: 'History', path: '/communication/history' },
     { label: 'Broadcasts', path: '/communication/broadcasts' },
   ]},
+  ...CRM_NAV,
   ...COMMON_TAIL,
 ];
 
@@ -197,6 +204,7 @@ const HOD_NAV: SidebarItem[] = [
     { label: 'Send Message', path: '/communication/send' },
     { label: 'History', path: '/communication/history' },
   ]},
+  ...CRM_NAV,
   ...COMMON_TAIL,
 ];
 
@@ -212,6 +220,7 @@ const STAFF_NAV: SidebarItem[] = [
   { label: 'My Projects', path: '/projects', icon: Briefcase },
   { label: 'My Reports', path: '/hr/weekly-report', icon: FileText },
   { label: 'Training', path: '/hr/training', icon: GraduationCap },
+  ...CRM_NAV,
   ...COMMON_TAIL,
 ];
 
