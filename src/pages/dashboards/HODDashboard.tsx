@@ -6,11 +6,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Users, UserCheck, Percent, Bell, ArrowUpRight,
   FolderKanban, ListTodo, Calendar, MessageSquare,
-  RefreshCw, CheckCircle2, XCircle,
+  RefreshCw, CheckCircle2, XCircle, Megaphone, Send,
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
 import { StatCard } from '@components/charts/ChartComponents';
@@ -124,6 +124,13 @@ export function HODDashboard() {
   const { user } = useAuthStore();
   const [refreshKey, setRefreshKey] = useState(0);
   const [leaveStatuses, setLeaveStatuses] = useState<Record<string, 'approved' | 'rejected'>>({});
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcementMessage, setAnnouncementMessage] = useState('');
+
+  const announcementMutation = useMutation({
+    mutationFn: () => apiClient.post('/broadcasts', { title: announcementTitle, message: announcementMessage }),
+    onSuccess: () => { setAnnouncementTitle(''); setAnnouncementMessage(''); },
+  });
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -226,6 +233,52 @@ export function HODDashboard() {
         <StatCard label="Attendance %" value={`${s.attendancePct}%`} icon={<Percent className="w-7 h-7" />} color="purple" />
         <StatCard label="Pending Approvals" value={s.pendingApprovals} icon={<Bell className="w-7 h-7" />} color="yellow" />
         <StatCard label="Reports Waiting Review" value={s.reportsWaitingReview ?? '—'} icon={<ListTodo className="w-7 h-7" />} color="red" />
+      </motion.div>
+
+      {/* ── Department Announcement ── */}
+      <motion.div variants={item} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Megaphone className="w-5 h-5 text-rose-500" />
+            Send Department Announcement
+          </h2>
+        </div>
+        <p className="text-xs text-gray-400 mb-4">
+          Goes to everyone in your department{departmentName ? ` (${departmentName})` : ''}. HR, Admin, and Super Admin are automatically copied.
+        </p>
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (announcementTitle.trim() && announcementMessage.trim()) announcementMutation.mutate(); }}
+          className="space-y-3"
+        >
+          <input
+            value={announcementTitle}
+            onChange={(e) => setAnnouncementTitle(e.target.value)}
+            placeholder="Announcement title"
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <textarea
+            value={announcementMessage}
+            onChange={(e) => setAnnouncementMessage(e.target.value)}
+            placeholder="Write your announcement..."
+            rows={3}
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <div className="flex items-center justify-between">
+            {announcementMutation.isSuccess ? (
+              <p className="text-xs text-emerald-600 font-medium">Announcement sent.</p>
+            ) : announcementMutation.isError ? (
+              <p className="text-xs text-red-600 font-medium">Failed to send. Please try again.</p>
+            ) : <span />}
+            <button
+              type="submit"
+              disabled={announcementMutation.isPending || !announcementTitle.trim() || !announcementMessage.trim()}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-xl transition"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {announcementMutation.isPending ? 'Sending…' : 'Send Announcement'}
+            </button>
+          </div>
+        </form>
       </motion.div>
 
       {/* ── My Team + Approval Requests ── */}

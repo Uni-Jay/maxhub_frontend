@@ -200,10 +200,6 @@ const HOD_NAV: SidebarItem[] = [
   { label: 'Weekly Reports', path: '/hr/weekly-report', icon: FileText },
   { label: 'Attendance', path: '/attendance', icon: Calendar },
   { label: 'Performance', path: '/hr/appraisals', icon: Award },
-  { label: 'Communication', path: '/communication', icon: Send, children: [
-    { label: 'Send Message', path: '/communication/send' },
-    { label: 'History', path: '/communication/history' },
-  ]},
   ...CRM_NAV,
   ...COMMON_TAIL,
 ];
