@@ -5,6 +5,7 @@ import {
   ArrowUpRight, Clock, RefreshCw, UserCheck, BarChart3,
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
+import DashboardClock from '@components/ui/DashboardClock';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useApiMutation } from '@/hooks/useApiMutation';
 import { leaveService } from '@/services/leaveService';
@@ -102,13 +103,16 @@ export function ManagerDashboard() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Manager Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">Team oversight and daily operations</p>
         </div>
-        <motion.button
-          onClick={handleRefresh}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
-        >
-          <RefreshCw className="w-4 h-4" /> Refresh
-        </motion.button>
+        <div className="flex items-center gap-3">
+          <DashboardClock />
+          <motion.button
+            onClick={handleRefresh}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
+          >
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* Stat cards */}

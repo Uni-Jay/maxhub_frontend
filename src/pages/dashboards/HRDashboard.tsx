@@ -16,6 +16,7 @@ import {
 import { Loader } from '@components/ui/loader';
 import { MultiBarChart, StatCard } from '@components/charts/ChartComponents';
 import { ApprovalCenter } from '@components/dashboard/ApprovalCenter';
+import DashboardClock from '@components/ui/DashboardClock';
 import { apiClient } from '@services/apiClient';
 
 // ─── Animation variants ───────────────────────────────────────────────────────
@@ -252,13 +253,16 @@ export function HRDashboard() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">HR Command Center</h1>
           <p className="text-sm text-gray-500 mt-0.5">{today}</p>
         </div>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setRefreshKey((k) => k + 1)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
-        >
-          <RefreshCw className="w-4 h-4" /> Refresh
-        </motion.button>
+        <div className="flex items-center gap-3">
+          <DashboardClock />
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
+          >
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* ── KPI cards ── */}

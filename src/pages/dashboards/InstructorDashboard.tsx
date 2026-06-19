@@ -8,6 +8,7 @@ import { useAuthStore } from '@store/authStore';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { lmsService } from '@/services/lmsService';
 import { Loader } from '@components/ui/loader';
+import DashboardClock from '@components/ui/DashboardClock';
 
 const container = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
@@ -69,8 +70,11 @@ export default function InstructorDashboard() {
             {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm">
-          <GraduationCap className="h-4 w-4" /> Teaching
+        <div className="flex items-center gap-3">
+          <DashboardClock />
+          <div className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm">
+            <GraduationCap className="h-4 w-4" /> Teaching
+          </div>
         </div>
       </motion.div>
 

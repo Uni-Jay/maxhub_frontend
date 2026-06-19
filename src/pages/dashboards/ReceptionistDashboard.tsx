@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
 import { receptionistDashboardService } from '@services/dashboardService';
+import DashboardClock from '@components/ui/DashboardClock';
 
 const container = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
@@ -48,8 +49,11 @@ export default function ReceptionistDashboard() {
             {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm">
-          <Phone className="h-4 w-4" /> Front Desk
+        <div className="flex items-center gap-3">
+          <DashboardClock />
+          <div className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm">
+            <Phone className="h-4 w-4" /> Front Desk
+          </div>
         </div>
       </motion.div>
 

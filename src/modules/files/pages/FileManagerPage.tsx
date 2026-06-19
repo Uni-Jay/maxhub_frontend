@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -9,6 +9,7 @@ import {
   Eye, Copy,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
+import FilePreviewModal, { type FilePreviewTarget } from '@components/ui/FilePreviewModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,9 +81,10 @@ interface ContextMenuProps {
   onDelete: (f: FileItem) => void;
   onShare: (f: FileItem) => void;
   onDownload: (f: FileItem) => void;
+  onPreview: (f: FileItem) => void;
 }
 
-function ContextMenu({ x, y, file, onClose, onRename, onDelete, onShare, onDownload }: ContextMenuProps) {
+function ContextMenu({ x, y, file, onClose, onRename, onDelete, onShare, onDownload, onPreview }: ContextMenuProps) {
   useEffect(() => {
     const handler = () => onClose();
     window.addEventListener('click', handler);
@@ -90,7 +92,7 @@ function ContextMenu({ x, y, file, onClose, onRename, onDelete, onShare, onDownl
   }, [onClose]);
 
   const items = [
-    { icon: Eye, label: 'Open', action: () => file.url && window.open(file.url, '_blank') },
+    { icon: Eye, label: 'Preview', action: () => onPreview(file) },
     { icon: Edit3, label: 'Rename', action: () => onRename(file) },
     { icon: Download, label: 'Download', action: () => onDownload(file) },
     { icon: Share2, label: 'Share', action: () => onShare(file) },
@@ -223,6 +225,35 @@ function ShareModal({ file, onClose }: { file: FileItem; onClose: () => void }) 
   );
 }
 
+// ─── Pending file row (with thumbnail) for the upload modal ───────────────────
+
+function PendingFileRow({ file, status, onRemove }: { file: File; status?: 'pending' | 'done' | 'error'; onRemove: () => void }) {
+  const isImage = file.type.startsWith('image/');
+  const localUrl = useMemo(() => (isImage ? URL.createObjectURL(file) : null), [file, isImage]);
+  useEffect(() => () => { if (localUrl) URL.revokeObjectURL(localUrl); }, [localUrl]);
+
+  return (
+    <div className="flex items-center gap-3 p-2.5 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      {localUrl ? (
+        <img src={localUrl} alt={file.name} className="w-8 h-8 rounded-md object-cover flex-shrink-0" />
+      ) : (
+        <File className="w-4 h-4 text-gray-400 flex-shrink-0" />
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-gray-800 dark:text-white truncate">{file.name}</p>
+        <p className="text-xs text-gray-400">{formatBytes(file.size)}</p>
+      </div>
+      {status === 'done' && <Check className="w-4 h-4 text-green-500 flex-shrink-0" />}
+      {status === 'error' && <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />}
+      {!status && (
+        <button onClick={onRemove}>
+          <X className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Upload Zone ──────────────────────────────────────────────────────────────
 
 interface UploadZoneProps {
@@ -302,22 +333,7 @@ function UploadZone({ folderId, onClose, onUploaded }: UploadZoneProps) {
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {files.map(f => {
                 const status = progress[f.name];
-                return (
-                  <div key={f.name} className="flex items-center gap-3 p-2.5 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <File className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-gray-800 dark:text-white truncate">{f.name}</p>
-                      <p className="text-xs text-gray-400">{formatBytes(f.size)}</p>
-                    </div>
-                    {status === 'done' && <Check className="w-4 h-4 text-green-500 flex-shrink-0" />}
-                    {status === 'error' && <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />}
-                    {!status && (
-                      <button onClick={() => setFiles(prev => prev.filter(x => x !== f))}>
-                        <X className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
-                      </button>
-                    )}
-                  </div>
-                );
+                return <PendingFileRow key={f.name} file={f} status={status} onRemove={() => setFiles(prev => prev.filter(x => x !== f))} />;
               })}
             </div>
           )}
@@ -353,6 +369,7 @@ export default function FileManagerPage() {
   const [renameName, setRenameName] = useState('');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: FileItem } | null>(null);
   const [breadcrumbs] = useState([{ id: null, name: 'My Files' }]);
+  const [previewFile, setPreviewFile] = useState<FilePreviewTarget | null>(null);
 
   // Fetch folders
   const { data: foldersRaw } = useQuery({
@@ -513,6 +530,7 @@ export default function FileManagerPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {files.map((file, i) => {
                 const { Icon, color, bg } = getFileIcon(file.mimeType);
+                const isImage = file.mimeType?.includes('image') && file.url;
                 return (
                   <motion.div
                     key={file.id}
@@ -520,26 +538,33 @@ export default function FileManagerPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03 }}
                     onContextMenu={e => handleRightClick(e, file)}
+                    onClick={() => file.url && setPreviewFile({ url: file.url, name: file.name, mimeType: file.mimeType })}
                     className="group relative bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-3 hover:shadow-md transition cursor-pointer"
                   >
-                    <div className={`w-12 h-12 ${bg} rounded-xl flex items-center justify-center mb-3 mx-auto`}>
-                      <Icon className={`w-6 h-6 ${color}`} />
-                    </div>
+                    {isImage ? (
+                      <div className="w-12 h-12 rounded-xl overflow-hidden mb-3 mx-auto">
+                        <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className={`w-12 h-12 ${bg} rounded-xl flex items-center justify-center mb-3 mx-auto`}>
+                        <Icon className={`w-6 h-6 ${color}`} />
+                      </div>
+                    )}
                     <p className="text-xs font-medium text-gray-800 dark:text-white text-center truncate">{file.name}</p>
                     <p className="text-xs text-gray-400 text-center mt-0.5">{formatBytes(file.size)}</p>
 
                     {/* Hover actions */}
                     <div className="absolute inset-x-0 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 rounded-b-xl flex items-center justify-around p-1.5">
-                      <button onClick={() => handleDownload(file)} title="Download" className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                      <button onClick={e => { e.stopPropagation(); handleDownload(file); }} title="Download" className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                         <Download className="w-3 h-3 text-gray-500" />
                       </button>
-                      <button onClick={() => setShareFile(file)} title="Share" className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                      <button onClick={e => { e.stopPropagation(); setShareFile(file); }} title="Share" className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                         <Share2 className="w-3 h-3 text-gray-500" />
                       </button>
-                      <button onClick={() => { setRenameFile(file); setRenameName(file.name); }} title="Rename" className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                      <button onClick={e => { e.stopPropagation(); setRenameFile(file); setRenameName(file.name); }} title="Rename" className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                         <Edit3 className="w-3 h-3 text-gray-500" />
                       </button>
-                      <button onClick={() => handleDelete(file)} title="Delete" className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
+                      <button onClick={e => { e.stopPropagation(); handleDelete(file); }} title="Delete" className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
                         <Trash2 className="w-3 h-3 text-red-500" />
                       </button>
                     </div>
@@ -560,6 +585,7 @@ export default function FileManagerPage() {
                 <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
                   {files.map((file, i) => {
                     const { Icon, color, bg } = getFileIcon(file.mimeType);
+                    const isImage = file.mimeType?.includes('image') && file.url;
                     return (
                       <motion.tr
                         key={file.id}
@@ -567,13 +593,18 @@ export default function FileManagerPage() {
                         animate={{ opacity: 1 }}
                         transition={{ delay: i * 0.03 }}
                         onContextMenu={e => handleRightClick(e, file)}
+                        onClick={() => file.url && setPreviewFile({ url: file.url, name: file.name, mimeType: file.mimeType })}
                         className="hover:bg-gray-50 dark:hover:bg-gray-700/40 group cursor-pointer"
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                              <Icon className={`w-4 h-4 ${color}`} />
-                            </div>
+                            {isImage ? (
+                              <img src={file.url} alt={file.name} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
+                            ) : (
+                              <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                                <Icon className={`w-4 h-4 ${color}`} />
+                              </div>
+                            )}
                             <span className="font-medium text-gray-900 dark:text-white text-sm truncate max-w-xs">{file.name}</span>
                           </div>
                         </td>
@@ -582,10 +613,10 @@ export default function FileManagerPage() {
                         <td className="px-4 py-3 text-xs text-gray-500">{formatDate(file.uploadedAt)}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                            <button onClick={() => handleDownload(file)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"><Download className="w-3.5 h-3.5 text-gray-500" /></button>
-                            <button onClick={() => setShareFile(file)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"><Share2 className="w-3.5 h-3.5 text-gray-500" /></button>
-                            <button onClick={() => { setRenameFile(file); setRenameName(file.name); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"><Edit3 className="w-3.5 h-3.5 text-gray-500" /></button>
-                            <button onClick={() => handleDelete(file)} className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
+                            <button onClick={e => { e.stopPropagation(); handleDownload(file); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"><Download className="w-3.5 h-3.5 text-gray-500" /></button>
+                            <button onClick={e => { e.stopPropagation(); setShareFile(file); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"><Share2 className="w-3.5 h-3.5 text-gray-500" /></button>
+                            <button onClick={e => { e.stopPropagation(); setRenameFile(file); setRenameName(file.name); }} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"><Edit3 className="w-3.5 h-3.5 text-gray-500" /></button>
+                            <button onClick={e => { e.stopPropagation(); handleDelete(file); }} className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
                           </div>
                         </td>
                       </motion.tr>
@@ -659,8 +690,11 @@ export default function FileManagerPage() {
           onDelete={handleDelete}
           onShare={f => setShareFile(f)}
           onDownload={handleDownload}
+          onPreview={f => f.url && setPreviewFile({ url: f.url, name: f.name, mimeType: f.mimeType })}
         />
       )}
+
+      <FilePreviewModal target={previewFile} onClose={() => setPreviewFile(null)} />
     </div>
   );
 }

@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ApprovalCenter } from '@components/dashboard/ApprovalCenter';
+import DashboardClock from '@components/ui/DashboardClock';
 import {
   StatCard,
   SimpleAreaChart,
@@ -273,21 +274,24 @@ export function SuperAdminDashboard() {
           </h1>
           <p className="text-muted-foreground mt-1">{formatDate(today)}</p>
         </div>
-        <motion.button
-          onClick={handleRefresh}
-          disabled={isGlobalLoading}
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.96 }}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
-            'bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity',
-          )}
-        >
-          <RefreshCw
-            className={cn('w-4 h-4', isGlobalLoading && 'animate-spin')}
-          />
-          Refresh
-        </motion.button>
+        <div className="flex items-center gap-3">
+          <DashboardClock />
+          <motion.button
+            onClick={handleRefresh}
+            disabled={isGlobalLoading}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
+              'bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity',
+            )}
+          >
+            <RefreshCw
+              className={cn('w-4 h-4', isGlobalLoading && 'animate-spin')}
+            />
+            Refresh
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* ── Global error banner ── */}

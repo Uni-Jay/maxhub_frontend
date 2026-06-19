@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
-import { Upload, Paperclip, X, CheckCircle2, AlertCircle, Loader2, Download } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Upload, Paperclip, X, CheckCircle2, AlertCircle, Loader2, Download, Eye } from 'lucide-react';
 import { cloudinaryService, type CloudinaryUploadResult } from '@services/cloudinaryService';
 import { cn } from '@utils/cn';
+import FilePreviewModal, { type FilePreviewTarget } from './FilePreviewModal';
 
 interface Props {
   folder?: string;
@@ -40,6 +41,7 @@ export default function CloudinaryUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<FileState[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [previewTarget, setPreviewTarget] = useState<FilePreviewTarget | null>(null);
 
   const processFiles = async (rawFiles: File[]) => {
     const maxBytes = maxSizeMB * 1024 * 1024;
@@ -103,10 +105,11 @@ export default function CloudinaryUpload({
         {files.length > 0 && (
           <div className="mt-2 space-y-1">
             {files.map((f, i) => (
-              <FileRow key={i} f={f} onRemove={() => remove(i)} />
+              <FileRow key={i} f={f} onRemove={() => remove(i)} onPreview={setPreviewTarget} />
             ))}
           </div>
         )}
+        <FilePreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} />
       </div>
     );
   }
@@ -140,7 +143,7 @@ export default function CloudinaryUpload({
       {files.length > 0 && (
         <div className="space-y-2">
           {files.map((f, i) => (
-            <FileRow key={i} f={f} onRemove={() => remove(i)} />
+            <FileRow key={i} f={f} onRemove={() => remove(i)} onPreview={setPreviewTarget} />
           ))}
         </div>
       )}
@@ -150,14 +153,35 @@ export default function CloudinaryUpload({
           Cloudinary not configured — files stored locally in demo mode. Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in .env to enable cloud storage.
         </p>
       )}
+
+      <FilePreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} />
     </div>
   );
 }
 
-function FileRow({ f, onRemove }: { f: FileState; onRemove: () => void }) {
+function FileRow({ f, onRemove, onPreview }: { f: FileState; onRemove: () => void; onPreview: (t: FilePreviewTarget) => void }) {
+  const isImage = f.file.type.startsWith('image/');
+  const localUrl = useMemo(() => (isImage ? URL.createObjectURL(f.file) : null), [f.file, isImage]);
+  useEffect(() => () => { if (localUrl) URL.revokeObjectURL(localUrl); }, [localUrl]);
+
+  const previewUrl = f.result?.url ?? localUrl;
+  const canPreview = f.status === 'done' || (isImage && !!localUrl);
+
+  const openPreview = () => {
+    if (!canPreview || !previewUrl) return;
+    onPreview({ url: previewUrl, name: f.file.name, mimeType: f.file.type });
+  };
+
   return (
     <div className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl px-3 py-2">
-      <Paperclip className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
+      {isImage && localUrl ? (
+        <button type="button" onClick={openPreview} disabled={!canPreview}
+          className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 border border-gray-100 dark:border-gray-700">
+          <img src={previewUrl ?? localUrl} alt={f.file.name} className="w-full h-full object-cover" />
+        </button>
+      ) : (
+        <Paperclip className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
+      )}
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{f.file.name}</p>
         <p className="text-[10px] text-gray-400">{fmtBytes(f.file.size)}</p>
@@ -168,11 +192,16 @@ function FileRow({ f, onRemove }: { f: FileState; onRemove: () => void }) {
           <>
             <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
             {f.result && (
-              <button type="button"
-                onClick={() => cloudinaryService.download(f.result!.url, f.file.name)}
-                className="p-0.5 text-gray-400 hover:text-indigo-600 transition">
-                <Download className="h-3 w-3" />
-              </button>
+              <>
+                <button type="button" onClick={openPreview} className="p-0.5 text-gray-400 hover:text-indigo-600 transition" title="Preview">
+                  <Eye className="h-3 w-3" />
+                </button>
+                <button type="button"
+                  onClick={() => cloudinaryService.download(f.result!.url, f.file.name)}
+                  className="p-0.5 text-gray-400 hover:text-indigo-600 transition" title="Download">
+                  <Download className="h-3 w-3" />
+                </button>
+              </>
             )}
           </>
         )}

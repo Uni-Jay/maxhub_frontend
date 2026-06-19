@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
 import { cn } from '@utils/cn';
+import FilePreviewModal, { type FilePreviewTarget } from '@components/ui/FilePreviewModal';
 
 type BizUnit = 'visa' | 'kurios' | 'bead';
 
@@ -79,6 +80,8 @@ function DocumentUploadModal({
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const filePreviewUrl = useMemo(() => (file?.type.startsWith('image/') ? URL.createObjectURL(file) : null), [file]);
+  useEffect(() => () => { if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl); }, [filePreviewUrl]);
 
   const handleUpload = async () => {
     if (!file) return;
@@ -148,7 +151,11 @@ function DocumentUploadModal({
                 onChange={e => setFile(e.target.files?.[0] || null)} />
               {file ? (
                 <div className="flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400">
-                  <File className="h-5 w-5" />
+                  {filePreviewUrl ? (
+                    <img src={filePreviewUrl} alt={file.name} className="h-10 w-10 rounded-lg object-cover" />
+                  ) : (
+                    <File className="h-5 w-5" />
+                  )}
                   <span className="text-sm font-medium truncate max-w-[200px]">{file.name}</span>
                 </div>
               ) : (
@@ -192,6 +199,7 @@ function DocumentsSection({
   onDelete: (docId: string) => void;
 }) {
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<FilePreviewTarget | null>(null);
   const myDocs = documents.filter(d => d.applicantId === entityId && d.context === context);
 
   return (
@@ -217,30 +225,48 @@ function DocumentsSection({
         </div>
       ) : (
         <div className="space-y-2">
-          {myDocs.map(doc => (
-            <div key={doc.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-              <File className="h-4 w-4 text-indigo-500 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{doc.fileName}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{doc.uploadDate}</p>
-              </div>
-              <span className={cn('flex-shrink-0 px-2 py-0.5 rounded-md text-xs font-semibold', DOC_TYPE_COLORS[doc.fileType])}>{doc.fileType}</span>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {doc.fileUrl && (
-                  <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-                    className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors" title="View/Download">
-                    <Download className="h-3.5 w-3.5" />
-                  </a>
+          {myDocs.map(doc => {
+            const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(doc.fileName);
+            return (
+              <div key={doc.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                {isImage && doc.fileUrl ? (
+                  <button type="button" onClick={() => setPreviewDoc({ url: doc.fileUrl!, name: doc.fileName })}
+                    className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200 dark:border-gray-600">
+                    <img src={doc.fileUrl} alt={doc.fileName} className="w-full h-full object-cover" />
+                  </button>
+                ) : (
+                  <File className="h-4 w-4 text-indigo-500 flex-shrink-0" />
                 )}
-                <button onClick={() => onDelete(doc.id)}
-                  className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition-colors" title="Delete">
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{doc.fileName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{doc.uploadDate}</p>
+                </div>
+                <span className={cn('flex-shrink-0 px-2 py-0.5 rounded-md text-xs font-semibold', DOC_TYPE_COLORS[doc.fileType])}>{doc.fileType}</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {doc.fileUrl && (
+                    <button type="button" onClick={() => setPreviewDoc({ url: doc.fileUrl!, name: doc.fileName })}
+                      className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors" title="Preview">
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {doc.fileUrl && (
+                    <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
+                      className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors" title="Download">
+                      <Download className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                  <button onClick={() => onDelete(doc.id)}
+                    className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition-colors" title="Delete">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      <FilePreviewModal target={previewDoc} onClose={() => setPreviewDoc(null)} />
 
       <AnimatePresence>
         {showUploadModal && (

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
 import { StatCard } from '@components/charts/ChartComponents';
+import DashboardClock from '@components/ui/DashboardClock';
 import { apiClient } from '@services/apiClient';
 import { useAuthStore } from '@store/authStore';
 
@@ -217,13 +218,16 @@ export function HODDashboard() {
             <p className="text-sm font-medium text-indigo-600 mt-1">{departmentName} Department</p>
           )}
         </div>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setRefreshKey((k) => k + 1)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
-        >
-          <RefreshCw className="w-4 h-4" /> Refresh
-        </motion.button>
+        <div className="flex items-center gap-3">
+          <DashboardClock />
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
+          >
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* ── KPI Cards ── */}

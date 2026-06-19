@@ -7,6 +7,7 @@ import {
   Building2, Sparkles, ChevronRight, Video, FolderOpen, Bot,
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
+import DashboardClock from '@components/ui/DashboardClock';
 import { useAuthStore } from '@store/authStore';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { taskService } from '@/services/taskService';
@@ -142,13 +143,8 @@ export function StaffDashboard() {
               </div>
             </div>
           </div>
-          <div className="text-right flex-shrink-0">
-            <div className="inline-flex flex-col items-end gap-0.5 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-900/40">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium">Local Time</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">
-                {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
+          <div className="flex-shrink-0">
+            <DashboardClock />
           </div>
         </div>
       </motion.div>

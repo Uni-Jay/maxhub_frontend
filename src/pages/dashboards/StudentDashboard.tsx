@@ -5,6 +5,7 @@ import {
   Clock, Play, Star, Target,
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
+import DashboardClock from '@components/ui/DashboardClock';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { lmsService } from '@/services/lmsService';
 
@@ -50,9 +51,12 @@ export function StudentDashboard() {
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       {/* Header */}
-      <motion.div variants={item}>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Learning Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Track your progress and prepare for success</p>
+      <motion.div variants={item} className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Learning Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Track your progress and prepare for success</p>
+        </div>
+        <DashboardClock />
       </motion.div>
 
       {/* Stats */}
