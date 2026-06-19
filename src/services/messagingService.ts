@@ -38,17 +38,6 @@ export interface ChatUser {
   id: number; firstName: string; lastName: string; email: string; avatar?: string;
 }
 
-export interface CallRecord {
-  id: number; uuid: string;
-  callerUserId: number; calleeUserId: number;
-  callType: 'Voice' | 'Video';
-  status: 'Ringing' | 'Active' | 'Ended' | 'Missed' | 'Declined';
-  durationSeconds?: number;
-  caller?: { id: number; firstName: string; lastName: string; avatar?: string };
-  callee?: { id: number; firstName: string; lastName: string; avatar?: string };
-  createdAt: string;
-}
-
 export const messagingService = {
   // ── User Search ──────────────────────────────────────────────────────────
   searchUsers: (q: string, limit = 20) =>
@@ -125,8 +114,4 @@ export const messagingService = {
   // ── Search ────────────────────────────────────────────────────────────────
   searchMessages: (q: string) =>
     apiClient.get<ChatMessage[]>(`/messages/search?q=${encodeURIComponent(q)}`),
-
-  // ── Call History ──────────────────────────────────────────────────────────
-  getCallHistory: (limit = 20) =>
-    apiClient.get<CallRecord[]>(`/messages/calls?limit=${limit}`),
 };

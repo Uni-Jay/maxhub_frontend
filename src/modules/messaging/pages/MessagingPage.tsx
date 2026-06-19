@@ -2,12 +2,11 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Search, Plus, Send, Paperclip, Mic, MicOff, Smile, Video,
-  Phone, MoreVertical, ArrowLeft, CheckCheck, Check, Pin,
+  Search, Plus, Send, Paperclip, Mic, MicOff, Smile,
+  MoreVertical, ArrowLeft, CheckCheck, Check, Pin,
   Edit2, Trash2, Reply, X, Users, Archive,
-  VideoOff, Minimize2, Maximize2, PhoneOff,
   Forward, Copy, Filter, Bell, BellOff, LogOut,
-  PhoneIncoming, PhoneMissed, PhoneCall, Clock, Settings,
+  Settings,
   FileText, MoreHorizontal,
 } from 'lucide-react';
 import {
@@ -15,7 +14,6 @@ import {
   type Conversation,
   type ChatMessage,
   type ChatUser,
-  type CallRecord,
 } from '@services/messagingService';
 import { chatSocket } from '@services/chatSocket';
 import { useAuthStore } from '@store/authStore';
@@ -64,11 +62,6 @@ function fmtDateSep(date: string) {
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
   return d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
 }
-function fmtDuration(sec: number) {
-  const m = Math.floor(sec / 60), s = sec % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
 // ─── Avatar ──────────────────────────────────────────────────────────────────
 function Avatar({ name, size = 10, src, online }: { name: string; size?: number; src?: string; online?: boolean }) {
   const color = avatarColor(name);
@@ -383,169 +376,6 @@ function TypingIndicator({ names }: { names: string[] }) {
   );
 }
 
-// ─── Incoming call modal ──────────────────────────────────────────────────────
-function IncomingCallModal({ callInfo, onAccept, onReject }: {
-  callInfo: { callId: number; callType: 'Voice' | 'Video'; caller: ChatUser; conversationId?: number };
-  onAccept: () => void;
-  onReject: () => void;
-}) {
-  const name = `${callInfo.caller.firstName} ${callInfo.caller.lastName}`;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -40 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -40 }}
-      className="fixed top-6 right-6 z-[100] bg-gray-900 rounded-3xl shadow-2xl p-5 flex flex-col items-center gap-4 border border-gray-700 w-72">
-      <div className="relative">
-        <Avatar name={name} size={16} src={callInfo.caller.avatar} />
-        <span className="absolute -bottom-1 -right-1 w-7 h-7 bg-emerald-500 rounded-full flex items-center justify-center animate-pulse">
-          {callInfo.callType === 'Video' ? <Video className="h-3.5 w-3.5 text-white" /> : <Phone className="h-3.5 w-3.5 text-white" />}
-        </span>
-      </div>
-      <div className="text-center">
-        <p className="text-white font-bold text-base">{name}</p>
-        <p className="text-gray-400 text-xs mt-0.5">Incoming {callInfo.callType} call...</p>
-      </div>
-      <div className="flex gap-4">
-        <button onClick={onReject}
-          className="w-14 h-14 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg transition">
-          <PhoneOff className="h-6 w-6" />
-        </button>
-        <button onClick={onAccept}
-          className="w-14 h-14 bg-emerald-500 hover:bg-emerald-600 rounded-full flex items-center justify-center text-white shadow-lg transition">
-          {callInfo.callType === 'Video' ? <Video className="h-6 w-6" /> : <Phone className="h-6 w-6" />}
-        </button>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── Active call screen ───────────────────────────────────────────────────────
-function ActiveCallScreen({ callInfo, onEnd }: {
-  callInfo: {
-    callId: number; callType: 'Voice' | 'Video'; remoteUser: ChatUser;
-    localStream: MediaStream | null; remoteStream: MediaStream | null;
-  };
-  onEnd: () => void;
-}) {
-  const [muted, setMuted] = useState(false);
-  const [cameraOff, setCameraOff] = useState(false);
-  const [minimized, setMinimized] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval>>();
-
-  useEffect(() => {
-    timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
-    return () => clearInterval(timerRef.current);
-  }, []);
-
-  useEffect(() => {
-    if (localVideoRef.current && callInfo.localStream) {
-      localVideoRef.current.srcObject = callInfo.localStream;
-    }
-  }, [callInfo.localStream]);
-
-  useEffect(() => {
-    if (remoteVideoRef.current && callInfo.remoteStream) {
-      remoteVideoRef.current.srcObject = callInfo.remoteStream;
-    }
-  }, [callInfo.remoteStream]);
-
-  const toggleMute = () => {
-    callInfo.localStream?.getAudioTracks().forEach(t => (t.enabled = muted));
-    setMuted(m => !m);
-  };
-
-  const toggleCamera = () => {
-    callInfo.localStream?.getVideoTracks().forEach(t => (t.enabled = cameraOff));
-    setCameraOff(c => !c);
-  };
-
-  const name = `${callInfo.remoteUser.firstName} ${callInfo.remoteUser.lastName}`;
-
-  if (minimized) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white rounded-2xl shadow-2xl p-3 flex items-center gap-3 cursor-pointer border border-gray-700"
-        onClick={() => setMinimized(false)}>
-        <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center animate-pulse">
-          {callInfo.callType === 'Video' ? <Video className="h-4 w-4" /> : <Phone className="h-4 w-4" />}
-        </div>
-        <div>
-          <p className="text-sm font-semibold">{name}</p>
-          <p className="text-xs text-emerald-400">{fmtDuration(duration)}</p>
-        </div>
-        <button onClick={e => { e.stopPropagation(); setMinimized(false); }}>
-          <Maximize2 className="h-4 w-4 text-gray-400" />
-        </button>
-        <button onClick={e => { e.stopPropagation(); onEnd(); }}
-          className="p-1.5 bg-red-600 rounded-lg hover:bg-red-700">
-          <PhoneOff className="h-3.5 w-3.5" />
-        </button>
-      </motion.div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center">
-      {/* Remote video */}
-      {callInfo.callType === 'Video' && callInfo.remoteStream ? (
-        <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover absolute inset-0" />
-      ) : (
-        <div className="flex flex-col items-center gap-4">
-          <Avatar name={name} size={24} src={callInfo.remoteUser.avatar} />
-          <p className="text-white text-2xl font-bold">{name}</p>
-          <p className="text-emerald-400 text-sm">Connected · {fmtDuration(duration)}</p>
-        </div>
-      )}
-
-      {/* Local video PiP */}
-      {callInfo.callType === 'Video' && callInfo.localStream && (
-        <video ref={localVideoRef} autoPlay playsInline muted
-          className="absolute bottom-24 right-6 w-28 h-20 object-cover rounded-xl border-2 border-white/20 shadow-2xl" />
-      )}
-
-      {/* Duration overlay for video */}
-      {callInfo.callType === 'Video' && (
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/50 text-white text-sm px-3 py-1.5 rounded-full">
-          {fmtDuration(duration)}
-        </div>
-      )}
-
-      {/* Controls */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4">
-        <button onClick={toggleMute}
-          className={cn('w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition',
-            muted ? 'bg-red-500 hover:bg-red-600' : 'bg-white/20 hover:bg-white/30 text-white')}>
-          {muted ? <MicOff className="h-6 w-6 text-white" /> : <Mic className="h-6 w-6 text-white" />}
-        </button>
-
-        <button onClick={onEnd}
-          className="w-16 h-16 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-2xl transition">
-          <PhoneOff className="h-7 w-7" />
-        </button>
-
-        {callInfo.callType === 'Video' && (
-          <button onClick={toggleCamera}
-            className={cn('w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition',
-              cameraOff ? 'bg-red-500 hover:bg-red-600' : 'bg-white/20 hover:bg-white/30')}>
-            {cameraOff ? <VideoOff className="h-6 w-6 text-white" /> : <Video className="h-6 w-6 text-white" />}
-          </button>
-        )}
-
-        <button onClick={() => setMinimized(true)}
-          className="w-14 h-14 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white shadow-xl transition">
-          <Minimize2 className="h-5 w-5" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ─── New Chat Modal ───────────────────────────────────────────────────────────
 function NewChatModal({ onClose, onStartDM, onCreateGroup }: {
   onClose: () => void;
@@ -726,74 +556,6 @@ function ForwardModal({ msg, conversations, onForward, onClose }: {
   );
 }
 
-// ─── Call history modal ───────────────────────────────────────────────────────
-function CallHistoryModal({ onClose }: { onClose: () => void }) {
-  const currentUser = useAuthStore(s => s.user);
-  const currentUserId = (currentUser as any)?.id ?? 0;
-
-  const { data: callsRaw } = useQuery({
-    queryKey: ['call-history'],
-    queryFn: () => messagingService.getCallHistory(30),
-    staleTime: 15000,
-  });
-  const calls = (callsRaw as CallRecord[]) ?? [];
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-        className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-          <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2"><Clock className="h-4 w-4" /> Call History</h2>
-          <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"><X className="h-4 w-4" /></button>
-        </div>
-        <div className="overflow-y-auto max-h-96 divide-y divide-gray-50 dark:divide-gray-800">
-          {calls.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-gray-400 gap-2">
-              <PhoneCall className="h-8 w-8 opacity-40" />
-              <p className="text-sm">No call history</p>
-            </div>
-          ) : (
-            calls.map(call => {
-              const isIncoming = call.calleeUserId === currentUserId;
-              const other = isIncoming ? call.caller : call.callee;
-              const otherName = other ? `${other.firstName} ${other.lastName}` : 'Unknown';
-              const isMissed = call.status === 'Missed';
-              const isDeclined = call.status === 'Declined';
-              return (
-                <div key={call.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                  <Avatar name={otherName} size={9} src={other?.avatar} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-gray-900 dark:text-white">{otherName}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {isMissed || isDeclined
-                        ? <PhoneMissed className="h-3 w-3 text-red-500" />
-                        : isIncoming
-                          ? <PhoneIncoming className="h-3 w-3 text-emerald-500" />
-                          : <PhoneCall className="h-3 w-3 text-indigo-500" />
-                      }
-                      <span className={cn('text-xs', isMissed || isDeclined ? 'text-red-500' : 'text-gray-400')}>
-                        {isMissed ? 'Missed' : isDeclined ? 'Declined' : isIncoming ? 'Incoming' : 'Outgoing'}
-                        {call.durationSeconds ? ` · ${fmtDuration(call.durationSeconds)}` : ''}
-                      </span>
-                      <span className="text-xs text-gray-300 dark:text-gray-600">· {fmtTime(call.createdAt)}</span>
-                    </div>
-                  </div>
-                  <div className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
-                    call.callType === 'Video'
-                      ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'
-                      : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400')}>
-                    {call.callType}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
 // ─── Group info panel ─────────────────────────────────────────────────────────
 function GroupInfoPanel({ conv, onClose, onAddMembers, onRemoveMember, currentUserId }: {
   conv: Conversation;
@@ -904,7 +666,6 @@ export default function MessagingPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
-  const [showCallHistory, setShowCallHistory] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -914,16 +675,6 @@ export default function MessagingPage() {
   const [typingInConv, setTypingInConv] = useState<Record<number, Set<number>>>({}); // convId → Set<userId>
   const [localMessages, setLocalMessages] = useState<Record<number, ChatMessage[]>>({});
 
-  // ── Call state ─────────────────────────────────────────────────────────────
-  const [incomingCall, setIncomingCall] = useState<{
-    callId: number; callType: 'Voice' | 'Video'; caller: ChatUser; conversationId?: number; offer?: RTCSessionDescriptionInit;
-  } | null>(null);
-  const [activeCall, setActiveCall] = useState<{
-    callId: number; callType: 'Voice' | 'Video'; remoteUser: ChatUser;
-    localStream: MediaStream | null; remoteStream: MediaStream | null;
-  } | null>(null);
-
-  const peerConnection = useRef<RTCPeerConnection | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1043,35 +794,6 @@ export default function MessagingPage() {
     socket.on('chat:join', ({ conversationId }: { conversationId: number }) => {
       socket.emit('chat:join', { conversationId });
       qc.invalidateQueries({ queryKey: ['conversations'] });
-    });
-
-    // ── Calls ──────────────────────────────────────────────────────────────
-    socket.on('call:incoming', (data: any) => {
-      setIncomingCall({
-        callId: data.callId,
-        callType: data.callType,
-        caller: data.caller,
-        conversationId: data.conversationId,
-        offer: data.offer,
-      });
-    });
-
-    socket.on('call:accepted', async ({ answer }: { answer: RTCSessionDescriptionInit }) => {
-      if (peerConnection.current) {
-        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
-      }
-    });
-
-    socket.on('call:rejected', () => {
-      cleanupCall();
-    });
-
-    socket.on('call:ended', () => {
-      cleanupCall();
-    });
-
-    socket.on('call:ice_candidate', ({ candidate }: { candidate: RTCIceCandidateInit }) => {
-      peerConnection.current?.addIceCandidate(new RTCIceCandidate(candidate));
     });
 
     return () => {
@@ -1378,103 +1100,6 @@ export default function MessagingPage() {
     chatSocket.joinConversation(id);
   };
 
-  // ── WebRTC Call helpers ───────────────────────────────────────────────────
-  const createPeerConnection = (callId: number, targetUserId: number, _callType: 'Voice' | 'Video') => {
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    peerConnection.current = pc;
-
-    pc.onicecandidate = ({ candidate }) => {
-      if (candidate) chatSocket.sendIceCandidate(targetUserId, callId, candidate.toJSON());
-    };
-
-    pc.ontrack = ({ streams }) => {
-      const remote = streams[0];
-      setActiveCall(prev => prev ? { ...prev, remoteStream: remote } : null);
-    };
-
-    return pc;
-  };
-
-  const cleanupCall = () => {
-    peerConnection.current?.close();
-    peerConnection.current = null;
-    activeCall?.localStream?.getTracks().forEach(t => t.stop());
-    setActiveCall(null);
-    setIncomingCall(null);
-  };
-
-  const startCall = async (calleeId: number, callType: 'Voice' | 'Video') => {
-    try {
-      const constraints = { audio: true, video: callType === 'Video' };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-      const pc = createPeerConnection(0, calleeId, callType);
-      stream.getTracks().forEach(t => pc.addTrack(t, stream));
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      const { callId } = await chatSocket.initiateCall({
-        calleeUserId: calleeId,
-        callType,
-        conversationId: selectedId ?? undefined,
-        offer,
-      });
-
-      peerConnection.current = pc;
-
-      const callee = selectedConv?.participants?.find(p => p.userId === calleeId);
-      const calleeUser: ChatUser = callee?.user
-        ? { id: calleeId, firstName: callee.user.firstName, lastName: callee.user.lastName, avatar: callee.user.avatar, email: '' }
-        : { id: calleeId, firstName: 'User', lastName: `#${calleeId}`, email: '' };
-
-      setActiveCall({ callId, callType, remoteUser: calleeUser, localStream: stream, remoteStream: null });
-
-      // Update ICE candidates after callId is known
-      pc.onicecandidate = ({ candidate }) => {
-        if (candidate) chatSocket.sendIceCandidate(calleeId, callId, candidate.toJSON());
-      };
-    } catch (err: any) {
-      alert(`Call failed: ${err.message}`);
-    }
-  };
-
-  const acceptCall = async () => {
-    if (!incomingCall) return;
-    try {
-      const constraints = { audio: true, video: incomingCall.callType === 'Video' };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-      const pc = createPeerConnection(incomingCall.callId, incomingCall.caller.id, incomingCall.callType);
-      stream.getTracks().forEach(t => pc.addTrack(t, stream));
-
-      if (incomingCall.offer) {
-        await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        await chatSocket.answerCall(incomingCall.callId, answer);
-      }
-
-      setActiveCall({
-        callId: incomingCall.callId,
-        callType: incomingCall.callType,
-        remoteUser: incomingCall.caller,
-        localStream: stream,
-        remoteStream: null,
-      });
-      setIncomingCall(null);
-    } catch (err: any) {
-      alert(`Could not accept call: ${err.message}`);
-    }
-  };
-
-  const endActiveCall = async () => {
-    if (activeCall) {
-      await chatSocket.endCall(activeCall.callId).catch(() => {});
-    }
-    cleanupCall();
-  };
-
   // ── Date separator builder ────────────────────────────────────────────────
   function buildMessageList() {
     const result: (ChatMessage | { type: 'date'; label: string; key: string })[] = [];
@@ -1509,10 +1134,6 @@ export default function MessagingPage() {
             <span className="text-white font-bold text-base">Messages</span>
           </div>
           <div className="flex items-center gap-0.5">
-            <button onClick={() => setShowCallHistory(true)}
-              className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition" title="Call history">
-              <PhoneCall className="h-4.5 w-4.5" />
-            </button>
             <button onClick={() => setShowArchived(!showArchived)}
               className={cn('p-2 rounded-full transition', showArchived ? 'text-amber-300 hover:bg-white/10' : 'text-white/80 hover:text-white hover:bg-white/10')}
               title={showArchived ? 'Show active' : 'Show archived'}>
@@ -1625,28 +1246,6 @@ export default function MessagingPage() {
                 <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition" title="Search messages">
                   <Search className="h-4 w-4" />
                 </button>
-                {/* Voice call */}
-                {!isGroup && selectedConv.conversationType === 'Direct' && (
-                  <button
-                    onClick={() => {
-                      const other = selectedConv.participants?.find(p => p.userId !== currentUserId);
-                      if (other) startCall(other.userId, 'Voice');
-                    }}
-                    className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition" title="Voice call">
-                    <Phone className="h-4 w-4" />
-                  </button>
-                )}
-                {/* Video call */}
-                {!isGroup && selectedConv.conversationType === 'Direct' && (
-                  <button
-                    onClick={() => {
-                      const other = selectedConv.participants?.find(p => p.userId !== currentUserId);
-                      if (other) startCall(other.userId, 'Video');
-                    }}
-                    className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition" title="Video call">
-                    <Video className="h-4 w-4" />
-                  </button>
-                )}
                 {/* Mute */}
                 <button onClick={() => muteMutation.mutate(selectedConv.id)}
                   className={cn('p-2 rounded-full transition', selectedConv.isMuted
@@ -1670,10 +1269,6 @@ export default function MessagingPage() {
                     <button onClick={() => archiveMutation.mutate(selectedConv.id)}
                       className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
                       <Archive className="h-3.5 w-3.5" /> {selectedConv.isArchived ? 'Unarchive' : 'Archive'}
-                    </button>
-                    <button onClick={() => setShowCallHistory(true)}
-                      className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <Clock className="h-3.5 w-3.5" /> Call History
                     </button>
                   </div>
                 </div>
@@ -1834,28 +1429,6 @@ export default function MessagingPage() {
 
       {/* ═══════════════ MODALS ═══════════════ */}
 
-      {/* Incoming call */}
-      <AnimatePresence>
-        {incomingCall && (
-          <IncomingCallModal
-            callInfo={incomingCall}
-            onAccept={acceptCall}
-            onReject={async () => {
-              await chatSocket.rejectCall(incomingCall.callId).catch(() => {});
-              setIncomingCall(null);
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Active call */}
-      {activeCall && (
-        <ActiveCallScreen
-          callInfo={activeCall}
-          onEnd={endActiveCall}
-        />
-      )}
-
       {/* New chat modal */}
       <AnimatePresence>
         {showNewChat && (
@@ -1877,11 +1450,6 @@ export default function MessagingPage() {
             onClose={() => setForwardTarget(null)}
           />
         )}
-      </AnimatePresence>
-
-      {/* Call history modal */}
-      <AnimatePresence>
-        {showCallHistory && <CallHistoryModal onClose={() => setShowCallHistory(false)} />}
       </AnimatePresence>
     </div>
   );

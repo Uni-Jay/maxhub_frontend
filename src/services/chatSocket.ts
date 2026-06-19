@@ -134,57 +134,6 @@ class ChatSocketService {
     });
   }
 
-  // ── WebRTC Call Signaling ─────────────────────────────────────────────────
-
-  initiateCall(data: {
-    calleeUserId: number;
-    callType: 'Voice' | 'Video';
-    conversationId?: number;
-    offer: RTCSessionDescriptionInit;
-  }): Promise<{ callId: number; roomName: string }> {
-    return new Promise((resolve, reject) => {
-      if (!this.socket?.connected) return reject(new Error('Socket not connected'));
-      this.socket.emit('call:initiate', data, (res: any) => {
-        if (res?.error) reject(new Error(res.error));
-        else resolve(res);
-      });
-    });
-  }
-
-  answerCall(callId: number, answer: RTCSessionDescriptionInit): Promise<any> {
-    return new Promise((resolve, reject) => {
-      if (!this.socket?.connected) return reject(new Error('Socket not connected'));
-      this.socket.emit('call:answer', { callId, answer }, (res: any) => {
-        if (res?.error) reject(new Error(res.error));
-        else resolve(res);
-      });
-    });
-  }
-
-  rejectCall(callId: number): Promise<any> {
-    return new Promise((resolve, reject) => {
-      if (!this.socket?.connected) return reject(new Error('Socket not connected'));
-      this.socket.emit('call:reject', { callId }, (res: any) => {
-        if (res?.error) reject(new Error(res.error));
-        else resolve(res);
-      });
-    });
-  }
-
-  endCall(callId: number): Promise<any> {
-    return new Promise((resolve, reject) => {
-      if (!this.socket?.connected) return reject(new Error('Socket not connected'));
-      this.socket.emit('call:end', { callId }, (res: any) => {
-        if (res?.error) reject(new Error(res.error));
-        else resolve(res);
-      });
-    });
-  }
-
-  sendIceCandidate(targetUserId: number, callId: number, candidate: RTCIceCandidateInit) {
-    this.socket?.emit('call:ice_candidate', { targetUserId, callId, candidate });
-  }
-
   // ── On helpers ────────────────────────────────────────────────────────────
 
   on(event: string, handler: (...args: any[]) => void) {

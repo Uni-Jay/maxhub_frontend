@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { notificationService } from '@services/notificationService';
-import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, Bell, Search, LogOut, Home, ChevronRight,
@@ -10,8 +10,6 @@ import {
 import { useAuthStore } from '@store/authStore';
 import { useThemeStore } from '@store/themeStore';
 import { cn } from '@utils/cn';
-import { IncomingCallNotification } from '@modules/videocall/components/IncomingCallNotification';
-import type { IncomingCall } from '@services/videoCallService';
 import { getPrimaryRole } from '@utils/role';
 import { getNavForRole, ALL_SIDEBAR_ITEMS } from '@config/sidebarConfig';
 
@@ -166,7 +164,6 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
   const { isDark, toggle: toggleTheme } = useThemeStore();
 
   const { data: unreadData } = useQuery({
@@ -176,10 +173,6 @@ export function DashboardLayout() {
     retry: false,
   });
   const unreadCount = unreadData?.count ?? 0;
-
-  const handleAnswerCall = (call: IncomingCall) => {
-    navigate('/calls', { state: { incomingCall: call } });
-  };
 
   const pageTitle = ALL_SIDEBAR_ITEMS.flatMap(n =>
     n.children
@@ -286,9 +279,6 @@ export function DashboardLayout() {
           </div>
         </main>
       </div>
-
-      {/* Global incoming call notification — visible on every page */}
-      <IncomingCallNotification onAnswer={handleAnswerCall} />
     </div>
   );
 }
