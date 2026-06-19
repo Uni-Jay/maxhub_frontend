@@ -58,6 +58,15 @@ class ApiClient {
           }
         }
 
+        // Surface the backend's actual message (e.g. "A staff member with this
+        // email already exists") instead of Axios's generic "Request failed
+        // with status code 409" — every route responds via ResponseFormatter,
+        // which always puts the real reason in response.data.message.
+        const backendMessage = (error.response?.data as any)?.message;
+        if (backendMessage) {
+          error.message = backendMessage;
+        }
+
         return Promise.reject(error);
       }
     );

@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import {
   User, Phone, GraduationCap, Award, Briefcase, Users,
   Building2, Landmark, Heart, FileText, PenLine, ChevronRight,
-  ChevronLeft, Plus, Trash2, Loader2, Check, PlusCircle,
+  ChevronLeft, Plus, Trash2, Loader2, Check, PlusCircle, History, X,
 } from 'lucide-react';
 import { cn } from '@utils/cn';
 import { apiClient } from '@services/apiClient';
@@ -74,6 +74,43 @@ const INIT_DATA = {
   signatureDate: new Date().toISOString().slice(0, 10),
 };
 
+// ── Draft autosave (new-staff only) — survives idle logout / accidental navigation,
+// the same way Google Forms resumes an in-progress response on the same device. ──
+const DRAFT_KEY = 'maxhub:newStaffDraft';
+const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // stale after a week, not worth resuming
+
+interface StaffFormDraft {
+  data: typeof INIT_DATA;
+  section: Section;
+  useCustomPosition: boolean;
+  customPosition: string;
+  additionalUnits: string[];
+  validIdFile: CloudinaryUploadResult | null;
+  utilityBillFile: CloudinaryUploadResult | null;
+  certificateFile: CloudinaryUploadResult | null;
+  signatureFile: CloudinaryUploadResult | null;
+  savedAt: number;
+}
+
+function loadDraft(): StaffFormDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StaffFormDraft;
+    if (!parsed?.savedAt || Date.now() - parsed.savedAt > DRAFT_TTL_MS) {
+      localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch { /* localStorage unavailable — nothing to clear */ }
+}
+
 const fCls = 'w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500';
 const lCls = 'text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block';
 
@@ -100,17 +137,20 @@ export default function StaffForm() {
   const { user: currentUser } = useAuthStore();
   const isEdit = !!id;
   const isCEO = currentUser?.roles?.includes('superadmin') ?? false;
-  const [section, setSection] = useState<Section>('A');
-  const [data, setData] = useState(INIT_DATA);
-  const [useCustomPosition, setUseCustomPosition] = useState(false);
-  const [customPosition, setCustomPosition] = useState('');
-  const [additionalUnits, setAdditionalUnits] = useState<string[]>([]);
+  const [initialDraft] = useState<StaffFormDraft | null>(() => (isEdit ? null : loadDraft()));
+  const [section, setSection] = useState<Section>(initialDraft?.section ?? 'A');
+  const [data, setData] = useState(initialDraft?.data ?? INIT_DATA);
+  const [useCustomPosition, setUseCustomPosition] = useState(initialDraft?.useCustomPosition ?? false);
+  const [customPosition, setCustomPosition] = useState(initialDraft?.customPosition ?? '');
+  const [additionalUnits, setAdditionalUnits] = useState<string[]>(initialDraft?.additionalUnits ?? []);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [createdStaff, setCreatedStaff] = useState<any>(null);
-  const [validIdFile, setValidIdFile] = useState<CloudinaryUploadResult | null>(null);
-  const [utilityBillFile, setUtilityBillFile] = useState<CloudinaryUploadResult | null>(null);
-  const [certificateFile, setCertificateFile] = useState<CloudinaryUploadResult | null>(null);
-  const [signatureFile, setSignatureFile] = useState<CloudinaryUploadResult | null>(null);
+  const [validIdFile, setValidIdFile] = useState<CloudinaryUploadResult | null>(initialDraft?.validIdFile ?? null);
+  const [utilityBillFile, setUtilityBillFile] = useState<CloudinaryUploadResult | null>(initialDraft?.utilityBillFile ?? null);
+  const [certificateFile, setCertificateFile] = useState<CloudinaryUploadResult | null>(initialDraft?.certificateFile ?? null);
+  const [signatureFile, setSignatureFile] = useState<CloudinaryUploadResult | null>(initialDraft?.signatureFile ?? null);
+  const [showDraftBanner, setShowDraftBanner] = useState(!!initialDraft);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
   const { data: deptData } = useApiQuery(['departments'], () => departmentService.getAll());
   const { data: desgData } = useApiQuery(['designations'], () => designationService.getAll());
@@ -119,13 +159,50 @@ export default function StaffForm() {
 
   const set = (field: string, value: any) => setData(d => ({ ...d, [field]: value }));
 
+  const discardDraft = () => {
+    clearDraft();
+    setData(INIT_DATA);
+    setSection('A');
+    setUseCustomPosition(false);
+    setCustomPosition('');
+    setAdditionalUnits([]);
+    setValidIdFile(null);
+    setUtilityBillFile(null);
+    setCertificateFile(null);
+    setSignatureFile(null);
+    setShowDraftBanner(false);
+    setLastSavedAt(null);
+  };
+
+  // Debounced autosave to localStorage — never on edit, never after a successful create.
+  useEffect(() => {
+    if (isEdit || createdStaff) return;
+    const timer = setTimeout(() => {
+      try {
+        const savedAt = Date.now();
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          data, section, useCustomPosition, customPosition, additionalUnits,
+          validIdFile, utilityBillFile, certificateFile, signatureFile, savedAt,
+        } satisfies StaffFormDraft));
+        setLastSavedAt(savedAt);
+      } catch {
+        // localStorage unavailable (quota / private browsing) — nothing actionable to show the user
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [data, section, useCustomPosition, customPosition, additionalUnits, validIdFile, utilityBillFile, certificateFile, signatureFile, isEdit, createdStaff]);
+
   const createStaff = useMutation({
     mutationFn: (payload: any) => isEdit
       ? apiClient.put(`/staff/${id}`, payload)
       : apiClient.post('/staff', payload),
     onSuccess: (res: any) => {
-      if (isEdit) navigate('/staff');
-      else setCreatedStaff(res);
+      if (isEdit) {
+        navigate('/staff');
+      } else {
+        clearDraft();
+        setCreatedStaff(res);
+      }
     },
   });
 
@@ -268,7 +345,14 @@ export default function StaffForm() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">{SECTION_META[currentIdx].label}</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Section {section} of 12</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+              Section {section} of 12
+              {!isEdit && lastSavedAt && (
+                <span className="text-gray-400 dark:text-gray-500">
+                  · Draft saved {new Date(lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </p>
           </div>
           <div className="lg:hidden flex gap-1">
             {SECTION_META.map((s, i) => (
@@ -277,9 +361,35 @@ export default function StaffForm() {
           </div>
         </div>
 
+        {showDraftBanner && initialDraft && (
+          <div className="mb-4 flex items-center justify-between gap-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 rounded-xl px-4 py-3">
+            <div className="flex items-start gap-2.5">
+              <History className="h-4 w-4 text-indigo-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                Resumed your unsaved draft from {new Date(initialDraft.savedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button type="button" onClick={discardDraft} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 underline">
+                Discard &amp; start over
+              </button>
+              <button type="button" onClick={() => setShowDraftBanner(false)} className="p-1 text-indigo-400 hover:text-indigo-600 rounded">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {createStaff.isError && (
           <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{(createStaff.error as any)?.message}</AlertDescription>
+            <AlertDescription>
+              {(createStaff.error as any)?.message}
+              {(createStaff.error as any)?.response?.status === 409 && (
+                <span className="block mt-1 text-xs opacity-90">
+                  This usually means it was already submitted successfully (e.g. before a logout). Check the staff list before trying again with a different email.
+                </span>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 
