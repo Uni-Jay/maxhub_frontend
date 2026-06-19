@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthUser, AuthTokens } from '@/types/index';
 import { authApi } from '@services/auth.api';
+import { queryClient } from '@/lib/queryClient';
 
 interface AuthState {
   user: AuthUser | null;
@@ -41,6 +42,10 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           const response = await authApi.login({ email, password });
+          // Wipe any cached query results from a previous session in this
+          // tab — otherwise a role switch can briefly show the last user's
+          // cached data (e.g. the full Staff Directory) before it refetches.
+          queryClient.clear();
           set({
             user: response.user,
             tokens: {
@@ -67,6 +72,7 @@ export const useAuthStore = create<AuthState>()(
             await authApi.logout(undefined, state.tokens.refreshToken);
           }
         } finally {
+          queryClient.clear();
           set({
             user: null,
             tokens: null,
@@ -134,6 +140,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearAuth: () => {
+        queryClient.clear();
         set({
           user: null,
           tokens: null,

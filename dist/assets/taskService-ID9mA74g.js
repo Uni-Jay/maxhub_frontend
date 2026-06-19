@@ -1,0 +1,2 @@
+import{K as t}from"./index-i8V55Av9.js";const s={getAll:(s={})=>t.getRaw("/tasks",s),getById:s=>t.get(`/tasks/${s}`),create:s=>t.post("/tasks",s),update:(s,a)=>t.patch(`/tasks/${s}`,a),updateStatus:(s,a)=>t.patch(`/tasks/${s}/status`,{status:a}),assign:(s,a)=>t.patch(`/tasks/${s}/assign`,{assigneeId:a}),remove:s=>t.delete(`/tasks/${s}`),getComments:s=>t.get(`/tasks/${s}/comments`),addComment:(s,a)=>t.post(`/tasks/${s}/comments`,{content:a})};export{s as t};
+//# sourceMappingURL=taskService-ID9mA74g.js.map

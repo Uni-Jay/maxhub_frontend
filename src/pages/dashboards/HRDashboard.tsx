@@ -59,7 +59,7 @@ interface StaffMember {
   firstName?: string;
   lastName?: string;
   department?: string;
-  joinDate?: string;
+  joiningDate?: string;
   position?: string;
 }
 
@@ -165,7 +165,7 @@ export function HRDashboard() {
     queryKey: ['hr-new-joiners', refreshKey],
     queryFn: async () => {
       try {
-        return await apiClient.getRaw('/staff', { limit: 5, sortBy: 'joinDate', sortOrder: 'desc' });
+        return await apiClient.getRaw('/staff', { limit: 5, sortBy: 'joiningDate', sortOrder: 'desc' });
       } catch {
         return { data: [] };
       }
@@ -407,7 +407,7 @@ export function HRDashboard() {
                     </p>
                     <p className="text-xs text-gray-500">
                       {member.position ?? member.department ?? '—'}
-                      {member.joinDate ? ` · Joined ${new Date(member.joinDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
+                      {member.joiningDate ? ` · Joined ${new Date(member.joiningDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
                     </p>
                   </div>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium flex-shrink-0">

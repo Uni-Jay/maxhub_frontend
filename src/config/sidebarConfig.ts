@@ -194,7 +194,7 @@ const HR_NAV: SidebarItem[] = [
 // ─── HOD — department only ────────────────────────────────────────────────
 const HOD_NAV: SidebarItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'My Team', path: '/staff', icon: Users },
+  { label: 'My Team', path: '/my-team', icon: Users },
   { label: 'Projects', path: '/projects', icon: Briefcase },
   { label: 'Tasks', path: '/tasks', icon: CheckSquare },
   { label: 'Weekly Reports', path: '/hr/weekly-report', icon: FileText },

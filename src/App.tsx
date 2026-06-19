@@ -28,6 +28,7 @@ const ReceptionistDashboard = React.lazy(() => import('@pages/dashboards/Recepti
 
 // ─── Staff ───
 const StaffList = React.lazy(() => import('@modules/staff/pages/StaffList'));
+const DepartmentStaffList = React.lazy(() => import('@modules/staff/pages/DepartmentStaffList'));
 const StaffForm = React.lazy(() => import('@modules/staff/pages/StaffForm'));
 const StaffDetail = React.lazy(() => import('@modules/staff/pages/StaffDetail'));
 
@@ -249,6 +250,7 @@ function App() {
 
               {/* Staff Management */}
               <Route path="/staff" element={<StaffList />} />
+              <Route path="/my-team" element={<DepartmentStaffList />} />
               <Route path="/staff/create" element={<StaffForm />} />
               <Route path="/staff/:id/edit" element={<StaffForm />} />
               <Route path="/staff/:id" element={<StaffDetail />} />
