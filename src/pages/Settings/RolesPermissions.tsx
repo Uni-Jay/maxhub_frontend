@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Edit2, Check, X, ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react';
+import { Shield, Edit2, Check, X, ChevronDown, ChevronUp, Lock, Unlock, Search, UserCog, Plus, Trash2 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
+import { staffService } from '@services/staffService';
+import { userPermissionService } from '@services/userPermissionService';
 import { cn } from '@utils/cn';
+import type { StaffMember } from '@/types';
 
 type Role = 'superadmin' | 'admin' | 'hr' | 'hod' | 'staff';
 
@@ -165,6 +168,179 @@ export default function RolesPermissions() {
           );
         })}
       </div>
+
+      <UserPermissionOverrides />
+    </div>
+  );
+}
+
+/**
+ * Grant or revoke a specific PermissionCode for one user directly —
+ * without changing their role. Backed by /api/users/:userId/permissions,
+ * which AuthenticationService.ts already merges into that user's JWT
+ * alongside their role-derived permissions, so a grant here takes effect
+ * immediately on next login/refresh — no role change needed.
+ */
+function UserPermissionOverrides() {
+  const qc = useQueryClient();
+  const [staffSearch, setStaffSearch] = useState('');
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [permSearch, setPermSearch] = useState('');
+  const [grantReason, setGrantReason] = useState('');
+
+  const { data: staffResults } = useQuery({
+    queryKey: ['user-override-staff-search', staffSearch],
+    queryFn: () => staffService.getAll({ search: staffSearch, limit: 10 }),
+    enabled: staffSearch.length >= 2,
+  });
+  const staffOptions: StaffMember[] = staffResults?.data ?? [];
+
+  const { data: userPerms, isLoading: loadingPerms } = useQuery({
+    queryKey: ['user-permissions', selectedStaff?.userId],
+    queryFn: () => userPermissionService.getUserPermissions(selectedStaff!.userId),
+    enabled: !!selectedStaff,
+  });
+
+  const { data: catalogResults } = useQuery({
+    queryKey: ['permission-catalog-search', permSearch],
+    queryFn: () => userPermissionService.searchPermissionCatalog(permSearch),
+    enabled: permSearch.length >= 2,
+  });
+  const catalogOptions = catalogResults?.data ?? [];
+  const directCodes = new Set((userPerms?.directPermissions ?? []).map(p => p.code));
+  const roleDerivedCodes = new Set((userPerms?.roleDerivedPermissions ?? []).map(p => p.code));
+
+  const grantMutation = useMutation({
+    mutationFn: (code: string) => userPermissionService.grantPermission(selectedStaff!.userId, code, grantReason || undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['user-permissions', selectedStaff?.userId] });
+      setPermSearch('');
+      setGrantReason('');
+    },
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (code: string) => userPermissionService.revokePermission(selectedStaff!.userId, code),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['user-permissions', selectedStaff?.userId] }),
+  });
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-6 space-y-5">
+      <div>
+        <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <UserCog className="h-5 w-5 text-indigo-600" /> Individual Permission Overrides
+        </h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          Grant a specific permission to one person without changing their role — e.g. an Administrative Staff member who needs a couple of HOD-level permissions but shouldn't become HOD.
+        </p>
+      </div>
+
+      {/* Staff picker */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          value={selectedStaff ? `${selectedStaff.firstName} ${selectedStaff.lastName}` : staffSearch}
+          onChange={e => { setStaffSearch(e.target.value); setSelectedStaff(null); }}
+          placeholder="Search staff by name or email…"
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        {!selectedStaff && staffSearch.length >= 2 && staffOptions.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-lg max-h-56 overflow-y-auto">
+            {staffOptions.map(s => (
+              <button key={s.id} onClick={() => { setSelectedStaff(s); setStaffSearch(''); }}
+                className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-left">
+                <span className="font-medium text-gray-900 dark:text-white">{s.firstName} {s.lastName}</span>
+                <span className="text-xs text-gray-400">{s.email}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {selectedStaff && (
+        <div className="space-y-4">
+          {loadingPerms ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : userPerms ? (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">{userPerms.user.firstName} {userPerms.user.lastName}</span>
+                {userPerms.roles.map(r => (
+                  <span key={r.code} className="text-[11px] font-mono px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full">{r.code}</span>
+                ))}
+                <span className="text-xs text-gray-400">{userPerms.roleDerivedPermissions.length} role-derived permission{userPerms.roleDerivedPermissions.length !== 1 ? 's' : ''}</span>
+              </div>
+
+              {/* Direct overrides */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Direct Overrides ({userPerms.directPermissions.length})</p>
+                {userPerms.directPermissions.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">No individual permissions granted yet.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {userPerms.directPermissions.map(p => (
+                      <div key={p.code} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800">
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-900 dark:text-white truncate">{p.name}</p>
+                          <p className="text-[11px] font-mono text-indigo-500">{p.code}</p>
+                        </div>
+                        <button onClick={() => revokeMutation.mutate(p.code)} disabled={revokeMutation.isPending}
+                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0" title="Revoke">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Add a permission */}
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Grant a Permission</p>
+                <div className="relative max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    value={permSearch}
+                    onChange={e => setPermSearch(e.target.value)}
+                    placeholder="Search permission codes (e.g. broadcast, meeting, leave)…"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  {permSearch.length >= 2 && catalogOptions.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                      {catalogOptions.map(p => {
+                        const already = directCodes.has(p.code) || roleDerivedCodes.has(p.code);
+                        return (
+                          <button key={p.code} disabled={already} onClick={() => grantMutation.mutate(p.code)}
+                            className={cn('w-full flex items-center justify-between gap-2 px-4 py-2.5 text-left transition',
+                              already ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-700')}>
+                            <div className="min-w-0">
+                              <p className="text-sm text-gray-900 dark:text-white truncate">{p.name}</p>
+                              <p className="text-[11px] font-mono text-gray-400">{p.code}</p>
+                            </div>
+                            {already ? (
+                              <span className="text-[11px] text-gray-400 flex-shrink-0">Already has it</span>
+                            ) : (
+                              <Plus className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <input
+                  value={grantReason}
+                  onChange={e => setGrantReason(e.target.value)}
+                  placeholder="Reason (optional, e.g. covers HOD duties for Sales)"
+                  className="w-full mt-2 max-w-md px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

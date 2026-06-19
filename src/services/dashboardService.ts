@@ -272,6 +272,33 @@ export const receptionistDashboardService = {
   },
 };
 
+export interface StaffDepartmentInfo {
+  id: number;
+  name: string;
+  code?: string;
+  isPrimary: boolean;
+  teamSize: number;
+}
+
+export interface StaffStats {
+  myTasks: number;
+  pendingTasks: number;
+  leaveAvailable: number;
+  notifications: number;
+  departments: StaffDepartmentInfo[];
+}
+
+/**
+ * Staff Dashboard Service — currently only used for the multi-department
+ * widget; the rest of the staff dashboard sources its data from
+ * task/leave/payroll/project services directly.
+ */
+export const staffDashboardService = {
+  getStats: async (): Promise<StaffStats> => {
+    return apiClient.get('/dashboards/staff/stats');
+  },
+};
+
 /**
  * Common Dashboard Utilities
  */

@@ -92,6 +92,7 @@ export type StaffStatus = 'Active' | 'Inactive' | 'OnLeave' | 'Suspended' | 'Res
 
 export interface StaffMember extends BaseEntity {
   employeeId: string;
+  userId: number;
   firstName: string;
   lastName: string;
   email: string;

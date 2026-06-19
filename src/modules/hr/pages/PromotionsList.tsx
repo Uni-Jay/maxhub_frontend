@@ -6,6 +6,7 @@ import { hrService, type EmployeePromotion } from '@services/hrService';
 import { staffService } from '@services/staffService';
 import { designationService } from '@services/departmentService';
 import { useAuthStore } from '@store/authStore';
+import { useCurrentRoles } from '@utils/role';
 import type { StaffMember } from '@/types';
 
 const errMsg = (error: unknown): string =>
@@ -20,6 +21,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function PromotionsList() {
   const qc = useQueryClient();
+  const { roles } = useCurrentRoles();
+  const canApprove = roles.has('superadmin');
   const [statusFilter, setStatusFilter] = useState('');
   const [showRecommendModal, setShowRecommendModal] = useState(false);
 
@@ -111,7 +114,7 @@ export default function PromotionsList() {
               </div>
               <div className="flex items-center gap-2">
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[p.status]}`}>{p.status}</span>
-                {p.status === 'Proposed' && (
+                {p.status === 'Proposed' && canApprove && (
                   <>
                     <button onClick={() => approveMutation.mutate(p.id)} disabled={approveMutation.isPending}
                       className="flex items-center gap-1 text-xs bg-green-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50">
@@ -122,6 +125,9 @@ export default function PromotionsList() {
                       <XCircle className="h-3.5 w-3.5" /> Reject
                     </button>
                   </>
+                )}
+                {p.status === 'Proposed' && !canApprove && (
+                  <span className="text-xs text-gray-400 italic">Awaiting Super Admin approval</span>
                 )}
                 <button onClick={() => { if (window.confirm('Delete this promotion record?')) deleteMutation.mutate(p.id); }}
                   className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">

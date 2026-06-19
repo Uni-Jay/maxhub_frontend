@@ -16,6 +16,7 @@ import { payrollService } from '@/services/payrollService';
 import { notificationService } from '@/services/notificationService';
 import { projectService } from '@/services/projectService';
 import { videoCallService } from '@/services/videoCallService';
+import { staffDashboardService } from '@/services/dashboardService';
 import { useState, useEffect } from 'react';
 
 const TASK_STATUS: Record<string, string> = {
@@ -88,6 +89,10 @@ export function StaffDashboard() {
     ['staff-upcoming-meetings'],
     () => videoCallService.getMeetings({ status: 'Scheduled', limit: 5 })
   );
+  const { data: staffStats } = useApiQuery(
+    ['staff-dashboard-stats'],
+    () => staffDashboardService.getStats()
+  );
 
   const isLoading = tasksLoading && leaveLoading && payslipsLoading && notifLoading;
 
@@ -110,6 +115,7 @@ export function StaffDashboard() {
   const myProjectsCount = projectsData?.pagination?.total ?? 0;
   const upcomingMeetings = meetingsData?.data ?? [];
   const unreadCount = notifications.filter(n => !n.isRead).length;
+  const myDepartments = staffStats?.departments ?? [];
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
@@ -148,6 +154,30 @@ export function StaffDashboard() {
           </div>
         </div>
       </motion.div>
+
+      {/* My Departments — only worth showing once she's assigned to more than one */}
+      {myDepartments.length > 1 && (
+        <motion.div variants={item} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Building2 className="w-4 h-4 text-indigo-500" />
+            <h2 className="font-semibold text-gray-900 dark:text-white text-sm">My Departments</h2>
+            <span className="text-xs text-gray-400">({myDepartments.length})</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {myDepartments.map((d) => (
+              <div key={d.id} className="rounded-xl border border-gray-100 dark:border-gray-700 p-3.5 bg-gray-50 dark:bg-gray-900/40">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{d.name}</p>
+                  {d.isPrimary && (
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex-shrink-0">Primary</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">{d.teamSize} team member{d.teamSize !== 1 ? 's' : ''}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Attendance check-in card */}
       <motion.div variants={item}

@@ -1,2 +1,0 @@
-import{h}from"./index-i8V55Av9.js";const e=h("ListTodo",[["rect",{x:"3",y:"5",width:"6",height:"6",rx:"1",key:"1defrl"}],["path",{d:"m3 17 2 2 4-4",key:"1jhpwq"}],["path",{d:"M13 6h8",key:"15sg57"}],["path",{d:"M13 12h8",key:"h98zly"}],["path",{d:"M13 18h8",key:"oe0vm4"}]]);export{e as L};
-//# sourceMappingURL=list-todo-DCM1Oc1u.js.map

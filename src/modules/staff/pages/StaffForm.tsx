@@ -85,6 +85,7 @@ interface StaffFormDraft {
   useCustomPosition: boolean;
   customPosition: string;
   additionalUnits: string[];
+  additionalDepartmentIds: string[];
   validIdFile: CloudinaryUploadResult | null;
   utilityBillFile: CloudinaryUploadResult | null;
   certificateFile: CloudinaryUploadResult | null;
@@ -143,6 +144,7 @@ export default function StaffForm() {
   const [useCustomPosition, setUseCustomPosition] = useState(initialDraft?.useCustomPosition ?? false);
   const [customPosition, setCustomPosition] = useState(initialDraft?.customPosition ?? '');
   const [additionalUnits, setAdditionalUnits] = useState<string[]>(initialDraft?.additionalUnits ?? []);
+  const [additionalDepartmentIds, setAdditionalDepartmentIds] = useState<string[]>(initialDraft?.additionalDepartmentIds ?? []);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [createdStaff, setCreatedStaff] = useState<any>(null);
   const [validIdFile, setValidIdFile] = useState<CloudinaryUploadResult | null>(initialDraft?.validIdFile ?? null);
@@ -166,6 +168,7 @@ export default function StaffForm() {
     setUseCustomPosition(false);
     setCustomPosition('');
     setAdditionalUnits([]);
+    setAdditionalDepartmentIds([]);
     setValidIdFile(null);
     setUtilityBillFile(null);
     setCertificateFile(null);
@@ -181,7 +184,7 @@ export default function StaffForm() {
       try {
         const savedAt = Date.now();
         localStorage.setItem(DRAFT_KEY, JSON.stringify({
-          data, section, useCustomPosition, customPosition, additionalUnits,
+          data, section, useCustomPosition, customPosition, additionalUnits, additionalDepartmentIds,
           validIdFile, utilityBillFile, certificateFile, signatureFile, savedAt,
         } satisfies StaffFormDraft));
         setLastSavedAt(savedAt);
@@ -190,7 +193,7 @@ export default function StaffForm() {
       }
     }, 600);
     return () => clearTimeout(timer);
-  }, [data, section, useCustomPosition, customPosition, additionalUnits, validIdFile, utilityBillFile, certificateFile, signatureFile, isEdit, createdStaff]);
+  }, [data, section, useCustomPosition, customPosition, additionalUnits, additionalDepartmentIds, validIdFile, utilityBillFile, certificateFile, signatureFile, isEdit, createdStaff]);
 
   const createStaff = useMutation({
     mutationFn: (payload: any) => isEdit
@@ -251,6 +254,7 @@ export default function StaffForm() {
       employeeId: data.employeeId || undefined,
       businessUnit: data.businessUnit,
       departmentId: data.departmentId ? Number(data.departmentId) : undefined,
+      additionalDepartmentIds: additionalDepartmentIds.map(Number),
       designationId: useCustomPosition ? undefined : (data.designationId ? Number(data.designationId) : undefined),
       joiningDate: data.joiningDate,
       employmentStatus: data.employmentStatus,
@@ -709,6 +713,31 @@ export default function StaffForm() {
                   </select>
                 </Field>
               </Grid3>
+              {data.departmentId && (
+                <div>
+                  <p className={lCls}>Additional Departments (optional, up to 2 more)</p>
+                  <p className="text-[11px] text-gray-400 mb-2">
+                    For staff covering more than one department while short-staffed. {data.departmentId && departments.find((d: any) => String(d.id) === data.departmentId)?.name} stays the primary department.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {departments.filter((d: any) => String(d.id) !== data.departmentId).map((d: any) => {
+                      const idStr = String(d.id);
+                      const checked = additionalDepartmentIds.includes(idStr);
+                      const atLimit = additionalDepartmentIds.length >= 2 && !checked;
+                      return (
+                        <label key={d.id} className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs cursor-pointer transition',
+                          checked ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 text-indigo-700 dark:text-indigo-300' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300',
+                          atLimit && 'opacity-40 cursor-not-allowed')}>
+                          <input type="checkbox" checked={checked} disabled={atLimit}
+                            onChange={() => setAdditionalDepartmentIds(p => p.includes(idStr) ? p.filter(x => x !== idStr) : [...p, idStr])}
+                            className="w-3.5 h-3.5 accent-indigo-600" />
+                          {d.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <Grid2>
                 <Field label="Position / Role">
                   {useCustomPosition ? (
