@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,6 +22,7 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  GraduationCap,
 } from 'lucide-react';
 import {
   StatCard,
@@ -439,6 +441,14 @@ export function HeadOfAdminDashboard() {
               icon={<TrendingUp className="w-7 h-7" />}
               color="blue"
             />
+            <Link to="/lms/students">
+              <StatCard
+                label="Students"
+                value={(stats as any)?.studentCount ?? '—'}
+                icon={<GraduationCap className="w-7 h-7" />}
+                color="purple"
+              />
+            </Link>
           </>
         )}
       </motion.div>
