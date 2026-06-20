@@ -7,6 +7,7 @@ import {
   Plus, Award, BookMarked, Loader2,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
+import { useAuth } from '@/contexts/AuthContext';
 
 const COURSE_COLORS = [
   'from-indigo-500 to-violet-600',
@@ -26,6 +27,8 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export function CourseList() {
+  const { hasPermission } = useAuth();
+  const canCreateCourse = hasPermission('lms.course.create.all') || hasPermission('lms.course.create.own_department');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
 
@@ -69,12 +72,14 @@ export function CourseList() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Courses</h1>
           <p className="text-sm text-gray-500 mt-0.5">Kurios SAT — Learning Management System</p>
         </div>
-        <Link
-          to="/lms/courses/create"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
-        >
-          <Plus className="w-4 h-4" /> New Course
-        </Link>
+        {canCreateCourse && (
+          <Link
+            to="/lms/courses/create"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
+          >
+            <Plus className="w-4 h-4" /> New Course
+          </Link>
+        )}
       </div>
 
       {/* Stats strip */}

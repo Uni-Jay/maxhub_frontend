@@ -78,6 +78,7 @@ const CommunicationHistory = React.lazy(() => import('@modules/communication/pag
 // ─── LMS ───
 const CourseList = React.lazy(() => import('@modules/lms/pages/CourseList'));
 const CourseDetail = React.lazy(() => import('@modules/lms/pages/CourseDetail'));
+const CreateCoursePage = React.lazy(() => import('@modules/lms/pages/CreateCoursePage'));
 const MyEnrollments = React.lazy(() => import('@modules/lms/pages/MyEnrollments'));
 const ExamList = React.lazy(() => import('@modules/lms/pages/ExamList'));
 const CertificateList = React.lazy(() => import('@modules/lms/pages/CertificateList'));
@@ -308,6 +309,7 @@ function App() {
 
               {/* LMS */}
               <Route path="/lms/courses" element={<CourseList />} />
+              <Route path="/lms/courses/create" element={<CreateCoursePage />} />
               <Route path="/lms/courses/:id" element={<CourseDetail />} />
               <Route path="/lms/my-enrollments" element={<MyEnrollments />} />
               <Route path="/lms/exams" element={<ExamList />} />
