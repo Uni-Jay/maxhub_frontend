@@ -1,5 +1,5 @@
 import {
-  GraduationCap, Globe, ShoppingBag, type LucideIcon,
+  GraduationCap, Globe, ShoppingBag, Receipt, type LucideIcon,
 } from 'lucide-react';
 
 export interface DepartmentModuleLink {
@@ -30,6 +30,7 @@ export const DEPARTMENT_MODULES: Record<string, DepartmentModuleGroup> = {
       { label: 'My Enrollments', path: '/lms/my-enrollments', icon: GraduationCap },
       { label: 'Exams', path: '/lms/exams', icon: GraduationCap },
       { label: 'Certificates', path: '/lms/certificates', icon: GraduationCap },
+      { label: 'Fee Receipts', path: '/lms/fee-receipts', icon: Receipt },
     ],
   },
   VM: {
