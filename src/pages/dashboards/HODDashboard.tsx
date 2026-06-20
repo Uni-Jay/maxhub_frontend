@@ -11,6 +11,7 @@ import {
   Users, UserCheck, Percent, Bell, ArrowUpRight,
   FolderKanban, ListTodo, Calendar, MessageSquare,
   RefreshCw, CheckCircle2, XCircle, Megaphone, Send, Building2,
+  GraduationCap,
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
 import { StatCard } from '@components/charts/ChartComponents';
@@ -45,6 +46,7 @@ interface HODStats {
   pendingApprovals: number;
   reportsWaitingReview?: number;
   departments?: HODDepartmentInfo[];
+  studentCount?: number;
 }
 
 interface TeamMember {
@@ -244,12 +246,15 @@ export function HODDashboard() {
       </motion.div>
 
       {/* ── KPI Cards ── */}
-      <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <StatCard label="Team Size" value={s.teamSize} icon={<Users className="w-7 h-7" />} color="blue" />
         <StatCard label="Present Today" value={s.presentToday} icon={<UserCheck className="w-7 h-7" />} color="green" />
         <StatCard label="Attendance %" value={`${s.attendancePct}%`} icon={<Percent className="w-7 h-7" />} color="purple" />
         <StatCard label="Pending Approvals" value={s.pendingApprovals} icon={<Bell className="w-7 h-7" />} color="yellow" />
         <StatCard label="Reports Waiting Review" value={s.reportsWaitingReview ?? '—'} icon={<ListTodo className="w-7 h-7" />} color="red" />
+        <Link to="/lms/students">
+          <StatCard label="Students" value={s.studentCount ?? '—'} icon={<GraduationCap className="w-7 h-7" />} color="purple" />
+        </Link>
       </motion.div>
 
       {/* ── My Departments (primary + any secondary coverage) ── */}

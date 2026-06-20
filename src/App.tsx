@@ -83,6 +83,7 @@ const MyEnrollments = React.lazy(() => import('@modules/lms/pages/MyEnrollments'
 const ExamList = React.lazy(() => import('@modules/lms/pages/ExamList'));
 const CertificateList = React.lazy(() => import('@modules/lms/pages/CertificateList'));
 const FeeReceipts = React.lazy(() => import('@modules/lms/pages/FeeReceipts'));
+const StudentList = React.lazy(() => import('@modules/lms/pages/StudentList'));
 
 // ─── Settings ───
 const ProfileSettings = React.lazy(() => import('@pages/Settings/ProfileSettings'));
@@ -317,6 +318,7 @@ function App() {
               <Route path="/lms/exams" element={<ExamList />} />
               <Route path="/lms/certificates" element={<CertificateList />} />
               <Route path="/lms/fee-receipts" element={<FeeReceipts />} />
+              <Route path="/lms/students" element={<StudentList />} />
 
               {/* Payroll */}
               <Route path="/payroll" element={<PayrollDashboard />} />

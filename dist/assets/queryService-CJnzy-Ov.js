@@ -1,0 +1,2 @@
+import{M as e}from"./index-AOhOXAen.js";const t={getAll:t=>e.getRaw("/queries",t),getStats:()=>e.get("/queries/stats"),getById:t=>e.get(`/queries/${t}`),create:t=>e.post("/queries",t),update:(t,s)=>e.patch(`/queries/${t}`,s),delete:t=>e.delete(`/queries/${t}`),addReply:(t,s)=>e.post(`/queries/${t}/replies`,s),resolve:t=>e.patch(`/queries/${t}/resolve`,{})};export{t as q};
+//# sourceMappingURL=queryService-CJnzy-Ov.js.map

@@ -31,7 +31,7 @@ import {
   FileText,
   UserCheck,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { ApprovalCenter } from '@components/dashboard/ApprovalCenter';
 import DashboardClock from '@components/ui/DashboardClock';
 import {
@@ -593,7 +593,10 @@ export function SuperAdminDashboard() {
 
         {/* Student analytics */}
         <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
-          <h2 className="text-base font-semibold mb-5">Student Analytics</h2>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-base font-semibold">Student Analytics</h2>
+            <RouterLink to="/lms/students" className="text-xs font-medium text-indigo-600 hover:text-indigo-700">Manage Students →</RouterLink>
+          </div>
           {studentQuery.isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (

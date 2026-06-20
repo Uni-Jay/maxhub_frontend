@@ -60,6 +60,7 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
     { label: 'Contacts', path: '/crm/contacts' },
     { label: 'Pipeline', path: '/crm/pipeline' },
     { label: 'Forecast', path: '/crm/forecast' },
+    { label: 'Proposals', path: '/crm/proposals' },
   ]},
   { label: 'Clients', path: '/clients', icon: UserCircle },
   { label: 'Inventory', path: '/inventory', icon: Package, children: [
@@ -72,6 +73,8 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
     { label: 'My Enrollments', path: '/lms/my-enrollments' },
     { label: 'Exams', path: '/lms/exams' },
     { label: 'Certificates', path: '/lms/certificates' },
+    { label: 'Fee Receipts', path: '/lms/fee-receipts' },
+    { label: 'Students', path: '/lms/students' },
   ]},
   { label: 'VisaMax', path: '/visamax', icon: Globe },
   { label: 'BeadMax', path: '/bead-max/sales', icon: ShoppingBag },
@@ -163,6 +166,16 @@ const ADMIN_NAV: SidebarItem[] = [
     { label: 'Dashboard', path: '/inventory/dashboard' },
     { label: 'Items', path: '/inventory/items' },
     { label: 'Warehouses', path: '/inventory/warehouses' },
+  ]},
+  { label: 'Kurios SAT', path: '/lms', icon: GraduationCap, children: [
+    { label: 'Courses', path: '/lms/courses' },
+    { label: 'Exams', path: '/lms/exams' },
+    { label: 'Certificates', path: '/lms/certificates' },
+    { label: 'Fee Receipts', path: '/lms/fee-receipts' },
+    { label: 'Students', path: '/lms/students' },
+  ]},
+  { label: 'Finance', path: '/finance', icon: Receipt, children: [
+    { label: 'Invoices', path: '/invoices' },
   ]},
   ...CRM_NAV,
   ...COMMON_TAIL,
