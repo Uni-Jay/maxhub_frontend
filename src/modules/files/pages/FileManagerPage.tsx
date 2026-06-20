@@ -15,6 +15,7 @@ import FilePreviewModal, { type FilePreviewTarget } from '@components/ui/FilePre
 
 interface FileFolder {
   id: string;
+  uuid: string;
   name: string;
   parentId: string | null;
   folderType?: 'Personal' | 'General';
@@ -409,7 +410,11 @@ export default function FileManagerPage() {
   };
 
   const myFolder = folders.find(f => f.folderType === 'Personal');
-  const uploadTargetFolderId = selectedFolderId ?? myFolder?.id ?? null;
+  // The backend's folder lookups filter by FileRecord.uuid (a real UUID
+  // column) — folder.id is the numeric primary key, which was being sent
+  // instead and threw "invalid input syntax for type uuid" on every folder
+  // navigation/upload.
+  const uploadTargetFolderId = selectedFolderId ?? myFolder?.uuid ?? null;
 
   return (
     <div className="flex h-full min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -436,9 +441,9 @@ export default function FileManagerPage() {
             return (
               <button
                 key={folder.id}
-                onClick={() => { setSelectedFolderId(folder.id); setSelectedFolderName(folder.name); }}
+                onClick={() => { setSelectedFolderId(folder.uuid); setSelectedFolderName(folder.name); }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition ${
-                  selectedFolderId === folder.id
+                  selectedFolderId === folder.uuid
                     ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 font-medium'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
