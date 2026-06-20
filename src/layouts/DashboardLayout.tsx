@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { notificationService } from '@services/notificationService';
 import { chatSocket } from '@services/chatSocket';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { messagingService } from '@services/messagingService';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, Bell, Search, LogOut, Home, ChevronRight,
@@ -166,8 +167,9 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { isDark, toggle: toggleTheme } = useThemeStore();
-  const { tokens } = useAuthStore();
+  const { tokens, user } = useAuthStore();
   const qc = useQueryClient();
 
   const { data: unreadData } = useQuery({
@@ -177,6 +179,23 @@ export function DashboardLayout() {
     retry: false,
   });
   const unreadCount = unreadData?.count ?? 0;
+
+  // Unread message count — the header's MessageSquare icon previously had no
+  // badge at all, so there was no app-wide signal that a chat message had
+  // arrived unless you happened to already be on the Messages page.
+  const { data: conversationsData } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: () => messagingService.getConversations(),
+    refetchInterval: 60_000,
+    retry: false,
+    enabled: !!tokens?.accessToken,
+  });
+  const unreadMessageCount = (conversationsData ?? []).reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
+
+  // New-message toast — shown for any message from someone else, on
+  // whichever page you're currently on, unless you're already looking at
+  // that exact conversation in the Messages page.
+  const [messageToast, setMessageToast] = useState<{ id: number; conversationId: number; sender: string; preview: string } | null>(null);
 
   // Owns the chat socket's lifetime for the whole authenticated session —
   // previously only MessagingPage connected/disconnected it, so anything
@@ -195,10 +214,25 @@ export function DashboardLayout() {
     };
     chatSocket.on('notification:new', onNewNotification);
 
+    const onNewMessage = (msg: any) => {
+      qc.invalidateQueries({ queryKey: ['conversations'] });
+      if (msg?.senderUserId === user?.id) return;
+      // MessagingPage tracks the open conversation in plain component state,
+      // not the URL, so there's no way to tell which thread is open from
+      // here — suppress the toast for the whole page rather than risk it
+      // firing on top of the thread you're already reading.
+      if (location.pathname === '/messages') return;
+      const sender = msg?.sender ? `${msg.sender.firstName} ${msg.sender.lastName}` : 'New message';
+      setMessageToast({ id: msg.id, conversationId: msg.conversationId, sender, preview: msg.messageText || 'Sent an attachment' });
+      window.setTimeout(() => setMessageToast((cur) => (cur?.id === msg.id ? null : cur)), 5000);
+    };
+    chatSocket.on('chat:message', onNewMessage);
+
     return () => {
       chatSocket.off('notification:new', onNewNotification);
+      chatSocket.off('chat:message', onNewMessage);
     };
-  }, [tokens?.accessToken, qc]);
+  }, [tokens?.accessToken, qc, user?.id, location.pathname]);
 
   useEffect(() => {
     if (!tokens?.accessToken) chatSocket.disconnect();
@@ -313,8 +347,13 @@ export function DashboardLayout() {
             </NavLink>
 
             {/* Messages */}
-            <NavLink to="/messages" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition">
+            <NavLink to="/messages" className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition">
               <MessageSquare className="h-5 w-5" />
+              {unreadMessageCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 flex items-center justify-center bg-red-500 rounded-full text-[10px] font-bold text-white leading-none">
+                  {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                </span>
+              )}
             </NavLink>
           </div>
         </header>
@@ -328,6 +367,26 @@ export function DashboardLayout() {
       </div>
 
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      <AnimatePresence>
+        {messageToast && (
+          <motion.button
+            initial={{ opacity: 0, y: 20, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 20, x: '-50%' }}
+            onClick={() => { navigate('/messages'); setMessageToast(null); }}
+            className="fixed bottom-6 left-1/2 z-[110] flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-2xl px-4 py-3 max-w-sm text-left hover:shadow-xl transition"
+          >
+            <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0">
+              <MessageSquare className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{messageToast.sender}</p>
+              <p className="text-xs text-gray-500 truncate">{messageToast.preview}</p>
+            </div>
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

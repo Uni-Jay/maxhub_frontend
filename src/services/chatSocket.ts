@@ -1,8 +1,17 @@
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_API_BASE_URL
-  ? import.meta.env.VITE_API_BASE_URL.replace('/api', '')
-  : 'http://localhost:3000';
+// Was reading VITE_API_BASE_URL, a name that's never actually defined in any
+// .env file (the real var is VITE_API_URL, same as apiClient.ts uses) — so
+// this always silently fell through to the localhost fallback. In
+// production that meant every browser tried to open a socket to its own
+// machine's localhost:3000 instead of the real backend, so chat could never
+// connect for an actual deployed user.
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_REACT_APP_API_URL ||
+  import.meta.env.VITE_APP_API_URL ||
+  'http://localhost:3000/api';
+const SOCKET_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 
 class ChatSocketService {
   private socket: Socket | null = null;

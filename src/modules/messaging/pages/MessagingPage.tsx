@@ -17,6 +17,7 @@ import {
 } from '@services/messagingService';
 import { chatSocket } from '@services/chatSocket';
 import { useAuthStore } from '@store/authStore';
+import { uploadToCloudinary } from '@services/cloudinaryService';
 import { cn } from '@utils/cn';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -1007,33 +1008,22 @@ export default function MessagingPage() {
     }
   };
 
-  const getAuthToken = (): string => {
-    try {
-      const stored = localStorage.getItem('auth-storage');
-      if (stored) { const parsed = JSON.parse(stored); return parsed?.state?.tokens?.accessToken || ''; }
-    } catch { /* */ }
-    return '';
-  };
-
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedId) return;
     e.target.value = '';
     try {
-      const token = getAuthToken();
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/messages/upload', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      if (!res.ok) throw new Error('Upload failed');
-      const json = await res.json();
-      const { url, type, name } = json.data;
-      const msgType = type === 'Image' ? 'Image' : type === 'Video' ? 'Video' : 'File';
-      const msgText = type === 'Image' ? '📷 Image' : type === 'Video' ? '🎬 Video' : `📎 ${name}`;
-      sendMutation.mutate({ messageText: msgText, messageType: msgType, attachmentUrl: url, attachmentType: file.type });
+      // Was POSTing to a hardcoded relative '/api/messages/upload' — only
+      // ever worked in local dev where Vite's proxy forwards /api to the
+      // backend; in production (frontend and backend on separate origins)
+      // that path doesn't exist on the frontend's own domain, so every
+      // attachment failed outright. Cloudinary is already the established
+      // upload path elsewhere in the app (staff documents, profile photos)
+      // and also avoids writing to the backend's ephemeral local disk.
+      const uploaded = await uploadToCloudinary(file, 'maxhub-chat');
+      const msgType = uploaded.resourceType === 'image' ? 'Image' : uploaded.resourceType === 'video' ? 'Video' : 'File';
+      const msgText = msgType === 'Image' ? '📷 Image' : msgType === 'Video' ? '🎬 Video' : `📎 ${file.name}`;
+      sendMutation.mutate({ messageText: msgText, messageType: msgType, attachmentUrl: uploaded.url, attachmentType: file.type });
     } catch {
       alert('File upload failed. Please try again.');
     }
@@ -1051,17 +1041,8 @@ export default function MessagingPage() {
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const voiceFile = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
         try {
-          const token = getAuthToken();
-          const formData = new FormData();
-          formData.append('file', voiceFile);
-          const res = await fetch('/api/messages/upload', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            body: formData,
-          });
-          if (!res.ok) throw new Error('Upload failed');
-          const json = await res.json();
-          sendMutation.mutate({ messageText: '🎤 Voice note', messageType: 'Voice', attachmentUrl: json.data.url, attachmentType: 'audio/webm' });
+          const uploaded = await uploadToCloudinary(voiceFile, 'maxhub-chat');
+          sendMutation.mutate({ messageText: '🎤 Voice note', messageType: 'Voice', attachmentUrl: uploaded.url, attachmentType: 'audio/webm' });
         } catch {
           alert('Voice note upload failed.');
         }
