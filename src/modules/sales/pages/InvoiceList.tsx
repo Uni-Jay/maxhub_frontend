@@ -10,29 +10,92 @@ import { apiClient } from '@services/apiClient';
 import { cn } from '@utils/cn';
 import { format } from 'date-fns';
 
-type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Overdue' | 'Cancelled';
+type InvoiceStatus = 'Draft' | 'Issued' | 'PartiallyPaid' | 'Paid' | 'Overdue' | 'Cancelled';
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
   Draft: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-  Sent: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  Issued: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  PartiallyPaid: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   Paid: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
   Overdue: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   Cancelled: 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500',
 };
 
 interface LineItem { description: string; qty: number; unitPrice: number; }
-interface Invoice { id: number; invoiceCode: string; clientName: string; issueDate: string; dueDate: string; total: number; status: InvoiceStatus; items?: LineItem[]; notes?: string; department?: string; }
+interface ClientOption { id: number; fullName: string; email: string; clientId: string; departmentId?: number; }
+interface Invoice {
+  id: number; invoiceCode: string; clientId?: number; client?: { fullName: string; email?: string; clientId?: string };
+  department?: { id: number; name: string; code: string };
+  invoiceDate: string; dueDate: string; total: number; subtotal: number; tax: number; discount: number;
+  status: InvoiceStatus; items?: LineItem[]; description?: string;
+}
 
-const INVOICE_DEPARTMENTS = ['Kurios SAT', 'BeadMax Design', 'VisaMax Travel Ltd'];
-
-function getInvoiceBranding(department?: string) {
-  if (!department) return { bg: 'bg-indigo-600', name: 'MaxHub ERP', tagline: 'Enterprise Resource Platform', textColor: 'text-white', logo: '/images/maxhublogo.jpeg' };
-  if (department.toLowerCase().includes('kurios')) return { bg: 'bg-gradient-to-r from-gray-900 to-green-900', name: 'Kurios SAT', tagline: 'Endless Possibilities · IT Solutions & Training', textColor: 'text-white', logo: '/images/kuriossatlogo.jpeg' };
-  if (department.toLowerCase().includes('bead')) return { bg: 'bg-gradient-to-r from-rose-800 to-pink-700', name: 'BeadMax Design', tagline: 'Beads · Beauty · Creativity', textColor: 'text-white', logo: '/images/beadmaxlogo.jpeg' };
-  if (department.toLowerCase().includes('visa')) return { bg: 'bg-gradient-to-r from-blue-700 to-red-600', name: 'VisaMax Travel Ltd', tagline: 'Your Journey, Our Expertise', textColor: 'text-white', logo: '/images/visamax_logo.jpeg' };
+function getInvoiceBranding(departmentCode?: string) {
+  if (!departmentCode) return { bg: 'bg-indigo-600', name: 'MaxHub ERP', tagline: 'Enterprise Resource Platform', textColor: 'text-white', logo: '/images/maxhublogo.jpeg' };
+  if (departmentCode === 'KS') return { bg: 'bg-gradient-to-r from-gray-900 to-green-900', name: 'Kurios SAT', tagline: 'Endless Possibilities · IT Solutions & Training', textColor: 'text-white', logo: '/images/kuriossatlogo.jpeg' };
+  if (departmentCode === 'BM') return { bg: 'bg-gradient-to-r from-rose-800 to-pink-700', name: 'BeadMax Design', tagline: 'Beads · Beauty · Creativity', textColor: 'text-white', logo: '/images/beadmaxlogo.jpeg' };
+  if (departmentCode === 'VM') return { bg: 'bg-gradient-to-r from-blue-700 to-red-600', name: 'VisaMax Travel Ltd', tagline: 'Your Journey, Our Expertise', textColor: 'text-white', logo: '/images/visamax_logo.jpeg' };
   return { bg: 'bg-indigo-600', name: 'MaxHub ERP', tagline: 'Enterprise Resource Platform', textColor: 'text-white', logo: '/images/maxhublogo.jpeg' };
 }
 
-const INIT_FORM = { clientName: '', issueDate: new Date().toISOString().slice(0, 10), dueDate: '', taxRate: 7.5, discountRate: 0, notes: '', department: 'Kurios SAT', items: [{ description: '', qty: 1, unitPrice: 0 }] as LineItem[] };
+const INIT_FORM = { clientId: '', dueDate: '', taxRate: 7.5, discountRate: 0, notes: '', items: [{ description: '', qty: 1, unitPrice: 0 }] as LineItem[] };
+
+function printInvoice(invoice: Invoice) {
+  const brand = getInvoiceBranding(invoice.department?.code);
+  const items = invoice.items ?? [{ description: 'Services', qty: 1, unitPrice: invoice.total }];
+  const itemRows = items.map(it => `
+    <tr>
+      <td style="padding:10px 14px;border-top:1px solid #f0f0f0;font-size:13px;">${it.description}</td>
+      <td style="padding:10px 14px;border-top:1px solid #f0f0f0;font-size:13px;text-align:center;">${it.qty}</td>
+      <td style="padding:10px 14px;border-top:1px solid #f0f0f0;font-size:13px;text-align:right;">₦${Number(it.unitPrice).toLocaleString()}</td>
+      <td style="padding:10px 14px;border-top:1px solid #f0f0f0;font-size:13px;font-weight:600;text-align:right;">₦${(it.qty * it.unitPrice).toLocaleString()}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8" /><title>Invoice ${invoice.invoiceCode}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',Arial,sans-serif; color:#1a1a2e; background:#f4f6fb; padding:20px; }
+    .page { max-width:750px; margin:0 auto; background:white; border-radius:12px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.1); }
+    .print-btn { display:block; text-align:center; margin:24px auto 0; padding:10px 28px; background:#4f46e5; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+    @media print { .print-btn { display:none; } body { background:white; padding:0; } .page { box-shadow:none; border-radius:0; } }
+  </style></head>
+  <body>
+    <div class="page">
+      <div style="padding:32px 40px;color:white;" class="${brand.bg}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div><div style="font-size:24px;font-weight:900;">${brand.name}</div><div style="opacity:0.8;font-size:12px;margin-top:4px;">${brand.tagline}</div></div>
+          <div style="text-align:right;"><div style="font-size:18px;font-weight:700;">${invoice.invoiceCode}</div><div style="margin-top:6px;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(255,255,255,0.25);display:inline-block;">${invoice.status.toUpperCase()}</div></div>
+        </div>
+      </div>
+      <div style="padding:32px 40px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
+          <div><label style="font-size:10px;text-transform:uppercase;color:#6b7280;font-weight:600;">Bill To</label><p style="font-size:14px;font-weight:600;margin-top:2px;">${invoice.client?.fullName ?? 'Client'}</p></div>
+          <div><label style="font-size:10px;text-transform:uppercase;color:#6b7280;font-weight:600;">Due Date</label><p style="font-size:14px;font-weight:600;margin-top:2px;">${new Date(invoice.dueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
+        </div>
+        <div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:20px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead style="background:#f3f4f6;"><tr>
+              <th style="padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;color:#6b7280;">Description</th>
+              <th style="padding:10px 14px;text-align:center;font-size:10px;text-transform:uppercase;color:#6b7280;">Qty</th>
+              <th style="padding:10px 14px;text-align:right;font-size:10px;text-transform:uppercase;color:#6b7280;">Unit Price</th>
+              <th style="padding:10px 14px;text-align:right;font-size:10px;text-transform:uppercase;color:#6b7280;">Amount</th>
+            </tr></thead>
+            <tbody>${itemRows}</tbody>
+            <tfoot>
+              <tr><td colspan="3" style="padding:8px 14px;text-align:right;font-size:12px;color:#6b7280;">Subtotal</td><td style="padding:8px 14px;text-align:right;font-size:12px;">₦${Number(invoice.subtotal).toLocaleString()}</td></tr>
+              ${Number(invoice.discount) > 0 ? `<tr><td colspan="3" style="padding:8px 14px;text-align:right;font-size:12px;color:#6b7280;">Discount</td><td style="padding:8px 14px;text-align:right;font-size:12px;">-₦${Number(invoice.discount).toLocaleString()}</td></tr>` : ''}
+              ${Number(invoice.tax) > 0 ? `<tr><td colspan="3" style="padding:8px 14px;text-align:right;font-size:12px;color:#6b7280;">Tax</td><td style="padding:8px 14px;text-align:right;font-size:12px;">₦${Number(invoice.tax).toLocaleString()}</td></tr>` : ''}
+              <tr style="background:#f0f4ff;"><td colspan="3" style="padding:12px 14px;text-align:right;font-size:14px;font-weight:700;color:#4f46e5;">Total</td><td style="padding:12px 14px;text-align:right;font-size:15px;font-weight:700;color:#4f46e5;">₦${Number(invoice.total).toLocaleString()}</td></tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+    <button class="print-btn" onclick="window.print()">Print Invoice</button>
+  </body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  window.open(URL.createObjectURL(blob), '_blank');
+}
 
 
 function calcLine(item: LineItem) { return item.qty * item.unitPrice; }
@@ -42,7 +105,7 @@ function calcTotal(items: LineItem[], tax: number, discount: number) {
 }
 
 function InvoiceDetailModal({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
-  const brand = getInvoiceBranding(invoice.department);
+  const brand = getInvoiceBranding(invoice.department?.code);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -67,9 +130,9 @@ function InvoiceDetailModal({ invoice, onClose }: { invoice: Invoice; onClose: (
 
         <div className="p-6 space-y-4">
           <div className="flex justify-between text-sm">
-            <div><p className="text-gray-500">Bill To</p><p className="font-semibold text-gray-900 dark:text-white mt-1">{invoice.clientName}</p></div>
+            <div><p className="text-gray-500">Bill To</p><p className="font-semibold text-gray-900 dark:text-white mt-1">{invoice.client?.fullName ?? '—'}</p></div>
             <div className="text-right">
-              <p className="text-gray-500">Issue Date</p><p className="font-medium">{format(new Date(invoice.issueDate), 'MMM d, yyyy')}</p>
+              <p className="text-gray-500">Issue Date</p><p className="font-medium">{format(new Date(invoice.invoiceDate), 'MMM d, yyyy')}</p>
               <p className="text-gray-500 mt-2">Due Date</p><p className="font-medium">{format(new Date(invoice.dueDate), 'MMM d, yyyy')}</p>
             </div>
           </div>
@@ -84,15 +147,15 @@ function InvoiceDetailModal({ invoice, onClose }: { invoice: Invoice; onClose: (
                   <tr key={i} className="border-t border-gray-100 dark:border-gray-700">
                     <td className="px-4 py-2.5">{item.description}</td>
                     <td className="px-4 py-2.5">{item.qty}</td>
-                    <td className="px-4 py-2.5">₦{item.unitPrice.toLocaleString()}</td>
+                    <td className="px-4 py-2.5">₦{Number(item.unitPrice).toLocaleString()}</td>
                     <td className="px-4 py-2.5 font-medium">₦{calcLine(item).toLocaleString()}</td>
                   </tr>
                 )) : (
                   <tr className="border-t border-gray-100 dark:border-gray-700">
                     <td className="px-4 py-2.5">Services</td>
                     <td className="px-4 py-2.5">1</td>
-                    <td className="px-4 py-2.5">₦{invoice.total.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 font-medium">₦{invoice.total.toLocaleString()}</td>
+                    <td className="px-4 py-2.5">₦{Number(invoice.total).toLocaleString()}</td>
+                    <td className="px-4 py-2.5 font-medium">₦{Number(invoice.total).toLocaleString()}</td>
                   </tr>
                 )}
               </tbody>
@@ -102,45 +165,32 @@ function InvoiceDetailModal({ invoice, onClose }: { invoice: Invoice; onClose: (
           {/* Amount breakdown in detail modal */}
           <div className="flex justify-end">
             <div className="w-56 space-y-1.5 text-sm bg-gray-50 dark:bg-gray-900/40 rounded-xl p-3">
-              {invoice.items && (() => {
-                const subtotal = invoice.items.reduce((s, it) => s + calcLine(it), 0);
-                const taxAmt   = subtotal * 0.075;
-                const discAmt  = 0;
-                return (
-                  <>
-                    <div className="flex justify-between text-gray-500 dark:text-gray-400">
-                      <span>Subtotal</span>
-                      <span className="font-medium">₦{subtotal.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-500 dark:text-gray-400">
-                      <span>Tax (7.5%)</span>
-                      <span className="font-medium">+₦{taxAmt.toLocaleString(undefined, {maximumFractionDigits:0})}</span>
-                    </div>
-                    {discAmt > 0 && (
-                      <div className="flex justify-between text-gray-500 dark:text-gray-400">
-                        <span>Discount</span>
-                        <span className="font-medium text-green-600 dark:text-green-400">−₦{discAmt.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-1.5">
-                      <span className="font-bold text-gray-900 dark:text-white">Total</span>
-                      <span className="font-bold text-lg text-gray-900 dark:text-white">₦{invoice.total.toLocaleString()}</span>
-                    </div>
-                  </>
-                );
-              })()}
-              {!invoice.items && (
-                <div className="flex justify-between">
-                  <span className="font-bold text-gray-900 dark:text-white">Total</span>
-                  <span className="font-bold text-lg text-gray-900 dark:text-white">₦{invoice.total.toLocaleString()}</span>
+              <div className="flex justify-between text-gray-500 dark:text-gray-400">
+                <span>Subtotal</span>
+                <span className="font-medium">₦{Number(invoice.subtotal).toLocaleString()}</span>
+              </div>
+              {Number(invoice.tax) > 0 && (
+                <div className="flex justify-between text-gray-500 dark:text-gray-400">
+                  <span>Tax</span>
+                  <span className="font-medium">+₦{Number(invoice.tax).toLocaleString()}</span>
                 </div>
               )}
+              {Number(invoice.discount) > 0 && (
+                <div className="flex justify-between text-gray-500 dark:text-gray-400">
+                  <span>Discount</span>
+                  <span className="font-medium text-green-600 dark:text-green-400">−₦{Number(invoice.discount).toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-1.5">
+                <span className="font-bold text-gray-900 dark:text-white">Total</span>
+                <span className="font-bold text-lg text-gray-900 dark:text-white">₦{Number(invoice.total).toLocaleString()}</span>
+              </div>
             </div>
           </div>
 
           <div className="flex gap-2 justify-end pt-2">
             <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Close</button>
-            <button className="flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors">
+            <button onClick={() => printInvoice(invoice)} className="flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors">
               <Download className="h-3.5 w-3.5" /> Download PDF
             </button>
           </div>
@@ -590,6 +640,7 @@ export default function InvoiceList() {
   const [showCreate, setShowCreate] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [form, setForm] = useState(INIT_FORM);
+  const [formError, setFormError] = useState('');
   const qc = useQueryClient();
   const LIMIT = 15;
 
@@ -601,13 +652,20 @@ export default function InvoiceList() {
     enabled: mainTab === 'invoices',
   });
 
+  const { data: clientsData } = useQuery({
+    queryKey: ['clients', 'for-invoice-pick'],
+    queryFn: () => apiClient.getRaw('/clients', { page: 1, limit: 200 }),
+    enabled: showCreate,
+  });
+  const clientOptions: ClientOption[] = (clientsData as any)?.data ?? [];
+
   const invoices: Invoice[] = (data as any)?.data ?? [];
   const pagination = (data as any)?.pagination ?? { total: invoices.length, totalPages: 1 };
 
   const createMutation = useMutation({
     mutationFn: (payload: any) => apiClient.post('/invoices', payload),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['invoices'] }); setShowCreate(false); setForm(INIT_FORM); },
-    onError: () => { qc.invalidateQueries({ queryKey: ['invoices'] }); setShowCreate(false); setForm(INIT_FORM); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['invoices'] }); setShowCreate(false); setForm(INIT_FORM); setFormError(''); },
+    onError: (err: any) => setFormError(err?.response?.data?.message || err?.message || 'Failed to create invoice'),
   });
 
   const statusMutation = useMutation({
@@ -615,13 +673,18 @@ export default function InvoiceList() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices'] }),
   });
 
-  const stats = { total: invoices.length, paid: invoices.filter(i => i.status === 'Paid').length, pending: invoices.filter(i => i.status === 'Sent').length, overdue: invoices.filter(i => i.status === 'Overdue').length, revenue: invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.total, 0) };
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/invoices/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices'] }),
+  });
+
+  const stats = { total: invoices.length, paid: invoices.filter(i => i.status === 'Paid').length, pending: invoices.filter(i => i.status === 'Issued').length, overdue: invoices.filter(i => i.status === 'Overdue').length, revenue: invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + Number(i.total), 0) };
 
   const setItem = (idx: number, key: keyof LineItem, val: string | number) => {
     setForm(f => ({ ...f, items: f.items.map((item, i) => i === idx ? { ...item, [key]: val } : item) }));
   };
 
-  const INVOICE_TABS: (InvoiceStatus | 'All')[] = ['All', 'Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'];
+  const INVOICE_TABS: (InvoiceStatus | 'All')[] = ['All', 'Draft', 'Issued', 'PartiallyPaid', 'Paid', 'Overdue', 'Cancelled'];
 
   return (
     <div className="space-y-5">
@@ -632,7 +695,7 @@ export default function InvoiceList() {
           <p className="text-xs text-gray-500 dark:text-gray-400">Sales invoices, payment tracking and school fee receipts</p>
         </div>
         {mainTab === 'invoices' && (
-          <button onClick={() => setShowCreate(true)}
+          <button onClick={() => { setFormError(''); setShowCreate(true); }}
             className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors">
             <Plus className="h-4 w-4" /> New Invoice
           </button>
@@ -731,23 +794,26 @@ export default function InvoiceList() {
                     ) : invoices.map(inv => (
                       <tr key={inv.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                         <td className="px-4 py-3 font-mono text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{inv.invoiceCode}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{inv.clientName}</td>
-                        <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{format(new Date(inv.issueDate), 'MMM d, yyyy')}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{inv.client?.fullName ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{format(new Date(inv.invoiceDate), 'MMM d, yyyy')}</td>
                         <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{format(new Date(inv.dueDate), 'MMM d, yyyy')}</td>
-                        <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">₦{inv.total.toLocaleString()}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">₦{Number(inv.total).toLocaleString()}</td>
                         <td className="px-4 py-3">
                           <span className={cn('px-2 py-0.5 rounded-md text-xs font-semibold', STATUS_STYLES[inv.status])}>{inv.status}</span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
                             <button onClick={() => setSelectedInvoice(inv)} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors" title="View"><Eye className="h-3.5 w-3.5" /></button>
+                            <button onClick={() => printInvoice(inv)} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors" title="Download PDF"><Download className="h-3.5 w-3.5" /></button>
                             {inv.status === 'Draft' && (
-                              <button onClick={() => statusMutation.mutate({ id: inv.id, status: 'Sent' })} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg transition-colors" title="Send"><Send className="h-3.5 w-3.5" /></button>
+                              <button onClick={() => statusMutation.mutate({ id: inv.id, status: 'Issued' })} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg transition-colors" title="Send"><Send className="h-3.5 w-3.5" /></button>
                             )}
-                            {inv.status === 'Sent' && (
+                            {(inv.status === 'Issued' || inv.status === 'PartiallyPaid') && (
                               <button onClick={() => statusMutation.mutate({ id: inv.id, status: 'Paid' })} className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg transition-colors" title="Mark Paid"><CheckCircle className="h-3.5 w-3.5" /></button>
                             )}
-                            <button className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition-colors" title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+                            {inv.status === 'Draft' && (
+                              <button onClick={() => { if (confirm(`Delete invoice ${inv.invoiceCode}?`)) deleteMutation.mutate(inv.id); }} className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition-colors" title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -780,17 +846,18 @@ export default function InvoiceList() {
                     </div>
 
                     <div className="p-6 space-y-4">
+                      {formError && (
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-3 py-2 text-xs">{formError}</div>
+                      )}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Department / Unit *</label>
-                          <select value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
+                        <div className="md:col-span-2"><label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Client *</label>
+                          <select value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value }))}
                             className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            {INVOICE_DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
+                            <option value="">Select a client</option>
+                            {clientOptions.map(c => <option key={c.id} value={c.id}>{c.fullName} ({c.clientId})</option>)}
                           </select></div>
-                      <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Client Name *</label>
-                          <input value={form.clientName} onChange={e => setForm(f => ({ ...f, clientName: e.target.value }))}
-                            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Client name" /></div>
-                        <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Issue Date *</label>
-                          <input type="date" value={form.issueDate} onChange={e => setForm(f => ({ ...f, issueDate: e.target.value }))}
+                        <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date *</label>
+                          <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
                             className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" /></div>
                         <div><label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date *</label>
                           <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
@@ -885,8 +952,19 @@ export default function InvoiceList() {
 
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
-                        <button onClick={() => createMutation.mutate({ ...form, total: calcTotal(form.items, form.taxRate, form.discountRate) })}
-                          disabled={!form.clientName || !form.dueDate || createMutation.isPending}
+                        <button onClick={() => {
+                            setFormError('');
+                            const subtotal = form.items.reduce((s, it) => s + calcLine(it), 0);
+                            const taxAmt = subtotal * form.taxRate / 100;
+                            const discAmt = subtotal * form.discountRate / 100;
+                            createMutation.mutate({
+                              clientId: Number(form.clientId), dueDate: form.dueDate,
+                              subtotal, tax: taxAmt, discount: discAmt,
+                              total: calcTotal(form.items, form.taxRate, form.discountRate),
+                              currency: 'NGN', description: form.notes || undefined, items: form.items,
+                            });
+                          }}
+                          disabled={!form.clientId || !form.dueDate || createMutation.isPending}
                           className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors disabled:opacity-50">
                           {createMutation.isPending ? 'Creating...' : 'Create Invoice'}
                         </button>

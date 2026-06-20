@@ -127,6 +127,7 @@ const CRM_NAV: SidebarItem[] = [
     { label: 'Contacts', path: '/crm/contacts' },
     { label: 'Pipeline', path: '/crm/pipeline' },
     { label: 'Forecast', path: '/crm/forecast' },
+    { label: 'Proposals', path: '/crm/proposals' },
   ]},
 ];
 

@@ -112,6 +112,7 @@ const MyPayslips = React.lazy(() => import('@modules/payroll/pages/MyPayslips'))
 const ContactList = React.lazy(() => import('@modules/crm/pages/ContactList'));
 const OpportunityPipeline = React.lazy(() => import('@modules/crm/pages/OpportunityPipeline'));
 const SalesForecasting = React.lazy(() => import('@modules/crm/pages/SalesForecasting'));
+const ProposalList = React.lazy(() => import('@modules/crm/pages/ProposalList'));
 
 // ─── Inventory ───
 const ItemList = React.lazy(() => import('@modules/inventory/pages/ItemList'));
@@ -328,6 +329,7 @@ function App() {
               <Route path="/crm/contacts" element={<ContactList />} />
               <Route path="/crm/pipeline" element={<OpportunityPipeline />} />
               <Route path="/crm/forecast" element={<SalesForecasting />} />
+              <Route path="/crm/proposals" element={<ProposalList />} />
 
               {/* Inventory */}
               <Route path="/inventory/items" element={<ItemList />} />

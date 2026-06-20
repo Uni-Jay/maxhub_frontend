@@ -1,0 +1,2 @@
+import{M as t}from"./index-wuOHHGtS.js";const e="/students",a={getProfile:()=>t.get(`${e}/portal/me`),updateProfile:a=>t.patch(`${e}/portal/me`,a),getEnrollments:()=>t.get(`${e}/portal/enrollments`),getAttendance:a=>t.get(`${e}/portal/attendance`,{params:a}),getResults:a=>t.get(`${e}/portal/results`,{params:a}),getAnalytics:()=>t.get(`${e}/portal/analytics`),getSchedule:()=>t.get(`${e}/portal/schedule`)};export{a as s};
+//# sourceMappingURL=studentService-CAQV5xZq.js.map
