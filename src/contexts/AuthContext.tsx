@@ -36,7 +36,7 @@ export interface AuthContextType {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string, otpCode: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (email: string, otpCode: string, newPassword: string) => Promise<void>;
   verifyOTP: (code: string) => Promise<void>;
@@ -182,10 +182,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Change password handler
   const handleChangePassword = useCallback(
-    async (currentPassword: string, newPassword: string) => {
+    async (currentPassword: string, newPassword: string, otpCode: string) => {
       setError(null);
       try {
-        await authApi.changePassword(currentPassword, newPassword);
+        await authApi.changePassword(currentPassword, newPassword, otpCode);
       } catch (err: any) {
         const message = err?.response?.data?.error?.message || err?.message || 'Password change failed';
         setError(message);

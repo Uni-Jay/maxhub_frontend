@@ -27,6 +27,9 @@ export default function SecuritySettings() {
   const [tfaLoading, setTfaLoading] = useState(false);
   const [tfaEnabled, setTfaEnabled] = useState(false);
   const [tfaError, setTfaError] = useState<string | null>(null);
+  const [otpStep, setOtpStep] = useState(false);
+  const [pendingPasswords, setPendingPasswords] = useState<{ current: string; next: string } | null>(null);
+  const [otpCode, setOtpCode] = useState('');
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
@@ -37,12 +40,31 @@ export default function SecuritySettings() {
       setPwLoading(true);
       setPwError(null);
       setPwSuccess(false);
-      await authApi.changePassword(data.currentPassword, data.newPassword);
+      await authApi.requestPasswordChangeOtp(data.currentPassword);
+      setPendingPasswords({ current: data.currentPassword, next: data.newPassword });
+      setOtpStep(true);
+    } catch (err) {
+      setPwError(err instanceof Error ? err.message : 'Failed to verify current password');
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
+  const onConfirmOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingPasswords) return;
+    try {
+      setPwLoading(true);
+      setPwError(null);
+      await authApi.changePassword(pendingPasswords.current, pendingPasswords.next, otpCode);
       setPwSuccess(true);
+      setOtpStep(false);
+      setPendingPasswords(null);
+      setOtpCode('');
       reset();
       setTimeout(() => setPwSuccess(false), 4000);
     } catch (err) {
-      setPwError(err instanceof Error ? err.message : 'Failed to change password');
+      setPwError(err instanceof Error ? err.message : 'Invalid or expired code');
     } finally {
       setPwLoading(false);
     }
@@ -115,26 +137,54 @@ export default function SecuritySettings() {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit(onChangePassword)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Current Password</label>
-            <Input type="password" placeholder="••••••••" {...register('currentPassword')} disabled={pwLoading} />
-            {errors.currentPassword && <p className="text-red-500 text-sm mt-1">{errors.currentPassword.message}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">New Password</label>
-            <Input type="password" placeholder="••••••••" {...register('newPassword')} disabled={pwLoading} />
-            {errors.newPassword && <p className="text-red-500 text-sm mt-1">{errors.newPassword.message}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Confirm New Password</label>
-            <Input type="password" placeholder="••••••••" {...register('confirmPassword')} disabled={pwLoading} />
-            {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>}
-          </div>
-          <Button type="submit" disabled={pwLoading}>
-            {pwLoading ? 'Updating…' : 'Change Password'}
-          </Button>
-        </form>
+        {otpStep ? (
+          <form onSubmit={onConfirmOtp} className="space-y-4">
+            <p className="text-sm text-gray-600">
+              We sent a 6-digit confirmation code to your email. Enter it below to apply your new password.
+            </p>
+            <div>
+              <label className="block text-sm font-medium mb-2">Confirmation Code</label>
+              <Input
+                value={otpCode}
+                onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="••••••"
+                inputMode="numeric"
+                disabled={pwLoading}
+                className="tracking-[0.5em] text-center font-mono"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" disabled={pwLoading || otpCode.length < 6}>
+                {pwLoading ? 'Confirming…' : 'Confirm & Update Password'}
+              </Button>
+              <Button type="button" variant="outline" disabled={pwLoading}
+                onClick={() => { setOtpStep(false); setPendingPasswords(null); setOtpCode(''); setPwError(null); }}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit(onChangePassword)} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Current Password</label>
+              <Input type="password" placeholder="••••••••" {...register('currentPassword')} disabled={pwLoading} />
+              {errors.currentPassword && <p className="text-red-500 text-sm mt-1">{errors.currentPassword.message}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">New Password</label>
+              <Input type="password" placeholder="••••••••" {...register('newPassword')} disabled={pwLoading} />
+              {errors.newPassword && <p className="text-red-500 text-sm mt-1">{errors.newPassword.message}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Confirm New Password</label>
+              <Input type="password" placeholder="••••••••" {...register('confirmPassword')} disabled={pwLoading} />
+              {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>}
+            </div>
+            <Button type="submit" disabled={pwLoading}>
+              {pwLoading ? 'Sending code…' : 'Change Password'}
+            </Button>
+          </form>
+        )}
       </div>
     </div>
   );

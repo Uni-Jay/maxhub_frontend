@@ -117,13 +117,22 @@ export const authApi = {
   },
 
   /**
-   * Change password (authenticated user)
+   * Request the confirmation code required to change password.
+   * @param currentPassword - Current password (verified before sending the code)
+   */
+  async requestPasswordChangeOtp(currentPassword: string): Promise<void> {
+    await apiClient.post('/auth/change-password/request-otp', { currentPassword });
+  },
+
+  /**
+   * Change password (authenticated user) — requires the OTP from requestPasswordChangeOtp.
    * @param currentPassword - Current password
    * @param newPassword - New password
+   * @param otpCode - Confirmation code emailed via requestPasswordChangeOtp
    * @returns Void on success
    */
-  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    await apiClient.post('/auth/change-password', { currentPassword, newPassword });
+  async changePassword(currentPassword: string, newPassword: string, otpCode: string): Promise<void> {
+    await apiClient.post('/auth/change-password', { currentPassword, newPassword, otpCode });
   },
 
   /**
