@@ -10,13 +10,14 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Users, UserCheck, Percent, Bell, ArrowUpRight,
   FolderKanban, ListTodo, Calendar, MessageSquare,
-  RefreshCw, CheckCircle2, XCircle, Megaphone, Send,
+  RefreshCw, CheckCircle2, XCircle, Megaphone, Send, Building2,
 } from 'lucide-react';
 import { Loader } from '@components/ui/loader';
 import { StatCard } from '@components/charts/ChartComponents';
 import DashboardClock from '@components/ui/DashboardClock';
 import { apiClient } from '@services/apiClient';
 import { useAuthStore } from '@store/authStore';
+import { getDepartmentModule } from '@config/departmentModules';
 
 // ─── Animation variants ───────────────────────────────────────────────────────
 const container = {
@@ -29,12 +30,21 @@ const item = {
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+interface HODDepartmentInfo {
+  id: number;
+  name: string;
+  code?: string;
+  isPrimary: boolean;
+  teamSize: number;
+}
+
 interface HODStats {
   teamSize: number;
   presentToday: number;
   attendancePct: number;
   pendingApprovals: number;
   reportsWaitingReview?: number;
+  departments?: HODDepartmentInfo[];
 }
 
 interface TeamMember {
@@ -135,7 +145,6 @@ export function HODDashboard() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const departmentName = (user as { department?: string })?.department ?? null;
 
   // HOD Stats
   const { data: stats, isLoading: statsLoading } = useQuery<HODStats>({
@@ -195,6 +204,9 @@ export function HODDashboard() {
   const leaveRequests = extractList<LeaveRequest>(leaveRaw);
 
   const s = stats ?? FALLBACK_STATS;
+  const myDepartments = s.departments ?? [];
+  const primaryDepartment = myDepartments.find((d) => d.isPrimary) ?? myDepartments[0];
+  const secondaryDepartments = myDepartments.filter((d) => !d.isPrimary);
 
   if (statsLoading) {
     return (
@@ -212,10 +224,11 @@ export function HODDashboard() {
         <div>
           <p className="text-sm text-gray-500">{greeting},</p>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">
-            Department Control
+            {user?.firstName ?? 'Department Head'} {user?.lastName ?? ''}
           </h1>
-          {departmentName && (
-            <p className="text-sm font-medium text-indigo-600 mt-1">{departmentName} Department</p>
+          <p className="text-xs text-gray-400 mt-0.5">Department Control</p>
+          {primaryDepartment && (
+            <p className="text-sm font-medium text-indigo-600 mt-1">{primaryDepartment.name} Department</p>
           )}
         </div>
         <div className="flex items-center gap-3">
@@ -239,6 +252,49 @@ export function HODDashboard() {
         <StatCard label="Reports Waiting Review" value={s.reportsWaitingReview ?? '—'} icon={<ListTodo className="w-7 h-7" />} color="red" />
       </motion.div>
 
+      {/* ── My Departments (primary + any secondary coverage) ── */}
+      {myDepartments.length > 0 && (
+        <motion.div variants={item} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Building2 className="w-5 h-5 text-indigo-500" />
+            <h2 className="font-semibold text-gray-900 dark:text-white">My Departments</h2>
+          </div>
+          <p className="text-xs text-gray-400 mb-4">
+            {secondaryDepartments.length > 0
+              ? `Also linked to ${secondaryDepartments.length} other department${secondaryDepartments.length !== 1 ? 's' : ''} for coverage — modules for each are below.`
+              : 'Modules for your department are below.'}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {myDepartments.map((d) => {
+              const mod = getDepartmentModule(d.code);
+              return (
+                <div key={d.id} className="rounded-xl border border-gray-100 dark:border-gray-700 p-4">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{d.name}</p>
+                    {d.isPrimary ? (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex-shrink-0">Primary</span>
+                    ) : (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 flex-shrink-0">Coverage</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mb-3">{d.teamSize} team member{d.teamSize !== 1 ? 's' : ''}</p>
+                  {mod && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {mod.links.map((link) => (
+                        <Link key={link.path} to={link.path}
+                          className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-900/40 text-gray-600 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition">
+                          <link.icon className="w-3 h-3" /> {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
       {/* ── Department Announcement ── */}
       <motion.div variants={item} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-1">
@@ -248,7 +304,7 @@ export function HODDashboard() {
           </h2>
         </div>
         <p className="text-xs text-gray-400 mb-4">
-          Goes to everyone in your department{departmentName ? ` (${departmentName})` : ''}. HR, Admin, and Super Admin are automatically copied.
+          Goes to everyone in your department{primaryDepartment ? ` (${primaryDepartment.name})` : ''}. HR, Admin, and Super Admin are automatically copied.
         </p>
         <form
           onSubmit={(e) => { e.preventDefault(); if (announcementTitle.trim() && announcementMessage.trim()) announcementMutation.mutate(); }}

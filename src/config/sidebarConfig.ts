@@ -6,6 +6,7 @@ import {
   Award, ArrowUpCircle, Wallet, ClipboardList,
 } from 'lucide-react';
 import type { CanonicalRole } from '@utils/role';
+import { DEPARTMENT_MODULES } from './departmentModules';
 
 export interface SidebarChild {
   label: string;
@@ -247,13 +248,38 @@ const RECEPTIONIST_EXTRA_NAV: SidebarItem[] = [
   { label: 'Staff Queries', path: '/queries', icon: ClipboardList },
 ];
 
-export function getNavForRole(role: CanonicalRole, position?: string | null): SidebarItem[] {
+/**
+ * Department-specific module nav (LMS for Kurios Sat, VisaMax, BeadMax) —
+ * spliced in for anyone linked to that department (primary or secondary
+ * coverage), regardless of role. Most relevant to HOD, since the generic
+ * role-based nav has no way to know which department she heads.
+ */
+function getDepartmentExtraNav(departmentCodes?: string[] | null): SidebarItem[] {
+  if (!departmentCodes?.length) return [];
+  const seen = new Set<string>();
+  const extra: SidebarItem[] = [];
+  for (const code of departmentCodes) {
+    const mod = DEPARTMENT_MODULES[code.toUpperCase()];
+    if (!mod || seen.has(mod.label)) continue;
+    seen.add(mod.label);
+    extra.push(
+      mod.links.length > 1
+        ? { label: mod.label, path: mod.links[0].path, icon: mod.icon, children: mod.links.map(l => ({ label: l.label, path: l.path })) }
+        : { label: mod.label, path: mod.links[0].path, icon: mod.icon }
+    );
+  }
+  return extra;
+}
+
+export function getNavForRole(role: CanonicalRole, position?: string | null, departmentCodes?: string[] | null): SidebarItem[] {
   const base = SIDEBAR_CONFIG[role] ?? STAFF_NAV;
-  if (role !== 'staff' || !position) return base;
+  const deptExtra = getDepartmentExtraNav(departmentCodes);
+
+  if (role !== 'staff' || !position) return [...base, ...deptExtra];
   const pos = position.toLowerCase();
-  if (pos === 'accountant') return [...base, ...ACCOUNTANT_EXTRA_NAV];
-  if (pos === 'receptionist') return [...base, ...RECEPTIONIST_EXTRA_NAV];
-  return base;
+  if (pos === 'accountant') return [...base, ...ACCOUNTANT_EXTRA_NAV, ...deptExtra];
+  if (pos === 'receptionist') return [...base, ...RECEPTIONIST_EXTRA_NAV, ...deptExtra];
+  return [...base, ...deptExtra];
 }
 
 /** Every item across every role's config, deduped by path — used only for page-title/breadcrumb lookups. */

@@ -29,7 +29,7 @@ export default function ProfileSettings() {
       firstName: user?.firstName ?? '',
       lastName: user?.lastName ?? '',
       email: user?.email ?? '',
-      phone: '',
+      phone: user?.phone ?? '',
     },
   });
 

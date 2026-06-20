@@ -1,10 +1,11 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Loader } from '@components/ui/loader';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Role codes match the DB enum values (all lowercase)
 const STUDENT_ROLE = 'student';
 const SUPERADMIN_ROLE = 'superadmin';
+const FORCE_PASSWORD_CHANGE_PATH = '/force-password-change';
 
 function LoadingScreen() {
   return (
@@ -19,11 +20,16 @@ function LoadingScreen() {
  * Students (STUDENT role) are redirected to the student portal.
  */
 export function PrivateRoute() {
-  const { isAuthenticated, isInitialized, isLoading, hasRole } = useAuth();
+  const { isAuthenticated, isInitialized, isLoading, hasRole, user } = useAuth();
+  const location = useLocation();
 
   if (!isInitialized || isLoading) return <LoadingScreen />;
 
   if (!isAuthenticated) return <Navigate to="/auth/login" replace />;
+
+  if (user?.mustChangePassword && location.pathname !== FORCE_PASSWORD_CHANGE_PATH) {
+    return <Navigate to={FORCE_PASSWORD_CHANGE_PATH} replace />;
+  }
 
   if (hasRole(STUDENT_ROLE)) return <Navigate to="/student/dashboard" replace />;
 
@@ -35,11 +41,16 @@ export function PrivateRoute() {
  * Non-students are redirected to the staff dashboard.
  */
 export function StudentRoute() {
-  const { isAuthenticated, isInitialized, isLoading, hasRole } = useAuth();
+  const { isAuthenticated, isInitialized, isLoading, hasRole, user } = useAuth();
+  const location = useLocation();
 
   if (!isInitialized || isLoading) return <LoadingScreen />;
 
   if (!isAuthenticated) return <Navigate to="/auth/login" replace />;
+
+  if (user?.mustChangePassword && location.pathname !== FORCE_PASSWORD_CHANGE_PATH) {
+    return <Navigate to={FORCE_PASSWORD_CHANGE_PATH} replace />;
+  }
 
   if (!hasRole(STUDENT_ROLE)) return <Navigate to="/dashboard" replace />;
 

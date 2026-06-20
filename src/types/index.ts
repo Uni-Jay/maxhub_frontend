@@ -33,6 +33,13 @@ export interface AuthUser {
   additionalUnits?: string[];   // Extra units granted by CEO only
   // Job position (e.g. "Accountant", "Receptionist") — not an RBAC role, just a Staff field
   position?: string | null;
+  phone?: string | null;
+  // True for accounts created with a temp password — frontend must force a
+  // change before letting them reach anything else.
+  mustChangePassword?: boolean;
+  // Department codes (e.g. ['KS','VM','BM']) this user is linked to —
+  // primary plus any secondary coverage. Drives department-specific nav.
+  departmentCodes?: string[];
 }
 
 export interface AuthResponse {

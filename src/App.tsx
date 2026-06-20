@@ -10,6 +10,7 @@ import { Toaster } from '@components/ui/toaster';
 const LoginPage = React.lazy(() => import('@modules/auth/pages/LoginPage'));
 const ForgotPasswordPage = React.lazy(() => import('@modules/auth/pages/ForgotPasswordPage'));
 const ResetPasswordPage = React.lazy(() => import('@modules/auth/pages/ResetPasswordPage'));
+const ForcePasswordChangePage = React.lazy(() => import('@modules/auth/pages/ForcePasswordChangePage'));
 const VerifyEmailPage = React.lazy(() => import('@modules/auth/pages/VerifyEmailPage'));
 const Setup2FAPage = React.lazy(() => import('@modules/auth/pages/Setup2FAPage'));
 
@@ -209,6 +210,10 @@ function App() {
               <Route path="/auth/setup-2fa" element={<Setup2FAPage />} />
             </Route>
           </Route>
+
+          {/* Forced first-login password change — reachable by any authenticated
+              account (staff or student) regardless of role, no layout chrome. */}
+          <Route path="/force-password-change" element={<ForcePasswordChangePage />} />
 
           {/* Student portal — isolated layout, STUDENT role only */}
           <Route element={<StudentRoute />}>
