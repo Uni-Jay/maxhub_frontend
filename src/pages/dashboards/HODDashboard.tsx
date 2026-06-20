@@ -48,7 +48,7 @@ interface HODStats {
 }
 
 interface TeamMember {
-  _id: string;
+  id: string;
   firstName?: string;
   lastName?: string;
   position?: string;
@@ -56,7 +56,7 @@ interface TeamMember {
 }
 
 interface Project {
-  _id: string;
+  id: string;
   name?: string;
   progress?: number;
   deadline?: string;
@@ -64,7 +64,7 @@ interface Project {
 }
 
 interface Task {
-  _id: string;
+  id: string;
   title?: string;
   assignee?: { firstName?: string; lastName?: string };
   dueDate?: string;
@@ -73,7 +73,7 @@ interface Task {
 }
 
 interface LeaveRequest {
-  _id: string;
+  id: string;
   employee?: { firstName?: string; lastName?: string };
   leaveType?: string;
   startDate?: string;
@@ -360,7 +360,7 @@ export function HODDashboard() {
           ) : (
             <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
               {teamMembers.map((m, i) => (
-                <div key={m._id} className="flex items-center gap-3 p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                <div key={m.id} className="flex items-center gap-3 p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}>
                     {initials(m)}
                   </div>
@@ -395,11 +395,11 @@ export function HODDashboard() {
           ) : (
             <div className="space-y-3">
               {leaveRequests.map((req, i) => {
-                const localStatus = leaveStatuses[req._id];
+                const localStatus = leaveStatuses[req.id];
                 const isPending = !localStatus;
                 return (
                   <div
-                    key={req._id}
+                    key={req.id}
                     className={`flex items-center gap-3 p-3 rounded-xl border ${
                       localStatus === 'approved'
                         ? 'bg-emerald-50 border-emerald-100'
@@ -423,13 +423,13 @@ export function HODDashboard() {
                     {isPending ? (
                       <div className="flex gap-1.5 flex-shrink-0">
                         <button
-                          onClick={() => setLeaveStatuses((p) => ({ ...p, [req._id]: 'approved' }))}
+                          onClick={() => setLeaveStatuses((p) => ({ ...p, [req.id]: 'approved' }))}
                           className="px-2.5 py-1 text-xs font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => setLeaveStatuses((p) => ({ ...p, [req._id]: 'rejected' }))}
+                          onClick={() => setLeaveStatuses((p) => ({ ...p, [req.id]: 'rejected' }))}
                           className="px-2.5 py-1 text-xs font-medium rounded-lg bg-red-500 text-white hover:bg-red-600"
                         >
                           <XCircle className="w-3.5 h-3.5" />
@@ -468,7 +468,7 @@ export function HODDashboard() {
             {projects.map((proj) => {
               const progress = proj.progress ?? 0;
               return (
-                <div key={proj._id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl space-y-3">
+                <div key={proj.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-medium text-gray-900 dark:text-white leading-tight">{proj.name ?? 'Unnamed Project'}</p>
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${STATUS_DOT[proj.status ?? ''] ?? 'bg-gray-400'}`} />
@@ -515,7 +515,7 @@ export function HODDashboard() {
         ) : (
           <div className="space-y-2">
             {tasks.map((t) => (
-              <div key={t._id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+              <div key={t.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{t.title ?? 'Untitled Task'}</p>
                   <p className="text-xs text-gray-500">
