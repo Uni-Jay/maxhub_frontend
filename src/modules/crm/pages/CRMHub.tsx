@@ -416,11 +416,29 @@ function VisaMaxTab() {
   const [viewApplicant, setViewApplicant] = useState<VisaApplicant | null>(null);
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
 
+  // Was calling a route that never existed (/crm/visa/applicants — the real
+  // applications API lives at /visamax/applications) with a silent
+  // catch-and-return-empty, so this always rendered as if there were zero
+  // applicants regardless of real data. Maps the real Application shape onto
+  // this tab's VisaApplicant fields; passport/travelPackage/nextAction
+  // aren't tracked by the real backend yet so they show blank until that's
+  // added, but every other field is now live.
   const { data } = useQuery({
     queryKey: ['crm-visa-applicants'],
     queryFn: async () => {
-      try { return await apiClient.get<VisaApplicant[]>('/crm/visa/applicants'); }
-      catch { return [] as VisaApplicant[]; }
+      const res = await apiClient.getRaw('/visamax/applications', { limit: 100 });
+      const apps = (res?.data?.data ?? res?.data ?? []) as any[];
+      const statusMap: Record<string, VisaStatus> = {
+        Pending: 'New', Processing: 'Processing', 'Awaiting Docs': 'Documents',
+        Approved: 'Approved', Rejected: 'Rejected', 'On Hold': 'Consultation',
+      };
+      return apps.map((a): VisaApplicant => ({
+        id: a.id, name: a.clientName, email: a.clientEmail, phone: a.clientPhone,
+        passport: '', visaType: a.serviceType ?? '', country: a.destination ?? '',
+        status: statusMap[a.status] ?? 'New', consultant: a.assignedTo ?? '',
+        nextAction: '', followUpDate: a.expectedCompletion ?? '',
+        travelPackage: '', notes: a.notes ?? '',
+      }));
     },
   });
 

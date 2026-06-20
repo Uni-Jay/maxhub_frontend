@@ -1,42 +1,56 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bell,
   AlertTriangle,
-  CheckCircle,
-  XCircle,
   Trash2,
   CheckCheck,
   RefreshCw,
   BellOff,
   X,
+  MessageSquare,
+  AtSign,
+  ClipboardList,
+  CalendarDays,
+  Wallet,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { formatDistanceToNow, parseISO, format } from 'date-fns';
 import { apiClient } from '@services/apiClient';
+import { chatSocket } from '@services/chatSocket';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type NotifType = 'Info' | 'Warning' | 'Success' | 'Error';
+// Matches backend/src/models/Notification.model.ts exactly — this used to be
+// a fictional 'Info'|'Warning'|'Success'|'Error' + `read` shape that the real
+// API never returned, so every notification rendered with the wrong icon/
+// styling and `read`/`type` were always undefined.
+type NotifType = 'Message' | 'Mention' | 'Assignment' | 'Leave' | 'Payroll' | 'System' | 'Alert' | 'Other';
 type FilterTab = 'All' | 'Unread' | 'Read' | NotifType;
 
 interface Notification {
   id: string;
   title: string;
   message: string;
-  type: NotifType;
-  read: boolean;
+  notificationType: NotifType;
+  isRead: boolean;
+  actionUrl?: string;
   createdAt: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TYPE_CONFIG: Record<NotifType, { icon: React.ComponentType<any>; iconCls: string; bgCls: string }> = {
-  Info:    { icon: Bell,          iconCls: 'text-blue-500',   bgCls: 'bg-blue-50 dark:bg-blue-900/20' },
-  Warning: { icon: AlertTriangle, iconCls: 'text-amber-500',  bgCls: 'bg-amber-50 dark:bg-amber-900/20' },
-  Success: { icon: CheckCircle,   iconCls: 'text-green-500',  bgCls: 'bg-green-50 dark:bg-green-900/20' },
-  Error:   { icon: XCircle,       iconCls: 'text-red-500',    bgCls: 'bg-red-50 dark:bg-red-900/20' },
+  Message:    { icon: MessageSquare,  iconCls: 'text-blue-500',   bgCls: 'bg-blue-50 dark:bg-blue-900/20' },
+  Mention:    { icon: AtSign,         iconCls: 'text-violet-500', bgCls: 'bg-violet-50 dark:bg-violet-900/20' },
+  Assignment: { icon: ClipboardList,  iconCls: 'text-indigo-500', bgCls: 'bg-indigo-50 dark:bg-indigo-900/20' },
+  Leave:      { icon: CalendarDays,   iconCls: 'text-amber-500',  bgCls: 'bg-amber-50 dark:bg-amber-900/20' },
+  Payroll:    { icon: Wallet,         iconCls: 'text-emerald-500', bgCls: 'bg-emerald-50 dark:bg-emerald-900/20' },
+  System:     { icon: SettingsIcon,   iconCls: 'text-gray-500',   bgCls: 'bg-gray-50 dark:bg-gray-900/20' },
+  Alert:      { icon: AlertTriangle,  iconCls: 'text-red-500',    bgCls: 'bg-red-50 dark:bg-red-900/20' },
+  Other:      { icon: Bell,           iconCls: 'text-gray-400',   bgCls: 'bg-gray-50 dark:bg-gray-900/20' },
 };
 
-const FILTER_TABS: FilterTab[] = ['All', 'Unread', 'Read', 'Info', 'Warning', 'Success', 'Error'];
+const FILTER_TABS: FilterTab[] = ['All', 'Unread', 'Read', 'Message', 'Mention', 'Assignment', 'Leave', 'Payroll', 'System', 'Alert'];
 
 
 function timeAgo(dateStr: string) {
@@ -67,7 +81,7 @@ function NotifDetailModal({
   onMarkRead: () => void;
   onDelete: () => void;
 }) {
-  const cfg = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.Info;
+  const cfg = TYPE_CONFIG[notif.notificationType] ?? TYPE_CONFIG.Other;
   const Icon = cfg.icon;
 
   return (
@@ -99,18 +113,13 @@ function NotifDetailModal({
           <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{notif.message}</p>
 
           <div className="flex items-center gap-3 pt-1">
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full
-              ${notif.type === 'Info' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                notif.type === 'Warning' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                notif.type === 'Success' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}
-            >
-              {notif.type}
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${cfg.bgCls} ${cfg.iconCls}`}>
+              {notif.notificationType}
             </span>
             <span className="text-xs text-gray-400 dark:text-gray-500">{formatFullDate(notif.createdAt)}</span>
           </div>
 
-          {notif.read && (
+          {notif.isRead && (
             <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
               <CheckCheck className="h-3.5 w-3.5" /> Read
             </p>
@@ -119,7 +128,7 @@ function NotifDetailModal({
 
         {/* Actions */}
         <div className="flex items-center gap-2 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
-          {!notif.read && (
+          {!notif.isRead && (
             <button
               onClick={onMarkRead}
               className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition"
@@ -200,27 +209,36 @@ export default function NotificationsPage() {
 
   const deleteAllReadMutation = useMutation({
     mutationFn: async () => {
-      const readIds = rawNotifs.filter((n) => n.read).map((n) => n.id);
+      const readIds = rawNotifs.filter((n) => n.isRead).map((n) => n.id);
       await Promise.allSettled(readIds.map((id) => apiClient.delete(`/notifications/${id}`)));
     },
     onSuccess: () => { setLocalNotifs(null); qc.invalidateQueries({ queryKey: ['notifications'] }); },
     onError: () => {
-      setLocalNotifs((prev) => (prev ?? rawNotifs).filter((n) => !n.read));
+      setLocalNotifs((prev) => (prev ?? rawNotifs).filter((n) => !n.isRead));
     },
   });
+
+  // Live push — backend emits this right after creating a Notification row
+  // so the list (and the bell badge, separately, in DashboardLayout) update
+  // immediately instead of waiting for the 30s poll.
+  useEffect(() => {
+    const handler = () => { setLocalNotifs(null); qc.invalidateQueries({ queryKey: ['notifications'] }); };
+    chatSocket.on('notification:new', handler);
+    return () => chatSocket.off('notification:new', handler);
+  }, [qc]);
 
   // Filter
   const filteredNotifs = rawNotifs.filter((n) => {
     if (activeTab === 'All') return true;
-    if (activeTab === 'Unread') return !n.read;
-    if (activeTab === 'Read') return n.read;
-    return n.type === activeTab;
+    if (activeTab === 'Unread') return !n.isRead;
+    if (activeTab === 'Read') return n.isRead;
+    return n.notificationType === activeTab;
   });
 
-  const unreadCount = rawNotifs.filter((n) => !n.read).length;
+  const unreadCount = rawNotifs.filter((n) => !n.isRead).length;
 
   const handleMarkRead = (n: Notification) => {
-    if (n.read) return;
+    if (n.isRead) return;
     markReadMutation.mutate(n.id);
   };
 
@@ -336,7 +354,7 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           <AnimatePresence initial={false}>
             {filteredNotifs.map((notif) => {
-              const cfg = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.Info;
+              const cfg = TYPE_CONFIG[notif.notificationType] ?? TYPE_CONFIG.Other;
               const Icon = cfg.icon;
               return (
                 <motion.div
@@ -348,13 +366,13 @@ export default function NotificationsPage() {
                   transition={{ duration: 0.2 }}
                   onClick={() => handleCardClick(notif)}
                   className={`relative flex items-start gap-4 p-4 rounded-2xl border cursor-pointer transition-all
-                    ${notif.read
+                    ${notif.isRead
                       ? 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 opacity-70'
                       : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md'
                     }`}
                 >
                   {/* Unread dot */}
-                  {!notif.read && (
+                  {!notif.isRead && (
                     <span className="absolute top-4 right-4 w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />
                   )}
 
@@ -366,22 +384,17 @@ export default function NotificationsPage() {
                   {/* Content */}
                   <div className="flex-1 min-w-0 pr-6">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm font-semibold ${notif.read ? 'text-gray-600 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                      <p className={`text-sm font-semibold ${notif.isRead ? 'text-gray-600 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
                         {notif.title}
                       </p>
                       <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 mt-0.5">{timeAgo(notif.createdAt)}</span>
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{notif.message}</p>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full
-                        ${notif.type === 'Info' ? 'bg-blue-100 text-blue-700' :
-                          notif.type === 'Warning' ? 'bg-amber-100 text-amber-700' :
-                          notif.type === 'Success' ? 'bg-green-100 text-green-700' :
-                          'bg-red-100 text-red-700'}`}
-                      >
-                        {notif.type}
+                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${cfg.bgCls} ${cfg.iconCls}`}>
+                        {notif.notificationType}
                       </span>
-                      {notif.read && (
+                      {notif.isRead && (
                         <span className="text-[11px] text-gray-400 dark:text-gray-500">Read</span>
                       )}
                     </div>

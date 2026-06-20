@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { notificationService } from '@services/notificationService';
+import { chatSocket } from '@services/chatSocket';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -12,6 +13,7 @@ import { useThemeStore } from '@store/themeStore';
 import { cn } from '@utils/cn';
 import { getPrimaryRole } from '@utils/role';
 import { getNavForRole, ALL_SIDEBAR_ITEMS } from '@config/sidebarConfig';
+import { GlobalSearch } from '@components/GlobalSearch';
 
 function SidebarNav({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
@@ -165,6 +167,8 @@ export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { isDark, toggle: toggleTheme } = useThemeStore();
+  const { tokens } = useAuthStore();
+  const qc = useQueryClient();
 
   const { data: unreadData } = useQuery({
     queryKey: ['notification-unread-count'],
@@ -173,6 +177,46 @@ export function DashboardLayout() {
     retry: false,
   });
   const unreadCount = unreadData?.count ?? 0;
+
+  // Owns the chat socket's lifetime for the whole authenticated session —
+  // previously only MessagingPage connected/disconnected it, so anything
+  // relying on a live push (new-notification events) only worked while chat
+  // happened to be open. Connecting here means it survives navigation across
+  // every dashboard page; MessagingPage's own connect() call is idempotent
+  // (returns the existing socket) and no longer disconnects on unmount.
+  useEffect(() => {
+    const token = tokens?.accessToken;
+    if (!token) return;
+    chatSocket.connect(token);
+
+    const onNewNotification = () => {
+      qc.invalidateQueries({ queryKey: ['notification-unread-count'] });
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+    };
+    chatSocket.on('notification:new', onNewNotification);
+
+    return () => {
+      chatSocket.off('notification:new', onNewNotification);
+    };
+  }, [tokens?.accessToken, qc]);
+
+  useEffect(() => {
+    if (!tokens?.accessToken) chatSocket.disconnect();
+  }, [tokens?.accessToken]);
+
+  // Global search — Cmd/Ctrl+K opens it from anywhere, same as the ⌘K hint
+  // already shown in the header button (which previously had no handler at all).
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const pageTitle = ALL_SIDEBAR_ITEMS.flatMap(n =>
     n.children
@@ -240,7 +284,10 @@ export function DashboardLayout() {
 
           <div className="ml-auto flex items-center gap-2">
             {/* Search */}
-            <button className="hidden md:flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition min-w-[180px]">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="hidden md:flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition min-w-[180px]"
+            >
               <Search className="h-3.5 w-3.5" />
               <span className="text-xs">Search anything...</span>
               <kbd className="ml-auto text-[10px] bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
@@ -279,6 +326,8 @@ export function DashboardLayout() {
           </div>
         </main>
       </div>
+
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

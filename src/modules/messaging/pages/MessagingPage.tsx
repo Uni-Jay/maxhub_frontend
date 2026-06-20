@@ -683,38 +683,40 @@ export default function MessagingPage() {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // ── Socket.IO setup ────────────────────────────────────────────────────────
+  // The socket itself is now a session-lifetime connection owned by
+  // DashboardLayout (so notifications keep arriving while chat isn't open),
+  // not something this page connects/disconnects. connect() here is
+  // idempotent — it just returns the already-open socket. What this effect
+  // actually owns is these specific listeners, so cleanup removes exactly
+  // those (via named handlers) instead of tearing down the whole socket,
+  // which would have killed it for the rest of the app too and, before this
+  // fix, would have stacked duplicate handlers on every remount once
+  // disconnect() was removed.
   useEffect(() => {
     if (!token) return;
     const socket = chatSocket.connect(token);
 
-    // Presence
-    socket.on('user:online_list', (ids: number[]) => {
-      setOnlineUserIds(new Set(ids));
-    });
-    socket.on('user:presence', ({ userId, isOnline }: { userId: number; isOnline: boolean }) => {
+    const onOnlineList = (ids: number[]) => setOnlineUserIds(new Set(ids));
+    const onPresence = ({ userId, isOnline }: { userId: number; isOnline: boolean }) => {
       setOnlineUserIds(prev => {
         const next = new Set(prev);
         if (isOnline) next.add(userId); else next.delete(userId);
         return next;
       });
-    });
+    };
 
-    // New message
-    socket.on('chat:message', (msg: ChatMessage) => {
+    const onMessage = (msg: ChatMessage) => {
       const convId = msg.conversationId;
-      // Optimistically add to local messages
       setLocalMessages(prev => {
         const existing = prev[convId] ?? [];
         if (existing.find(m => m.id === msg.id)) return prev;
         return { ...prev, [convId]: [...existing, msg] };
       });
-      // Invalidate conversations list for unread badge
       qc.invalidateQueries({ queryKey: ['conversations'] });
       qc.invalidateQueries({ queryKey: ['messages', convId] });
-    });
+    };
 
-    // Edit
-    socket.on('chat:edited', ({ messageId, messageText, editedAt }: any) => {
+    const onEdited = ({ messageId, messageText, editedAt }: any) => {
       setLocalMessages(prev => {
         const updated: Record<number, ChatMessage[]> = {};
         for (const [cid, msgs] of Object.entries(prev)) {
@@ -726,10 +728,9 @@ export default function MessagingPage() {
         return updated;
       });
       qc.invalidateQueries({ queryKey: ['messages'] });
-    });
+    };
 
-    // Delete
-    socket.on('chat:deleted', ({ messageId, deleteForEveryone }: any) => {
+    const onDeleted = ({ messageId, deleteForEveryone }: any) => {
       setLocalMessages(prev => {
         const updated: Record<number, ChatMessage[]> = {};
         for (const [cid, msgs] of Object.entries(prev)) {
@@ -743,10 +744,9 @@ export default function MessagingPage() {
         return updated;
       });
       qc.invalidateQueries({ queryKey: ['messages'] });
-    });
+    };
 
-    // Reaction
-    socket.on('chat:reaction', ({ messageId, reactions }: any) => {
+    const onReaction = ({ messageId, reactions }: any) => {
       setLocalMessages(prev => {
         const updated: Record<number, ChatMessage[]> = {};
         for (const [cid, msgs] of Object.entries(prev)) {
@@ -755,10 +755,9 @@ export default function MessagingPage() {
         return updated;
       });
       qc.invalidateQueries({ queryKey: ['messages'] });
-    });
+    };
 
-    // Pin
-    socket.on('chat:pinned', ({ messageId, isPinned }: any) => {
+    const onPinned = ({ messageId, isPinned }: any) => {
       setLocalMessages(prev => {
         const updated: Record<number, ChatMessage[]> = {};
         for (const [cid, msgs] of Object.entries(prev)) {
@@ -767,37 +766,54 @@ export default function MessagingPage() {
         return updated;
       });
       qc.invalidateQueries({ queryKey: ['messages'] });
-    });
+    };
 
-    // Typing
-    socket.on('chat:typing', ({ conversationId, userId }: any) => {
+    const onTyping = ({ conversationId, userId }: any) => {
       setTypingInConv(prev => {
         const set = new Set(prev[conversationId] ?? []);
         set.add(userId);
         return { ...prev, [conversationId]: set };
       });
-    });
-    socket.on('chat:stop_typing', ({ conversationId, userId }: any) => {
+    };
+    const onStopTyping = ({ conversationId, userId }: any) => {
       setTypingInConv(prev => {
         const set = new Set(prev[conversationId] ?? []);
         set.delete(userId);
         return { ...prev, [conversationId]: set };
       });
-    });
+    };
 
-    // Read receipt
-    socket.on('chat:read_receipt', () => {
-      qc.invalidateQueries({ queryKey: ['conversations'] });
-    });
+    const onReadReceipt = () => qc.invalidateQueries({ queryKey: ['conversations'] });
 
-    // Join new conversations
-    socket.on('chat:join', ({ conversationId }: { conversationId: number }) => {
+    const onJoin = ({ conversationId }: { conversationId: number }) => {
       socket.emit('chat:join', { conversationId });
       qc.invalidateQueries({ queryKey: ['conversations'] });
-    });
+    };
+
+    socket.on('user:online_list', onOnlineList);
+    socket.on('user:presence', onPresence);
+    socket.on('chat:message', onMessage);
+    socket.on('chat:edited', onEdited);
+    socket.on('chat:deleted', onDeleted);
+    socket.on('chat:reaction', onReaction);
+    socket.on('chat:pinned', onPinned);
+    socket.on('chat:typing', onTyping);
+    socket.on('chat:stop_typing', onStopTyping);
+    socket.on('chat:read_receipt', onReadReceipt);
+    socket.on('chat:join', onJoin);
 
     return () => {
-      chatSocket.disconnect();
+      socket.off('user:online_list', onOnlineList);
+      socket.off('user:presence', onPresence);
+      socket.off('chat:message', onMessage);
+      socket.off('chat:edited', onEdited);
+      socket.off('chat:deleted', onDeleted);
+      socket.off('chat:reaction', onReaction);
+      socket.off('chat:pinned', onPinned);
+      socket.off('chat:typing', onTyping);
+      socket.off('chat:stop_typing', onStopTyping);
+      socket.off('chat:read_receipt', onReadReceipt);
+      socket.off('chat:join', onJoin);
     };
   }, [token]);
 
