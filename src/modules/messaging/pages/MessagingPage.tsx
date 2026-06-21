@@ -251,7 +251,7 @@ function MessageBubble({
 
           {/* Text */}
           {(!isImage || isDeleted) && (!isAudio || isDeleted) && (!isVideo || isDeleted) && (!isFile || isDeleted) && (
-            <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{msg.messageText}</p>
+            <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{isDeleted ? msg.messageText : renderWithMentions(msg.messageText, isOwn)}</p>
           )}
           {isImage && msg.messageText && msg.messageText !== '📷 Image' && !isDeleted && (
             <p className="text-xs mt-1 opacity-80 break-words">{msg.messageText}</p>
@@ -389,6 +389,20 @@ function formatBytes(bytes?: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Splits on @word tokens and wraps each as a highlighted span — purely
+ * visual, doesn't validate the name is an actual participant (the backend
+ * does that matching separately when deciding who to notify). */
+function renderWithMentions(text: string, isOwn: boolean) {
+  const parts = text.split(/(@\w+)/g);
+  return parts.map((part, i) =>
+    part.startsWith('@') ? (
+      <span key={i} className={cn('font-semibold rounded px-0.5', isOwn ? 'bg-white/20' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300')}>
+        {part}
+      </span>
+    ) : part
+  );
 }
 
 // ─── Full-screen media viewer ────────────────────────────────────────────────
@@ -886,6 +900,7 @@ export default function MessagingPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [viewerTarget, setViewerTarget] = useState<ChatMessage | null>(null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
 
   // ── Real-time state ────────────────────────────────────────────────────────
@@ -1312,12 +1327,30 @@ export default function MessagingPage() {
   };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessageText(e.target.value);
+    const value = e.target.value;
+    setMessageText(value);
     if (selectedId) {
       chatSocket.typingStart(selectedId);
       clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => chatSocket.typingStop(selectedId!), 2000);
     }
+    // Mention autocomplete: only triggers on an @ that starts a word (start
+    // of message or preceded by whitespace) with no space typed since, so
+    // it doesn't fire on emails or mid-word @ characters.
+    const cursor = e.target.selectionStart ?? value.length;
+    const upToCursor = value.slice(0, cursor);
+    const atMatch = upToCursor.match(/(?:^|\s)@(\w*)$/);
+    setMentionQuery(atMatch ? atMatch[1] : null);
+  };
+
+  const insertMention = (firstName: string) => {
+    const cursor = inputRef.current?.selectionStart ?? messageText.length;
+    const upToCursor = messageText.slice(0, cursor);
+    const replaced = upToCursor.replace(/(?:^|\s)@\w*$/, (m) => `${m[0] === '@' ? '' : m[0]}@${firstName} `);
+    const newText = replaced + messageText.slice(cursor);
+    setMessageText(newText);
+    setMentionQuery(null);
+    inputRef.current?.focus();
   };
 
   // Each selected file becomes its own pending bubble (object-URL preview,
@@ -1864,7 +1897,23 @@ export default function MessagingPage() {
               </button>
 
               {/* Message textarea */}
-              <div className="flex-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl flex items-end px-4 py-1 focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-transparent transition">
+              <div className="relative flex-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl flex items-end px-4 py-1 focus-within:ring-2 focus-within:ring-indigo-400 focus-within:border-transparent transition">
+                {isGroup && mentionQuery !== null && (() => {
+                  const matches = (selectedConv?.participants ?? [])
+                    .filter(p => String(p.userId) !== String(currentUserId) && p.user?.firstName.toLowerCase().startsWith(mentionQuery.toLowerCase()));
+                  if (matches.length === 0) return null;
+                  return (
+                    <div className="absolute bottom-full left-0 mb-1.5 w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden z-20">
+                      {matches.slice(0, 6).map(p => (
+                        <button key={p.userId} onClick={() => insertMention(p.user!.firstName)}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 text-left">
+                          <Avatar name={`${p.user?.firstName} ${p.user?.lastName}`} size={6} src={p.user?.avatar} />
+                          {p.user?.firstName} {p.user?.lastName}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
                 <textarea
                   ref={inputRef}
                   value={messageText}
