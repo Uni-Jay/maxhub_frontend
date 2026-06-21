@@ -630,15 +630,18 @@ function ForwardModal({ msg, conversations, onForward, onClose }: {
 }
 
 // ─── Group info panel ─────────────────────────────────────────────────────────
-function GroupInfoPanel({ conv, onClose, onAddMembers, onRemoveMember, currentUserId }: {
+function GroupInfoPanel({ conv, onClose, onAddMembers, onRemoveMember, onRename, currentUserId }: {
   conv: Conversation;
   onClose: () => void;
   onAddMembers: (ids: number[]) => void;
   onRemoveMember: (uid: number) => void;
+  onRename: (title: string) => void;
   currentUserId: number;
 }) {
   const [search, setSearch] = useState('');
   const [showAddSearch, setShowAddSearch] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(conv.title);
   const { data: searchUsers } = useQuery({
     queryKey: ['group-add-search', search],
     queryFn: () => messagingService.searchUsers(search, 15),
@@ -646,6 +649,12 @@ function GroupInfoPanel({ conv, onClose, onAddMembers, onRemoveMember, currentUs
   });
   const myRole = conv.myRole ?? 'Member';
   const isAdmin = myRole === 'Admin';
+
+  const saveRename = () => {
+    const trimmed = nameDraft.trim();
+    if (trimmed && trimmed !== conv.title) onRename(trimmed);
+    setEditingName(false);
+  };
 
   return (
     <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
@@ -660,7 +669,29 @@ function GroupInfoPanel({ conv, onClose, onAddMembers, onRemoveMember, currentUs
         <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-violet-600 rounded-full flex items-center justify-center text-white">
           <Users className="h-8 w-8" />
         </div>
-        <p className="font-bold text-gray-900 dark:text-white">{conv.title}</p>
+        {editingName ? (
+          <div className="flex items-center gap-1.5 px-4 w-full">
+            <input
+              value={nameDraft} onChange={e => setNameDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveRename(); if (e.key === 'Escape') setEditingName(false); }}
+              autoFocus
+              className="flex-1 text-sm text-center border border-indigo-300 rounded-lg px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none"
+            />
+            <button onClick={saveRename} className="text-indigo-600 hover:text-indigo-700"><Check className="h-4 w-4" /></button>
+            <button onClick={() => setEditingName(false)} className="text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              if (!isAdmin) return;
+              setNameDraft(conv.title);
+              setEditingName(true);
+            }}
+            className={cn('flex items-center gap-1.5 font-bold text-gray-900 dark:text-white', isAdmin && 'hover:text-indigo-600 cursor-pointer')}>
+            {conv.title}
+            {isAdmin && <Edit2 className="h-3 w-3 opacity-50" />}
+          </button>
+        )}
         <p className="text-xs text-gray-500">{conv.participants?.length ?? 0} members</p>
       </div>
 
@@ -746,6 +777,8 @@ export default function MessagingPage() {
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [showMessageSearch, setShowMessageSearch] = useState(false);
+  const [messageSearchQuery, setMessageSearchQuery] = useState('');
 
   // ── Real-time state ────────────────────────────────────────────────────────
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
@@ -873,6 +906,8 @@ export default function MessagingPage() {
       qc.invalidateQueries({ queryKey: ['messages'] });
     };
 
+    const onGroupUpdated = () => qc.invalidateQueries({ queryKey: ['conversations'] });
+
     const onTyping = ({ conversationId, userId }: any) => {
       setTypingInConv(prev => {
         const set = new Set(prev[conversationId] ?? []);
@@ -902,6 +937,7 @@ export default function MessagingPage() {
     socket.on('chat:deleted', onDeleted);
     socket.on('chat:reaction', onReaction);
     socket.on('chat:pinned', onPinned);
+    socket.on('chat:group_updated', onGroupUpdated);
     socket.on('chat:typing', onTyping);
     socket.on('chat:stop_typing', onStopTyping);
     socket.on('chat:read_receipt', onReadReceipt);
@@ -915,6 +951,7 @@ export default function MessagingPage() {
       socket.off('chat:deleted', onDeleted);
       socket.off('chat:reaction', onReaction);
       socket.off('chat:pinned', onPinned);
+      socket.off('chat:group_updated', onGroupUpdated);
       socket.off('chat:typing', onTyping);
       socket.off('chat:stop_typing', onStopTyping);
       socket.off('chat:read_receipt', onReadReceipt);
@@ -1013,6 +1050,19 @@ export default function MessagingPage() {
     [conversations, typeFilter, search]
   );
 
+  // ── Message search (across all my conversations) ───────────────────────────
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchQuery(messageSearchQuery), 350);
+    return () => clearTimeout(t);
+  }, [messageSearchQuery]);
+
+  const { data: messageSearchResults, isFetching: isSearchingMessages } = useQuery({
+    queryKey: ['message-search', debouncedSearchQuery],
+    queryFn: () => messagingService.searchMessages(debouncedSearchQuery),
+    enabled: showMessageSearch && debouncedSearchQuery.trim().length > 1,
+  });
+
   // ── Auto scroll ────────────────────────────────────────────────────────────
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1095,6 +1145,11 @@ export default function MessagingPage() {
 
   const removeMemberMutation = useMutation({
     mutationFn: ({ convId, userId }: { convId: number; userId: number }) => messagingService.removeParticipant(convId, userId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['conversations'] }),
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: ({ convId, title }: { convId: number; title: string }) => messagingService.renameGroup(convId, title),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['conversations'] }),
   });
 
@@ -1405,6 +1460,9 @@ export default function MessagingPage() {
             <span className="text-white font-bold text-base">Messages</span>
           </div>
           <div className="flex items-center gap-0.5">
+            <button onClick={() => setShowMessageSearch(true)} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition" title="Search messages">
+              <Search className="h-4.5 w-4.5" />
+            </button>
             <button onClick={() => setShowArchived(!showArchived)}
               className={cn('p-2 rounded-full transition', showArchived ? 'text-amber-300 hover:bg-white/10' : 'text-white/80 hover:text-white hover:bg-white/10')}
               title={showArchived ? 'Show active' : 'Show archived'}>
@@ -1420,13 +1478,53 @@ export default function MessagingPage() {
         <div className="px-3 pt-3 pb-1">
           <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 border border-gray-200 dark:border-gray-700">
             <Search className="h-4 w-4 text-gray-400 flex-shrink-0" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search conversations"
+            <input
+              value={showMessageSearch ? messageSearchQuery : search}
+              onChange={e => showMessageSearch ? setMessageSearchQuery(e.target.value) : setSearch(e.target.value)}
+              placeholder={showMessageSearch ? 'Search messages, images, files...' : 'Search conversations'}
+              autoFocus={showMessageSearch}
               className="bg-transparent text-sm flex-1 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none" />
-            {search && <button onClick={() => setSearch('')}><X className="h-3.5 w-3.5 text-gray-400" /></button>}
+            {showMessageSearch ? (
+              <button onClick={() => { setShowMessageSearch(false); setMessageSearchQuery(''); }}><X className="h-3.5 w-3.5 text-gray-400" /></button>
+            ) : (
+              search && <button onClick={() => setSearch('')}><X className="h-3.5 w-3.5 text-gray-400" /></button>
+            )}
           </div>
         </div>
 
+        {showMessageSearch ? (
+          <div className="flex-1 overflow-y-auto">
+            {!messageSearchQuery.trim() ? (
+              <p className="text-center text-sm text-gray-400 py-12">Search messages, images, videos, voice notes, and documents across all your chats.</p>
+            ) : isSearchingMessages ? (
+              <p className="text-center text-sm text-gray-400 py-12">Searching...</p>
+            ) : !messageSearchResults || messageSearchResults.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-12">No messages found for "{messageSearchQuery}"</p>
+            ) : (
+              messageSearchResults.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    setSelectedId(m.conversationId);
+                    setMobileShowChat(true);
+                    setShowMessageSearch(false);
+                    setMessageSearchQuery('');
+                  }}
+                  className="w-full text-left px-4 py-3 border-b border-gray-100 dark:border-gray-800/60 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
+                >
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-xs font-semibold text-indigo-600 truncate">{m.conversation?.title ?? 'Conversation'}</span>
+                    <span className="text-[10px] text-gray-400 flex-shrink-0 ml-2">{fmtMsgTime(m.createdAt)}</span>
+                  </div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                    {m.messageType !== 'Text' ? `${m.messageType === 'Image' ? '📷' : m.messageType === 'Video' ? '🎬' : m.messageType === 'Voice' || m.messageType === 'Audio' ? '🎤' : '📎'} ${m.messageType}` : m.messageText}
+                  </p>
+                </button>
+              ))
+            )}
+          </div>
+        ) : (
+        <>
         {/* Filter chips */}
         <div className="flex gap-1.5 px-3 py-2 overflow-x-auto">
           {['All', 'Direct', 'Group', 'Team'].map(t => (
@@ -1461,6 +1559,8 @@ export default function MessagingPage() {
             ))
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* ═══════════════ MAIN CHAT AREA ═══════════════ */}
@@ -1728,6 +1828,7 @@ export default function MessagingPage() {
                 onClose={() => setShowGroupInfo(false)}
                 onAddMembers={(ids) => addMembersMutation.mutate({ convId: selectedConv.id, userIds: ids })}
                 onRemoveMember={(uid) => removeMemberMutation.mutate({ convId: selectedConv.id, userId: uid })}
+                onRename={(title) => renameMutation.mutate({ convId: selectedConv.id, title })}
               />
             )}
           </AnimatePresence>
