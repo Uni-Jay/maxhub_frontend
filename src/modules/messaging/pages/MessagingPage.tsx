@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -7,7 +8,7 @@ import {
   Edit2, Trash2, Reply, X, Users, Archive,
   Forward, Copy, Filter, Bell, BellOff, LogOut,
   Settings, Clock, Star, Pause, Play,
-  FileText, MoreHorizontal,
+  FileText, MoreHorizontal, Info, ZoomIn, ZoomOut, RotateCw, Share2, Download,
 } from 'lucide-react';
 import {
   messagingService,
@@ -122,7 +123,7 @@ function computeDeliveryStatus(
 // ─── Message bubble ──────────────────────────────────────────────────────────
 function MessageBubble({
   msg, isOwn, showSender, isGroup, currentUserId, deliveryStatus, uploadPct,
-  onReply, onReact, onEdit, onDelete, onDeleteForEveryone, onPin, onStar, onForward, onCopy, onCancelUpload,
+  onReply, onReact, onEdit, onDelete, onDeleteForEveryone, onPin, onStar, onForward, onCopy, onCancelUpload, onOpenViewer,
 }: {
   msg: ChatMessage; isOwn: boolean; showSender: boolean; isGroup: boolean;
   currentUserId: number;
@@ -138,6 +139,7 @@ function MessageBubble({
   onForward: (m: ChatMessage) => void;
   onCopy: (text: string) => void;
   onCancelUpload?: (tempId: string) => void;
+  onOpenViewer: (msg: ChatMessage) => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -209,7 +211,7 @@ function MessageBubble({
           {isImage && msg.attachmentUrl && !isDeleted && (
             <img src={msg.attachmentUrl} alt="shared"
               className="max-w-[220px] rounded-xl mb-1 cursor-pointer hover:opacity-90 transition"
-              onClick={() => window.open(msg.attachmentUrl, '_blank')} />
+              onClick={() => onOpenViewer(msg)} />
           )}
 
           {/* Audio / Voice */}
@@ -219,7 +221,13 @@ function MessageBubble({
 
           {/* Video */}
           {isVideo && msg.attachmentUrl && !isDeleted && (
-            <video controls className="max-w-[220px] rounded-xl mb-1" src={msg.attachmentUrl} />
+            <div className="relative group/video">
+              <video controls className="max-w-[220px] rounded-xl mb-1" src={msg.attachmentUrl} />
+              <button onClick={() => onOpenViewer(msg)} title="Details"
+                className="absolute top-1.5 right-1.5 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover/video:opacity-100 transition">
+                <Info className="h-3 w-3" />
+              </button>
+            </div>
           )}
 
           {/* File */}
@@ -363,6 +371,95 @@ function VoiceNotePlayer({ url, duration, isOwn }: { url: string; duration?: num
         </span>
       )}
     </div>
+  );
+}
+
+function formatBytes(bytes?: number): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ─── Full-screen media viewer ────────────────────────────────────────────────
+// Images get zoom + rotate; video relies on its own native player (which
+// already has play/pause/seek/fullscreen) and just shares the info/
+// download/share/delete chrome around it.
+function MediaViewer({ msg, onClose, onDeleteForEveryone }: {
+  msg: ChatMessage; onClose: () => void; onDeleteForEveryone: (id: number) => void;
+}) {
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [showInfo, setShowInfo] = useState(false);
+  const isImage = msg.messageType === 'Image';
+  const isVideo = msg.messageType === 'Video';
+
+  const handleShare = async () => {
+    if (!msg.attachmentUrl) return;
+    if (navigator.share) {
+      try { await navigator.share({ url: msg.attachmentUrl, title: msg.attachmentName || 'Shared file' }); }
+      catch { /* user cancelled — not an error */ }
+    } else {
+      await navigator.clipboard.writeText(msg.attachmentUrl);
+      alert('Link copied to clipboard');
+    }
+  };
+
+  const handleDownload = () => {
+    if (!msg.attachmentUrl) return;
+    const a = document.createElement('a');
+    a.href = withForcedDownload(msg.attachmentUrl);
+    a.download = msg.attachmentName || 'download';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 bg-black/90 z-[200] flex flex-col" onClick={onClose}>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition"><X className="h-5 w-5" /></button>
+        <div className="flex items-center gap-1">
+          {isImage && (
+            <>
+              <button onClick={() => setZoom(z => Math.max(0.5, z - 0.25))} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition"><ZoomOut className="h-5 w-5" /></button>
+              <button onClick={() => setZoom(z => Math.min(3, z + 0.25))} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition"><ZoomIn className="h-5 w-5" /></button>
+              <button onClick={() => setRotation(r => (r + 90) % 360)} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition"><RotateCw className="h-5 w-5" /></button>
+            </>
+          )}
+          <button onClick={handleShare} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition"><Share2 className="h-5 w-5" /></button>
+          <button onClick={handleDownload} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition"><Download className="h-5 w-5" /></button>
+          <button onClick={() => setShowInfo(s => !s)} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition"><Info className="h-5 w-5" /></button>
+          <button onClick={() => { onDeleteForEveryone(msg.id); onClose(); }} className="p-2 text-white/80 hover:text-red-400 hover:bg-white/10 rounded-full transition"><Trash2 className="h-5 w-5" /></button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex items-center justify-center overflow-hidden p-4" onClick={e => e.stopPropagation()}>
+        {isImage && msg.attachmentUrl && (
+          <img src={msg.attachmentUrl} alt={msg.attachmentName || 'shared'}
+            className="max-w-full max-h-full object-contain transition-transform duration-200"
+            style={{ transform: `scale(${zoom}) rotate(${rotation}deg)` }} />
+        )}
+        {isVideo && msg.attachmentUrl && (
+          <video src={msg.attachmentUrl} controls autoPlay className="max-w-full max-h-full" />
+        )}
+      </div>
+
+      {/* Info panel */}
+      {showInfo && (
+        <div className="bg-black/70 text-white px-5 py-4 flex-shrink-0 text-sm space-y-1" onClick={e => e.stopPropagation()}>
+          {msg.attachmentName && <p><span className="text-white/50">Name:</span> {msg.attachmentName}</p>}
+          {typeof msg.attachmentSize === 'number' && msg.attachmentSize > 0 && <p><span className="text-white/50">Size:</span> {formatBytes(msg.attachmentSize)}</p>}
+          <p><span className="text-white/50">Sent by:</span> {msg.sender ? `${msg.sender.firstName} ${msg.sender.lastName}` : 'Unknown'}</p>
+          <p><span className="text-white/50">Date:</span> {new Date(msg.createdAt).toLocaleString()}</p>
+        </div>
+      )}
+    </div>,
+    document.body
   );
 }
 
@@ -778,6 +875,7 @@ export default function MessagingPage() {
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [showMessageSearch, setShowMessageSearch] = useState(false);
+  const [viewerTarget, setViewerTarget] = useState<ChatMessage | null>(null);
   const [messageSearchQuery, setMessageSearchQuery] = useState('');
 
   // ── Real-time state ────────────────────────────────────────────────────────
@@ -1690,6 +1788,7 @@ export default function MessagingPage() {
                       onForward={setForwardTarget}
                       onCopy={handleCopy}
                       onCancelUpload={selectedId ? (tempId) => cancelUpload(tempId, selectedId) : undefined}
+                      onOpenViewer={setViewerTarget}
                     />
                   );
                 })
@@ -1859,6 +1958,15 @@ export default function MessagingPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Full-screen media viewer */}
+      {viewerTarget && (
+        <MediaViewer
+          msg={viewerTarget}
+          onClose={() => setViewerTarget(null)}
+          onDeleteForEveryone={handleDeleteForEveryone}
+        />
+      )}
     </div>
   );
 }
