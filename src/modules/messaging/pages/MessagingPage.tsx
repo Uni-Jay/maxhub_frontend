@@ -233,9 +233,19 @@ function MessageBubble({
           {/* File */}
           {isFile && !isDeleted && (
             <a href={msg.attachmentUrl ? withForcedDownload(msg.attachmentUrl) : '#'} download target="_blank" rel="noopener noreferrer"
-              className={cn('flex items-center gap-2 text-sm mb-1 underline', isOwn ? 'text-indigo-100' : 'text-indigo-600')}>
-              <FileText className="h-4 w-4 flex-shrink-0" />
-              <span className="truncate max-w-[160px]">{msg.messageText}</span>
+              className={cn('flex items-center gap-2.5 text-sm mb-1 rounded-xl p-2 -m-0.5 transition',
+                isOwn ? 'hover:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/5')}>
+              <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0', isOwn ? 'bg-white/15' : 'bg-indigo-50 dark:bg-indigo-900/30')}>
+                <FileText className={cn('h-4 w-4', isOwn ? 'text-white' : 'text-indigo-600 dark:text-indigo-400')} />
+              </div>
+              <div className="min-w-0">
+                <p className={cn('truncate max-w-[160px] font-medium', isOwn ? 'text-white' : 'text-gray-800 dark:text-gray-100')}>
+                  {msg.attachmentName || msg.messageText}
+                </p>
+                {(msg.attachmentSize ?? 0) > 0 && (
+                  <p className={cn('text-[11px]', isOwn ? 'text-indigo-100/80' : 'text-gray-400')}>{formatBytes(msg.attachmentSize)}</p>
+                )}
+              </div>
             </a>
           )}
 
