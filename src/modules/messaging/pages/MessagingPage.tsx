@@ -1308,7 +1308,11 @@ export default function MessagingPage() {
       const tempId = addPendingMessage(selectedId, { messageText: text, replyTo: replyTo ?? undefined });
       if (chatSocket.isConnected) {
         chatSocket.sendMessage({ conversationId: selectedId, ...payload, tempId })
-          .catch(() => removePendingMessage(selectedId, tempId));
+          // A dropped ack (socket disconnects mid-send, e.g. during a token
+          // refresh) used to just remove the pending bubble with no retry —
+          // the message silently vanished with no error and no fallback.
+          // Falling back to REST here means a flaky socket can't lose it.
+          .catch(() => sendMutation.mutate(payload, { onSettled: () => removePendingMessage(selectedId, tempId) }));
         // onMessage's own-broadcast handles the success case — the socket
         // ack and the room broadcast can arrive in either order.
       } else {
@@ -1387,16 +1391,24 @@ export default function MessagingPage() {
           attachmentUrl: uploaded.url, attachmentType: file.type,
           attachmentName: file.name, attachmentSize: file.size,
         };
-        if (chatSocket.isConnected) {
+        // The file is already safely on Cloudinary at this point — all
+        // that's left is recording the message. A socket that's mid
+        // reconnect (e.g. during an access-token refresh) used to fail
+        // this step with no fallback, silently losing an otherwise-
+        // successful upload — the file would sit on Cloudinary forever
+        // with no message ever pointing at it. Falling back to REST here
+        // means a flaky socket can't lose the send.
+        try {
+          if (!chatSocket.isConnected) throw new Error('Socket not connected');
           await chatSocket.sendMessage({ conversationId: convId, ...payload, tempId });
-        } else {
+        } catch {
           await messagingService.sendMessage(convId, payload);
           qc.invalidateQueries({ queryKey: ['messages', convId] });
           qc.invalidateQueries({ queryKey: ['conversations'] });
         }
       })
       .catch((err) => {
-        if (err?.message !== 'Upload cancelled') alert(`Failed to send ${file.name}.`);
+        if (err?.message !== 'Upload cancelled') alert(`Failed to send ${file.name}: ${err?.message || 'unknown error'}`);
       })
       .finally(() => {
         URL.revokeObjectURL(localPreviewUrl);
@@ -1504,16 +1516,19 @@ export default function MessagingPage() {
     promise
       .then(async (uploaded) => {
         const payload = { messageText: '🎤 Voice note', messageType: 'Voice', attachmentUrl: uploaded.url, attachmentType: 'audio/webm', attachmentDuration: duration };
-        if (chatSocket.isConnected) {
+        // Same socket-flakiness fallback as sendFileMessage above — the
+        // upload already succeeded, don't lose it over a dropped ack.
+        try {
+          if (!chatSocket.isConnected) throw new Error('Socket not connected');
           await chatSocket.sendMessage({ conversationId: convId, ...payload, tempId });
-        } else {
+        } catch {
           await messagingService.sendMessage(convId, payload);
           qc.invalidateQueries({ queryKey: ['messages', convId] });
           qc.invalidateQueries({ queryKey: ['conversations'] });
         }
       })
       .catch((err) => {
-        if (err?.message !== 'Upload cancelled') alert('Voice note upload failed.');
+        if (err?.message !== 'Upload cancelled') alert(`Voice note upload failed: ${err?.message || 'unknown error'}`);
       })
       .finally(() => {
         URL.revokeObjectURL(localPreviewUrl);
