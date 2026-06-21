@@ -84,10 +84,24 @@ export async function uploadMultipleToCloudinary(
   return Promise.all(files.map(f => uploadToCloudinary(f, folder)));
 }
 
+/**
+ * The HTML `download` attribute is only honored by browsers for
+ * same-origin (or blob:/data:) URLs — for a cross-origin URL like
+ * res.cloudinary.com it's silently ignored and the browser just opens the
+ * file inline instead of saving it. Cloudinary's `fl_attachment` flag makes
+ * *it* send a Content-Disposition: attachment header, which is what
+ * actually forces a download regardless of origin.
+ */
+export function withForcedDownload(url: string): string {
+  if (!/^https?:\/\/res\.cloudinary\.com\//i.test(url)) return url;
+  if (url.includes('fl_attachment')) return url;
+  return url.replace('/upload/', '/upload/fl_attachment/');
+}
+
 /** Download a Cloudinary file using its URL. */
 export function downloadCloudinaryFile(url: string, filename: string): void {
   const a = document.createElement('a');
-  a.href = url;
+  a.href = withForcedDownload(url);
   a.download = filename;
   a.target = '_blank';
   a.rel = 'noopener noreferrer';

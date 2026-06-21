@@ -9,6 +9,7 @@ import {
   Eye, Copy,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
+import { uploadToCloudinary, withForcedDownload } from '@services/cloudinaryService';
 import FilePreviewModal, { type FilePreviewTarget } from '@components/ui/FilePreviewModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -60,15 +61,6 @@ function formatBytes(bytes: number) {
 function formatDate(dateStr: string) {
   if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function toBase64(file: File): Promise<string> {
-  return new Promise((res, rej) => {
-    const reader = new FileReader();
-    reader.onload = () => res((reader.result as string).split(',')[1]);
-    reader.onerror = rej;
-    reader.readAsDataURL(file);
-  });
 }
 
 // ─── Context Menu ─────────────────────────────────────────────────────────────
@@ -282,12 +274,19 @@ function UploadZone({ folderId, onClose, onUploaded }: UploadZoneProps) {
     setUploading(true);
     for (const file of files) {
       try {
-        const base64Content = await toBase64(file);
+        // Was base64-encoding the whole file into a JSON POST body, capped
+        // by Express's 10mb JSON limit (any real video blew straight past
+        // that) and saved to the backend's local disk — wiped on every
+        // Render redeploy. Cloudinary is the same direct-upload path
+        // already used for chat attachments and staff documents; the
+        // backend call here just records the resulting permanent URL.
+        const uploaded = await uploadToCloudinary(file, 'maxhub-files');
         await apiClient.post('/files/upload', {
           name: file.name,
-          base64Content,
+          url: uploaded.url,
           folderId: folderId || undefined,
           mimeType: file.type,
+          size: file.size,
         });
         setProgress(p => ({ ...p, [file.name]: 'done' }));
       } catch {
@@ -400,7 +399,21 @@ export default function FileManagerPage() {
   }, []);
 
   const handleDownload = (file: FileItem) => {
-    if (file.url) window.open(file.url, '_blank');
+    if (!file.url) return;
+    // The HTML `download` attribute is ignored by browsers for cross-origin
+    // URLs like Cloudinary's — window.open or a plain <a> just opens the
+    // file inline instead of saving it. withForcedDownload appends
+    // Cloudinary's fl_attachment flag, which makes Cloudinary itself send
+    // Content-Disposition: attachment, the only thing that reliably forces
+    // a real download cross-origin.
+    const a = document.createElement('a');
+    a.href = withForcedDownload(file.url);
+    a.download = file.name;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleDelete = (file: FileItem) => {

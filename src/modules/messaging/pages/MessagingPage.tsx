@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Search, Plus, Send, Paperclip, Mic, MicOff, Smile,
+  Search, Plus, Send, Paperclip, Mic, Smile,
   MoreVertical, ArrowLeft, CheckCheck, Check, Pin,
   Edit2, Trash2, Reply, X, Users, Archive,
   Forward, Copy, Filter, Bell, BellOff, LogOut,
@@ -17,7 +17,7 @@ import {
 } from '@services/messagingService';
 import { chatSocket } from '@services/chatSocket';
 import { useAuthStore } from '@store/authStore';
-import { uploadToCloudinary } from '@services/cloudinaryService';
+import { uploadToCloudinary, withForcedDownload } from '@services/cloudinaryService';
 import { cn } from '@utils/cn';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ function MessageBubble({
 
           {/* File */}
           {isFile && !isDeleted && (
-            <a href={msg.attachmentUrl || '#'} target="_blank" rel="noopener noreferrer"
+            <a href={msg.attachmentUrl ? withForcedDownload(msg.attachmentUrl) : '#'} download target="_blank" rel="noopener noreferrer"
               className={cn('flex items-center gap-2 text-sm mb-1 underline', isOwn ? 'text-indigo-100' : 'text-indigo-600')}>
               <FileText className="h-4 w-4 flex-shrink-0" />
               <span className="truncate max-w-[160px]">{msg.messageText}</span>
@@ -621,7 +621,7 @@ function GroupInfoPanel({ conv, onClose, onAddMembers, onRemoveMember, currentUs
 
         {conv.participants?.map((p) => {
           const name = p.user ? `${p.user.firstName} ${p.user.lastName}` : `User #${p.userId}`;
-          const isMe = p.userId === currentUserId;
+          const isMe = String(p.userId) === String(currentUserId);
           return (
             <div key={p.userId} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
               <Avatar name={name} size={8} src={p.user?.avatar} />
@@ -666,6 +666,7 @@ export default function MessagingPage() {
   const [forwardTarget, setForwardTarget] = useState<ChatMessage | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
@@ -681,7 +682,22 @@ export default function MessagingPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval>>();
+  const recordingCancelledRef = useRef(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Discard an in-progress recording if the page unmounts mid-recording
+  // (navigating away) — otherwise the interval keeps ticking and the mic
+  // stream stays open with nothing left to stop it from the UI.
+  useEffect(() => {
+    return () => {
+      clearInterval(recordingTimerRef.current);
+      if (mediaRecorderRef.current?.state === 'recording') {
+        recordingCancelledRef.current = true;
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
 
   // ── Socket.IO setup ────────────────────────────────────────────────────────
   // The socket itself is now a session-lifetime connection owned by
@@ -860,9 +876,9 @@ export default function MessagingPage() {
 
   const typingUserIds = selectedId ? Array.from(typingInConv[selectedId] ?? []) : [];
   const typingNames = typingUserIds
-    .filter(uid => uid !== currentUserId)
+    .filter(uid => String(uid) !== String(currentUserId))
     .map(uid => {
-      const p = selectedConv?.participants?.find(p => p.userId === uid);
+      const p = selectedConv?.participants?.find(p => String(p.userId) === String(uid));
       return p?.user ? p.user.firstName : `User #${uid}`;
     });
 
@@ -1029,16 +1045,29 @@ export default function MessagingPage() {
     }
   };
 
+  // Click-to-toggle rather than press-and-hold: getUserMedia's permission
+  // prompt is async and, on first use, the browser's own "Allow microphone?"
+  // dialog can easily outlast a quick mouse press — by the time permission
+  // resolves the mouseup has already fired on a button that, a moment
+  // earlier, had no stop handler attached yet (it was still showing the
+  // "start" icon). Recording would then start with nothing left listening
+  // for the release, so it never stopped. A plain click avoids that
+  // entirely — the only thing time-sensitive is the user's intent, not a
+  // continuously-held input.
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
+      recordingCancelledRef.current = false;
       recorder.ondataavailable = e => audioChunksRef.current.push(e.data);
       recorder.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
+        clearInterval(recordingTimerRef.current);
+        if (recordingCancelledRef.current) return;
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (blob.size === 0) return;
         const voiceFile = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
         try {
           const uploaded = await uploadToCloudinary(voiceFile, 'maxhub-chat');
@@ -1049,10 +1078,22 @@ export default function MessagingPage() {
       };
       recorder.start();
       setIsRecording(true);
-    } catch { alert('Microphone access denied'); }
+      setRecordingSeconds(0);
+      recordingTimerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000);
+    } catch { alert('Microphone access denied. Allow microphone access in your browser to record a voice note.'); }
   };
 
-  const stopRecording = () => { mediaRecorderRef.current?.stop(); setIsRecording(false); };
+  const stopRecording = () => {
+    recordingCancelledRef.current = false;
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+  };
+
+  const cancelRecording = () => {
+    recordingCancelledRef.current = true;
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+  };
 
   // ── Reactions & actions ───────────────────────────────────────────────────
   const handleReact = (msgId: number, emoji: string) => {
@@ -1224,7 +1265,7 @@ export default function MessagingPage() {
                 </div>
               ) : (
                 <Avatar name={selectedConv.title} size={10}
-                  online={selectedConv.participants?.some(p => p.userId !== currentUserId && onlineUserIds.has(p.userId))} />
+                  online={selectedConv.participants?.some(p => String(p.userId) !== String(currentUserId) && onlineUserIds.has(Number(p.userId)))} />
               )}
 
               <div className="flex-1 min-w-0 cursor-pointer" onClick={() => isGroup && setShowGroupInfo(g => !g)}>
@@ -1232,7 +1273,7 @@ export default function MessagingPage() {
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {isGroup
                     ? `${selectedConv.participants?.length ?? 0} members`
-                    : selectedConv.participants?.some(p => p.userId !== currentUserId && onlineUserIds.has(p.userId))
+                    : selectedConv.participants?.some(p => String(p.userId) !== String(currentUserId) && onlineUserIds.has(Number(p.userId)))
                       ? <span className="text-emerald-500">Online</span>
                       : 'Offline'
                   }
@@ -1288,10 +1329,15 @@ export default function MessagingPage() {
                 buildMessageList().map(item => {
                   if ('type' in item) return <DateSep key={item.key} label={item.label} />;
                   const msg = item as ChatMessage;
-                  const isOwn = msg.senderUserId === currentUserId;
+                  // senderUserId comes back from the API as a string (BIGINT
+                  // serialization) while currentUserId is a number from the
+                  // auth store — a strict === here was always false, so
+                  // every message rendered as "received" and there was no
+                  // visual way to tell your own messages apart.
+                  const isOwn = String(msg.senderUserId) === String(currentUserId);
                   const idx = messages.findIndex(m => m.id === msg.id);
                   const prev = idx > 0 ? messages[idx - 1] : null;
-                  const showSender = !isOwn && (!prev || prev.senderUserId !== msg.senderUserId);
+                  const showSender = !isOwn && (!prev || String(prev.senderUserId) !== String(msg.senderUserId));
                   return (
                     <MessageBubble
                       key={msg.id}
@@ -1387,10 +1433,20 @@ export default function MessagingPage() {
 
               {/* Voice / Send button */}
               {isRecording ? (
-                <button onMouseUp={stopRecording} onTouchEnd={stopRecording}
-                  className="w-11 h-11 bg-red-500 rounded-full flex items-center justify-center text-white animate-pulse shadow-lg flex-shrink-0">
-                  <MicOff className="h-5 w-5" />
-                </button>
+                <>
+                  <button onClick={cancelRecording} title="Cancel recording"
+                    className="w-9 h-9 text-gray-400 hover:text-red-500 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition flex-shrink-0">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <div className="flex items-center gap-1.5 text-sm text-red-500 font-medium flex-shrink-0 px-1">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
+                  </div>
+                  <button onClick={stopRecording} title="Stop and send"
+                    className="w-11 h-11 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg flex-shrink-0">
+                    <Send className="h-4 w-4" />
+                  </button>
+                </>
               ) : messageText.trim() ? (
                 <button onClick={handleSend}
                   disabled={sendMutation.isPending || editMutation.isPending}
@@ -1398,9 +1454,9 @@ export default function MessagingPage() {
                   <Send className="h-4 w-4" />
                 </button>
               ) : (
-                <button onMouseDown={startRecording} onTouchStart={startRecording}
+                <button onClick={startRecording}
                   className="w-11 h-11 bg-indigo-600 hover:bg-indigo-700 rounded-full flex items-center justify-center text-white shadow-md transition flex-shrink-0"
-                  title="Hold to record voice note">
+                  title="Record a voice note">
                   <Mic className="h-5 w-5" />
                 </button>
               )}

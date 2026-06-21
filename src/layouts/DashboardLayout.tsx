@@ -216,7 +216,7 @@ export function DashboardLayout() {
 
     const onNewMessage = (msg: any) => {
       qc.invalidateQueries({ queryKey: ['conversations'] });
-      if (msg?.senderUserId === user?.id) return;
+      if (String(msg?.senderUserId) === String(user?.id)) return;
       // MessagingPage tracks the open conversation in plain component state,
       // not the URL, so there's no way to tell which thread is open from
       // here — suppress the toast for the whole page rather than risk it

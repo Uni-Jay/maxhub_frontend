@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, FileText, File as FileIcon } from 'lucide-react';
+import { withForcedDownload } from '@services/cloudinaryService';
 
 export interface FilePreviewTarget {
   url: string;
@@ -42,7 +43,7 @@ export default function FilePreviewModal({ target, onClose }: { target: FilePrev
           <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
             <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-4">{target.name}</p>
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              <a href={target.url} download={target.name} target="_blank" rel="noopener noreferrer"
+              <a href={withForcedDownload(target.url)} download={target.name} target="_blank" rel="noopener noreferrer"
                 className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition">
                 <Download className="h-4 w-4" />
               </a>
@@ -72,7 +73,7 @@ export default function FilePreviewModal({ target, onClose }: { target: FilePrev
               <div className="flex flex-col items-center gap-3 text-center p-8">
                 <FileIcon className="h-12 w-12 text-gray-300 dark:text-gray-600" />
                 <p className="text-sm text-gray-500 dark:text-gray-400">No inline preview available for this file type.</p>
-                <a href={target.url} download={target.name} target="_blank" rel="noopener noreferrer"
+                <a href={withForcedDownload(target.url)} download={target.name} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 mt-1">
                   <Download className="h-4 w-4" /> Download to view
                 </a>
