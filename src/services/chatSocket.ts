@@ -24,7 +24,15 @@ class ChatSocketService {
     this.token = token;
 
     this.socket = io(SOCKET_URL, {
-      auth: { token },
+      // A plain `{ token }` object is captured once and reused for every
+      // automatic reconnection attempt socket.io makes on its own — so if
+      // the access token gets refreshed (a new one lands in `this.token`
+      // via connect()) while a retry is already in flight, that retry
+      // still resends the old, now-expired token and logs "Invalid token"
+      // until the *next* explicit connect() call tears the socket down. A
+      // function is invoked fresh on every attempt, so retries always pick
+      // up whatever token is current.
+      auth: (cb) => cb({ token: this.token }),
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

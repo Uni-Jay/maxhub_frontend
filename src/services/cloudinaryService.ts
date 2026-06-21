@@ -19,6 +19,29 @@ function isConfigured(): boolean {
 }
 
 /**
+ * The `auto/upload` endpoint auto-detects resource_type from the file, and
+ * for PDFs specifically picks "image" (so it can be paginated/rendered) —
+ * which means a document upload was silently being treated as an image
+ * asset. Routing documents to `raw/upload` instead delivers the exact
+ * bytes through no transformation pipeline, which is the semantically
+ * correct resource_type for them regardless of resource_type.
+ *
+ * NOTE: this does NOT fix PDF/ZIP delivery 401s. Verified directly against
+ * this account: a .pdf uploaded as `raw` still 401s on delivery
+ * (`X-Cld-Error: deny or ACL failure`) while a .txt uploaded the same way
+ * delivers fine — so the block is keyed off the PDF/ZIP format itself, not
+ * resource_type. That's Cloudinary's account-level "restricted media
+ * types" security policy, only changeable from the Cloudinary console
+ * (Settings → Security → allow delivery of PDF/ZIP via unauthenticated
+ * URLs) — not something any upload parameter here can override.
+ */
+function uploadEndpointFor(file: File): 'image' | 'video' | 'raw' {
+  if (file.type.startsWith('image/')) return 'image';
+  if (file.type.startsWith('video/') || file.type.startsWith('audio/')) return 'video';
+  return 'raw';
+}
+
+/**
  * Upload a File to Cloudinary via unsigned upload preset.
  * Falls back to a local object-URL result when Cloudinary is not configured
  * (demo mode — no actual cloud storage).
@@ -52,7 +75,7 @@ export async function uploadToCloudinary(
   formData.append('folder', folder);
 
   const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
+    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${uploadEndpointFor(file)}/upload`,
     { method: 'POST', body: formData }
   );
 
@@ -153,7 +176,7 @@ export function uploadToCloudinaryWithProgress(
     xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
     xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
 
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${uploadEndpointFor(file)}/upload`);
     xhr.send(formData);
   });
 
