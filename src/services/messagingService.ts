@@ -13,13 +13,17 @@ export interface ChatMessage {
   messageText: string;
   messageType: 'Text' | 'Image' | 'File' | 'Link' | 'Emoji' | 'Mention' | 'Audio' | 'Video' | 'Voice';
   attachmentUrl?: string; attachmentType?: string;
+  attachmentName?: string; attachmentSize?: number; attachmentDuration?: number;
   replyToMessageId?: number;
   isEdited: boolean; editedAt?: string; isPinned: boolean;
   reactions?: Record<string, number[]>;
+  starredByUserIds?: number[];
   sender?: { id: number; firstName: string; lastName: string; avatar?: string };
+  conversation?: { id: number; title: string; conversationType: string };
   replyTo?: ChatMessage;
   createdAt: string; updatedAt: string;
   tempId?: string;
+  status?: 'sending' | 'sent' | 'delivered' | 'seen';
 }
 
 export interface Conversation {
@@ -59,6 +63,9 @@ export const messagingService = {
   getConversation: (id: number | string) =>
     apiClient.get<Conversation>(`/messages/conversations/${id}`),
 
+  renameGroup: (id: number | string, title: string) =>
+    apiClient.patch<Conversation>(`/messages/conversations/${id}`, { title }),
+
   archiveConversation: (id: number | string) =>
     apiClient.patch<Conversation>(`/messages/conversations/${id}/archive`, {}),
 
@@ -84,6 +91,7 @@ export const messagingService = {
   sendMessage: (conversationId: number | string, payload: {
     messageText: string; messageType?: string;
     replyToMessageId?: number; attachmentUrl?: string; attachmentType?: string;
+    attachmentName?: string; attachmentSize?: number; attachmentDuration?: number;
   }) =>
     apiClient.post<ChatMessage>(`/messages/conversations/${conversationId}/messages`, payload),
 
@@ -95,6 +103,12 @@ export const messagingService = {
 
   pinMessage: (conversationId: number | string, messageId: number | string) =>
     apiClient.patch<ChatMessage>(`/messages/conversations/${conversationId}/messages/${messageId}/pin`, {}),
+
+  starMessage: (conversationId: number | string, messageId: number | string) =>
+    apiClient.patch<{ messageId: number; isStarred: boolean }>(`/messages/conversations/${conversationId}/messages/${messageId}/star`, {}),
+
+  getStarredMessages: () =>
+    apiClient.get<ChatMessage[]>('/messages/starred'),
 
   reactToMessage: (conversationId: number | string, messageId: number | string, emoji: string) =>
     apiClient.patch<ChatMessage>(`/messages/conversations/${conversationId}/messages/${messageId}/react`, { emoji }),

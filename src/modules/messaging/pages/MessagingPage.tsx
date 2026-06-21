@@ -6,7 +6,7 @@ import {
   MoreVertical, ArrowLeft, CheckCheck, Check, Pin,
   Edit2, Trash2, Reply, X, Users, Archive,
   Forward, Copy, Filter, Bell, BellOff, LogOut,
-  Settings,
+  Settings, Clock, Star, Pause, Play,
   FileText, MoreHorizontal,
 } from 'lucide-react';
 import {
@@ -17,7 +17,7 @@ import {
 } from '@services/messagingService';
 import { chatSocket } from '@services/chatSocket';
 import { useAuthStore } from '@store/authStore';
-import { uploadToCloudinary, withForcedDownload } from '@services/cloudinaryService';
+import { uploadToCloudinaryWithProgress, withForcedDownload } from '@services/cloudinaryService';
 import { cn } from '@utils/cn';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -95,27 +95,49 @@ function DateSep({ label }: { label: string }) {
 }
 
 // ─── Delivery ticks ──────────────────────────────────────────────────────────
-function DeliveryTick({ status }: { status?: 'sent' | 'delivered' | 'read' }) {
-  if (!status || status === 'sent') return <Check className="h-3 w-3 text-indigo-200" />;
-  if (status === 'read') return <CheckCheck className="h-3 w-3 text-sky-300" />;
-  return <CheckCheck className="h-3 w-3 text-indigo-200" />;
+// Previously always rendered "delivered" regardless of anything — the
+// MessageRead/lastSeenAt data needed to tell sent/delivered/seen apart
+// existed on the backend but nothing on the frontend ever read it.
+function DeliveryTick({ status }: { status?: 'sending' | 'sent' | 'delivered' | 'seen' }) {
+  if (status === 'sending') return <Clock className="h-3 w-3 text-indigo-300 animate-pulse" />;
+  if (status === 'seen') return <CheckCheck className="h-3 w-3 text-sky-300" />;
+  if (status === 'delivered') return <CheckCheck className="h-3 w-3 text-indigo-200" />;
+  return <Check className="h-3 w-3 text-indigo-200" />;
+}
+
+/** Direct-conversation-only for now — group read receipts (seen by N of M)
+ * are a meaningfully different UI and out of scope here. */
+function computeDeliveryStatus(
+  msg: ChatMessage, conv: Conversation | null, onlineUserIds: Set<number>, currentUserId: number
+): 'sending' | 'sent' | 'delivered' | 'seen' {
+  if (msg.status === 'sending') return 'sending';
+  if (!conv || conv.conversationType !== 'Direct') return 'sent';
+  const other = conv.participants?.find(p => String(p.userId) !== String(currentUserId));
+  if (!other) return 'sent';
+  if (other.lastSeenAt && new Date(other.lastSeenAt).getTime() >= new Date(msg.createdAt).getTime()) return 'seen';
+  if (onlineUserIds.has(Number(other.userId))) return 'delivered';
+  return 'sent';
 }
 
 // ─── Message bubble ──────────────────────────────────────────────────────────
 function MessageBubble({
-  msg, isOwn, showSender, isGroup, currentUserId,
-  onReply, onReact, onEdit, onDelete, onDeleteForEveryone, onPin, onForward, onCopy,
+  msg, isOwn, showSender, isGroup, currentUserId, deliveryStatus, uploadPct,
+  onReply, onReact, onEdit, onDelete, onDeleteForEveryone, onPin, onStar, onForward, onCopy, onCancelUpload,
 }: {
   msg: ChatMessage; isOwn: boolean; showSender: boolean; isGroup: boolean;
   currentUserId: number;
+  deliveryStatus?: 'sending' | 'sent' | 'delivered' | 'seen';
+  uploadPct?: number;
   onReply: (m: ChatMessage) => void;
   onReact: (msgId: number, emoji: string) => void;
   onEdit: (m: ChatMessage) => void;
   onDelete: (id: number) => void;
   onDeleteForEveryone: (id: number) => void;
   onPin: (id: number) => void;
+  onStar: (id: number) => void;
   onForward: (m: ChatMessage) => void;
   onCopy: (text: string) => void;
+  onCancelUpload?: (tempId: string) => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -127,6 +149,7 @@ function MessageBubble({
   const isVideo = msg.messageType === 'Video' || (msg.messageType === 'File' && msg.attachmentUrl?.includes('video'));
   const isFile = msg.messageType === 'File' && !isAudio && !isVideo;
   const isDeleted = msg.messageText === '🚫 This message was deleted';
+  const isStarred = (msg.starredByUserIds || []).includes(currentUserId);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -191,7 +214,7 @@ function MessageBubble({
 
           {/* Audio / Voice */}
           {isAudio && msg.attachmentUrl && !isDeleted && (
-            <audio controls className="max-w-[220px] h-8 mb-1" src={msg.attachmentUrl} />
+            <VoiceNotePlayer url={msg.attachmentUrl} duration={msg.attachmentDuration} isOwn={isOwn} />
           )}
 
           {/* Video */}
@@ -216,12 +239,28 @@ function MessageBubble({
             <p className="text-xs mt-1 opacity-80 break-words">{msg.messageText}</p>
           )}
 
+          {/* Upload progress (attachment mid-send) */}
+          {deliveryStatus === 'sending' && typeof uploadPct === 'number' && uploadPct < 100 && (
+            <div className="flex items-center gap-2 mb-1">
+              <div className="flex-1 h-1 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                <div className="h-full bg-current opacity-60 transition-all" style={{ width: `${uploadPct}%` }} />
+              </div>
+              <span className="text-[10px] opacity-70 flex-shrink-0">{uploadPct}%</span>
+              {onCancelUpload && msg.tempId && (
+                <button onClick={() => onCancelUpload(msg.tempId!)} className="flex-shrink-0 opacity-70 hover:opacity-100">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Time + status */}
           <div className={cn('flex items-center justify-end gap-1 mt-0.5',
             isOwn ? 'text-indigo-200' : 'text-gray-400 dark:text-gray-500')}>
+            {isStarred && <Star className="h-2.5 w-2.5 fill-current" />}
             {msg.isEdited && !isDeleted && <span className="text-[10px] italic opacity-70">edited</span>}
             <span className="text-[10px]">{fmtMsgTime(msg.createdAt)}</span>
-            {isOwn && <DeliveryTick status="delivered" />}
+            {isOwn && <DeliveryTick status={deliveryStatus} />}
           </div>
         </div>
 
@@ -276,6 +315,7 @@ function MessageBubble({
                   <MenuBtn icon={Forward} label="Forward" onClick={() => { onForward(msg); setShowMenu(false); }} />
                   <MenuBtn icon={Copy} label="Copy" onClick={() => { onCopy(msg.messageText); setShowMenu(false); }} />
                   <MenuBtn icon={Pin} label={msg.isPinned ? 'Unpin' : 'Pin'} onClick={() => { onPin(msg.id); setShowMenu(false); }} />
+                  <MenuBtn icon={Star} label={isStarred ? 'Unstar' : 'Star'} onClick={() => { onStar(msg.id); setShowMenu(false); }} />
                   {isOwn && (
                     <>
                       <MenuBtn icon={Edit2} label="Edit" onClick={() => { onEdit(msg); setShowMenu(false); }} />
@@ -290,6 +330,38 @@ function MessageBubble({
           )}
         </AnimatePresence>
       </div>
+    </div>
+  );
+}
+
+const PLAYBACK_RATES = [1, 1.5, 2];
+
+/** Native <audio controls> has no playback-speed control at all, and no
+ * built-in way to show duration before the browser's own UI loads it — so
+ * this wraps it with a speed-cycle button and a duration readout. */
+function VoiceNotePlayer({ url, duration, isOwn }: { url: string; duration?: number; isOwn: boolean }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [rateIdx, setRateIdx] = useState(0);
+
+  const cycleRate = () => {
+    const next = (rateIdx + 1) % PLAYBACK_RATES.length;
+    setRateIdx(next);
+    if (audioRef.current) audioRef.current.playbackRate = PLAYBACK_RATES[next];
+  };
+
+  return (
+    <div className="flex items-center gap-2 mb-1">
+      <audio ref={audioRef} controls className="max-w-[200px] h-8" src={url} />
+      <button onClick={cycleRate} title="Playback speed"
+        className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-md border flex-shrink-0',
+          isOwn ? 'border-indigo-300 text-indigo-100' : 'border-gray-300 text-gray-500 dark:border-gray-600 dark:text-gray-400')}>
+        {PLAYBACK_RATES[rateIdx]}x
+      </button>
+      {typeof duration === 'number' && (
+        <span className={cn('text-[10px] flex-shrink-0', isOwn ? 'text-indigo-200' : 'text-gray-400')}>
+          {String(Math.floor(duration / 60)).padStart(2, '0')}:{String(duration % 60).padStart(2, '0')}
+        </span>
+      )}
     </div>
   );
 }
@@ -665,8 +737,11 @@ export default function MessagingPage() {
   const [editTarget, setEditTarget] = useState<ChatMessage | null>(null);
   const [forwardTarget, setForwardTarget] = useState<ChatMessage | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+  // 'idle' → 'recording' → ('paused' ⇄ 'recording') → 'preview' (stopped,
+  // listen-before-sending) → back to 'idle' on send/discard.
+  const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'paused' | 'preview'>('idle');
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordedAudio, setRecordedAudio] = useState<{ blob: Blob; url: string } | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
@@ -676,6 +751,12 @@ export default function MessagingPage() {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
   const [typingInConv, setTypingInConv] = useState<Record<number, Set<number>>>({}); // convId → Set<userId>
   const [localMessages, setLocalMessages] = useState<Record<number, ChatMessage[]>>({});
+  // Messages still in flight (text send, or an attachment mid-upload) — kept
+  // separate from localMessages so a "Sending..." bubble can show
+  // immediately instead of only appearing once the server round-trip
+  // finishes. Keyed by tempId; removed once the real message is confirmed.
+  const [pendingMessages, setPendingMessages] = useState<Record<number, ChatMessage[]>>({});
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({}); // tempId → 0-100
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -684,6 +765,7 @@ export default function MessagingPage() {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval>>();
   const recordingCancelledRef = useRef(false);
+  const uploadCancelRef = useRef<Record<string, () => void>>({}); // tempId → abort fn, for in-progress attachment uploads
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Discard an in-progress recording if the page unmounts mid-recording
@@ -692,7 +774,7 @@ export default function MessagingPage() {
   useEffect(() => {
     return () => {
       clearInterval(recordingTimerRef.current);
-      if (mediaRecorderRef.current?.state === 'recording') {
+      if (mediaRecorderRef.current?.state === 'recording' || mediaRecorderRef.current?.state === 'paused') {
         recordingCancelledRef.current = true;
         mediaRecorderRef.current.stop();
       }
@@ -729,6 +811,12 @@ export default function MessagingPage() {
         if (existing.find(m => m.id === msg.id)) return prev;
         return { ...prev, [convId]: [...existing, msg] };
       });
+      // The sender's own socket is in the room too, so this same broadcast
+      // is how their own "Sending..." optimistic bubble gets confirmed —
+      // tempId is echoed straight back from what they sent.
+      if (msg.tempId) {
+        setPendingMessages(prev => ({ ...prev, [convId]: (prev[convId] ?? []).filter(m => m.tempId !== msg.tempId) }));
+      }
       qc.invalidateQueries({ queryKey: ['conversations'] });
       qc.invalidateQueries({ queryKey: ['messages', convId] });
     };
@@ -859,15 +947,49 @@ export default function MessagingPage() {
 
   const serverMessages: ChatMessage[] = (messagesRaw as any)?.data ?? [];
   const socketMessages: ChatMessage[] = selectedId ? (localMessages[selectedId] ?? []) : [];
+  const pendingForConv: ChatMessage[] = selectedId ? (pendingMessages[selectedId] ?? []) : [];
 
-  // Merge server + socket messages, dedup by id
+  // Merge server + socket + pending (in-flight) messages, dedup by id
   const messages: ChatMessage[] = useMemo(() => {
     const merged = [...serverMessages];
     for (const m of socketMessages) {
       if (!merged.find(x => x.id === m.id)) merged.push(m);
     }
+    for (const m of pendingForConv) {
+      if (!merged.find(x => x.tempId === m.tempId)) merged.push(m);
+    }
     return merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  }, [serverMessages, socketMessages]);
+  }, [serverMessages, socketMessages, pendingForConv]);
+
+  // Optimistic "Sending..." bubble — added the instant the user hits send
+  // (or starts an attachment upload), removed once the real message is
+  // confirmed (matched by tempId, since the real DB id isn't known yet).
+  const addPendingMessage = useCallback((convId: number, payload: Partial<ChatMessage>): string => {
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const optimistic: ChatMessage = {
+      id: -Date.now(),
+      uuid: tempId,
+      conversationId: convId,
+      senderUserId: currentUserId,
+      messageText: '',
+      messageType: 'Text',
+      isEdited: false,
+      isPinned: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      sender: currentUser ? { id: currentUserId, firstName: (currentUser as any).firstName, lastName: (currentUser as any).lastName, avatar: (currentUser as any).avatar } : undefined,
+      ...payload,
+      tempId,
+      status: 'sending',
+    };
+    setPendingMessages(prev => ({ ...prev, [convId]: [...(prev[convId] ?? []), optimistic] }));
+    return tempId;
+  }, [currentUserId, currentUser]);
+
+  const removePendingMessage = useCallback((convId: number, tempId: string) => {
+    setPendingMessages(prev => ({ ...prev, [convId]: (prev[convId] ?? []).filter(m => m.tempId !== tempId) }));
+    setUploadProgress(prev => { const next = { ...prev }; delete next[tempId]; return next; });
+  }, []);
 
   const selectedConv = conversations.find(c => c.id === selectedId) ??
     allConversations.find(c => c.id === selectedId) ?? null;
@@ -943,6 +1065,13 @@ export default function MessagingPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['messages', selectedId] }),
   });
 
+  // Star is a personal bookmark — unlike pin, nobody else needs to know, so
+  // this is REST-only with no socket broadcast.
+  const starMutation = useMutation({
+    mutationFn: (msgId: number) => messagingService.starMessage(selectedId!, msgId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messages', selectedId] }),
+  });
+
   const forwardMutation = useMutation({
     mutationFn: ({ msgId, targetIds }: { msgId: number; targetIds: number[] }) =>
       messagingService.forwardMessage(selectedId!, msgId, targetIds),
@@ -998,10 +1127,14 @@ export default function MessagingPage() {
       editMutation.mutate({ id: editTarget.id, text });
     } else {
       const payload = { messageText: text, replyToMessageId: replyTo?.id };
+      const tempId = addPendingMessage(selectedId, { messageText: text, replyTo: replyTo ?? undefined });
       if (chatSocket.isConnected) {
-        chatSocket.sendMessage({ conversationId: selectedId, ...payload });
+        chatSocket.sendMessage({ conversationId: selectedId, ...payload, tempId })
+          .catch(() => removePendingMessage(selectedId, tempId));
+        // onMessage's own-broadcast handles the success case — the socket
+        // ack and the room broadcast can arrive in either order.
       } else {
-        sendMutation.mutate(payload);
+        sendMutation.mutate(payload, { onSettled: () => removePendingMessage(selectedId, tempId) });
       }
       setReplyTo(null);
     }
@@ -1009,7 +1142,7 @@ export default function MessagingPage() {
     setShowEmojiPicker(false);
     chatSocket.typingStop(selectedId);
     clearTimeout(typingTimeoutRef.current);
-  }, [messageText, selectedId, editTarget, replyTo]);
+  }, [messageText, selectedId, editTarget, replyTo, addPendingMessage, removePendingMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -1024,25 +1157,68 @@ export default function MessagingPage() {
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedId) return;
+  // Each selected file becomes its own pending bubble (object-URL preview,
+  // visible immediately) that uploads independently — so "send multiple
+  // images" doesn't mean waiting for #1 to finish before #2 even starts,
+  // and one slow/failed upload doesn't block the others.
+  const sendFileMessage = useCallback((file: File, convId: number) => {
+    const localPreviewUrl = URL.createObjectURL(file);
+    const msgType = file.type.startsWith('image/') ? 'Image' : file.type.startsWith('video/') ? 'Video' : 'File';
+    const msgText = msgType === 'Image' ? '📷 Image' : msgType === 'Video' ? '🎬 Video' : `📎 ${file.name}`;
+
+    const tempId = addPendingMessage(convId, {
+      messageText: msgText, messageType: msgType,
+      attachmentUrl: localPreviewUrl, attachmentType: file.type,
+      attachmentName: file.name, attachmentSize: file.size,
+    });
+
+    // Was POSTing to a hardcoded relative '/api/messages/upload' — only
+    // ever worked in local dev where Vite's proxy forwards /api to the
+    // backend; in production (frontend and backend on separate origins)
+    // that path doesn't exist on the frontend's own domain, so every
+    // attachment failed outright. Cloudinary is already the established
+    // upload path elsewhere in the app (staff documents, profile photos)
+    // and also avoids writing to the backend's ephemeral local disk.
+    const { promise, cancel } = uploadToCloudinaryWithProgress(file, 'maxhub-chat', (pct) => {
+      setUploadProgress(prev => ({ ...prev, [tempId]: pct }));
+    });
+    uploadCancelRef.current[tempId] = cancel;
+
+    promise
+      .then(async (uploaded) => {
+        const payload = {
+          messageText: msgText, messageType: msgType,
+          attachmentUrl: uploaded.url, attachmentType: file.type,
+          attachmentName: file.name, attachmentSize: file.size,
+        };
+        if (chatSocket.isConnected) {
+          await chatSocket.sendMessage({ conversationId: convId, ...payload, tempId });
+        } else {
+          await messagingService.sendMessage(convId, payload);
+          qc.invalidateQueries({ queryKey: ['messages', convId] });
+          qc.invalidateQueries({ queryKey: ['conversations'] });
+        }
+      })
+      .catch((err) => {
+        if (err?.message !== 'Upload cancelled') alert(`Failed to send ${file.name}.`);
+      })
+      .finally(() => {
+        URL.revokeObjectURL(localPreviewUrl);
+        delete uploadCancelRef.current[tempId];
+        removePendingMessage(convId, tempId);
+      });
+  }, [addPendingMessage, removePendingMessage, qc]);
+
+  const cancelUpload = (tempId: string, convId: number) => {
+    uploadCancelRef.current[tempId]?.();
+    removePendingMessage(convId, tempId);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length || !selectedId) return;
     e.target.value = '';
-    try {
-      // Was POSTing to a hardcoded relative '/api/messages/upload' — only
-      // ever worked in local dev where Vite's proxy forwards /api to the
-      // backend; in production (frontend and backend on separate origins)
-      // that path doesn't exist on the frontend's own domain, so every
-      // attachment failed outright. Cloudinary is already the established
-      // upload path elsewhere in the app (staff documents, profile photos)
-      // and also avoids writing to the backend's ephemeral local disk.
-      const uploaded = await uploadToCloudinary(file, 'maxhub-chat');
-      const msgType = uploaded.resourceType === 'image' ? 'Image' : uploaded.resourceType === 'video' ? 'Video' : 'File';
-      const msgText = msgType === 'Image' ? '📷 Image' : msgType === 'Video' ? '🎬 Video' : `📎 ${file.name}`;
-      sendMutation.mutate({ messageText: msgText, messageType: msgType, attachmentUrl: uploaded.url, attachmentType: file.type });
-    } catch {
-      alert('File upload failed. Please try again.');
-    }
+    for (const file of files) sendFileMessage(file, selectedId);
   };
 
   // Click-to-toggle rather than press-and-hold: getUserMedia's permission
@@ -1062,37 +1238,92 @@ export default function MessagingPage() {
       audioChunksRef.current = [];
       recordingCancelledRef.current = false;
       recorder.ondataavailable = e => audioChunksRef.current.push(e.data);
-      recorder.onstop = async () => {
+      // Stop no longer sends immediately — it hands off to a listen-before-
+      // sending preview step instead, same as WhatsApp's recorder.
+      recorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
         clearInterval(recordingTimerRef.current);
-        if (recordingCancelledRef.current) return;
+        if (recordingCancelledRef.current) { setRecordingState('idle'); return; }
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        if (blob.size === 0) return;
-        const voiceFile = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
-        try {
-          const uploaded = await uploadToCloudinary(voiceFile, 'maxhub-chat');
-          sendMutation.mutate({ messageText: '🎤 Voice note', messageType: 'Voice', attachmentUrl: uploaded.url, attachmentType: 'audio/webm' });
-        } catch {
-          alert('Voice note upload failed.');
-        }
+        if (blob.size === 0) { setRecordingState('idle'); return; }
+        setRecordedAudio({ blob, url: URL.createObjectURL(blob) });
+        setRecordingState('preview');
       };
       recorder.start();
-      setIsRecording(true);
+      setRecordingState('recording');
       setRecordingSeconds(0);
       recordingTimerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000);
     } catch { alert('Microphone access denied. Allow microphone access in your browser to record a voice note.'); }
   };
 
+  const pauseRecording = () => {
+    mediaRecorderRef.current?.pause();
+    clearInterval(recordingTimerRef.current);
+    setRecordingState('paused');
+  };
+
+  const resumeRecording = () => {
+    mediaRecorderRef.current?.resume();
+    recordingTimerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000);
+    setRecordingState('recording');
+  };
+
   const stopRecording = () => {
     recordingCancelledRef.current = false;
     mediaRecorderRef.current?.stop();
-    setIsRecording(false);
   };
 
   const cancelRecording = () => {
     recordingCancelledRef.current = true;
     mediaRecorderRef.current?.stop();
-    setIsRecording(false);
+    setRecordingState('idle');
+  };
+
+  const discardRecordedAudio = () => {
+    if (recordedAudio) URL.revokeObjectURL(recordedAudio.url);
+    setRecordedAudio(null);
+    setRecordingState('idle');
+    setRecordingSeconds(0);
+  };
+
+  const sendRecordedAudio = () => {
+    if (!recordedAudio || !selectedId) return;
+    const convId = selectedId;
+    const voiceFile = new File([recordedAudio.blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
+    const duration = recordingSeconds;
+    const localPreviewUrl = recordedAudio.url; // reuse — already a valid object URL for this exact blob
+    setRecordedAudio(null);
+    setRecordingState('idle');
+    setRecordingSeconds(0);
+
+    const tempId = addPendingMessage(convId, {
+      messageText: '🎤 Voice note', messageType: 'Voice',
+      attachmentUrl: localPreviewUrl, attachmentType: 'audio/webm', attachmentDuration: duration,
+    });
+    const { promise, cancel } = uploadToCloudinaryWithProgress(voiceFile, 'maxhub-chat', (pct) => {
+      setUploadProgress(prev => ({ ...prev, [tempId]: pct }));
+    });
+    uploadCancelRef.current[tempId] = cancel;
+
+    promise
+      .then(async (uploaded) => {
+        const payload = { messageText: '🎤 Voice note', messageType: 'Voice', attachmentUrl: uploaded.url, attachmentType: 'audio/webm', attachmentDuration: duration };
+        if (chatSocket.isConnected) {
+          await chatSocket.sendMessage({ conversationId: convId, ...payload, tempId });
+        } else {
+          await messagingService.sendMessage(convId, payload);
+          qc.invalidateQueries({ queryKey: ['messages', convId] });
+          qc.invalidateQueries({ queryKey: ['conversations'] });
+        }
+      })
+      .catch((err) => {
+        if (err?.message !== 'Upload cancelled') alert('Voice note upload failed.');
+      })
+      .finally(() => {
+        URL.revokeObjectURL(localPreviewUrl);
+        delete uploadCancelRef.current[tempId];
+        removePendingMessage(convId, tempId);
+      });
   };
 
   // ── Reactions & actions ───────────────────────────────────────────────────
@@ -1111,6 +1342,8 @@ export default function MessagingPage() {
       pinMutation.mutate(msgId);
     }
   };
+
+  const handleStar = (msgId: number) => starMutation.mutate(msgId);
 
   const handleDelete = (id: number) => {
     if (confirm('Delete this message for you?')) deleteMutation.mutate({ id, everyone: false });
@@ -1345,14 +1578,18 @@ export default function MessagingPage() {
                       showSender={showSender}
                       isGroup={isGroup}
                       currentUserId={currentUserId}
+                      deliveryStatus={isOwn ? computeDeliveryStatus(msg, selectedConv, onlineUserIds, currentUserId) : undefined}
+                      uploadPct={msg.tempId ? uploadProgress[msg.tempId] : undefined}
                       onReply={setReplyTo}
                       onReact={handleReact}
                       onEdit={handleEditClick}
                       onDelete={handleDelete}
                       onDeleteForEveryone={handleDeleteForEveryone}
                       onPin={handlePin}
+                      onStar={handleStar}
                       onForward={setForwardTarget}
                       onCopy={handleCopy}
+                      onCancelUpload={selectedId ? (tempId) => cancelUpload(tempId, selectedId) : undefined}
                     />
                   );
                 })
@@ -1410,7 +1647,7 @@ export default function MessagingPage() {
               </div>
 
               {/* Attach file */}
-              <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect}
+              <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect}
                 accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip" />
               <button onClick={() => fileInputRef.current?.click()}
                 className="p-2.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">
@@ -1432,18 +1669,35 @@ export default function MessagingPage() {
               </div>
 
               {/* Voice / Send button */}
-              {isRecording ? (
+              {recordingState === 'recording' || recordingState === 'paused' ? (
                 <>
-                  <button onClick={cancelRecording} title="Cancel recording"
+                  <button onClick={cancelRecording} title="Delete recording"
                     className="w-9 h-9 text-gray-400 hover:text-red-500 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition flex-shrink-0">
                     <Trash2 className="h-4 w-4" />
                   </button>
                   <div className="flex items-center gap-1.5 text-sm text-red-500 font-medium flex-shrink-0 px-1">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className={cn('w-2 h-2 rounded-full bg-red-500', recordingState === 'recording' && 'animate-pulse')} />
                     {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
                   </div>
-                  <button onClick={stopRecording} title="Stop and send"
+                  <button onClick={recordingState === 'recording' ? pauseRecording : resumeRecording}
+                    title={recordingState === 'recording' ? 'Pause' : 'Resume'}
+                    className="w-9 h-9 text-gray-400 hover:text-indigo-600 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition flex-shrink-0">
+                    {recordingState === 'recording' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </button>
+                  <button onClick={stopRecording} title="Stop"
                     className="w-11 h-11 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </button>
+                </>
+              ) : recordingState === 'preview' && recordedAudio ? (
+                <>
+                  <button onClick={discardRecordedAudio} title="Delete recording"
+                    className="w-9 h-9 text-gray-400 hover:text-red-500 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition flex-shrink-0">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <audio controls src={recordedAudio.url} className="h-9 flex-1 max-w-[220px]" />
+                  <button onClick={sendRecordedAudio} title="Send voice note"
+                    className="w-11 h-11 bg-indigo-600 hover:bg-indigo-700 rounded-full flex items-center justify-center text-white shadow-md transition flex-shrink-0">
                     <Send className="h-4 w-4" />
                   </button>
                 </>
