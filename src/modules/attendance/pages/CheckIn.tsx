@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { attendanceManagementService } from '@services/attendanceManagementService';
 import { useApiQuery } from '@hooks/useApiQuery';
@@ -6,8 +6,7 @@ import { apiClient } from '@services/apiClient';
 import type { AttendanceRecord } from '@/types';
 import {
   Clock, MapPin, LogIn, LogOut, CheckCircle2, AlertCircle, User,
-  Camera, VideoOff, RotateCcw, ShieldCheck, ShieldX, Loader2,
-  Navigation,
+  ShieldCheck, ShieldX, Loader2, Navigation,
 } from 'lucide-react';
 
 // ─── Office geofence config ────────────────────────────────
@@ -73,15 +72,6 @@ export default function CheckIn() {
   const [error, setError] = useState<string | null>(null);
   const [geofenceOverride, setGeofenceOverride] = useState(false); // for approved leave/remote work
 
-  // Camera state
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const [cameraLoading, setCameraLoading] = useState(false);
-
   const { data: todayRecord, refetch } = useApiQuery<AttendanceRecord | null>(
     ['attendance', 'today'],
     () => apiClient.get<AttendanceRecord>('/attendance/today').catch(() => null)
@@ -110,59 +100,6 @@ export default function CheckIn() {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     );
   }, []);
-
-  // Stop camera on unmount
-  useEffect(() => () => { streamRef.current?.getTracks().forEach(t => t.stop()); }, []);
-
-  // ── Camera ──
-  const startCamera = useCallback(async () => {
-    setCameraError(null);
-    setCameraLoading(true);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } },
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setCameraActive(true);
-    } catch (e: any) {
-      const msg =
-        e.name === 'NotAllowedError' ? 'Camera permission denied. Please allow camera access in your browser settings.' :
-        e.name === 'NotFoundError' ? 'No camera detected on this device.' :
-        e.name === 'NotReadableError' ? 'Camera is in use by another application.' :
-        'Camera unavailable. Please try again.';
-      setCameraError(msg);
-    } finally {
-      setCameraLoading(false);
-    }
-  }, []);
-
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
-    setCameraActive(false);
-  }, []);
-
-  const capturePhoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = video.videoWidth || 320;
-    canvas.height = video.videoHeight || 240;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    setCapturedPhoto(canvas.toDataURL('image/jpeg', 0.8));
-    stopCamera();
-  }, [stopCamera]);
-
-  const retakePhoto = useCallback(() => {
-    setCapturedPhoto(null);
-    startCamera();
-  }, [startCamera]);
 
   // ── Time windows ──
   const checkedIn = !!todayRecord?.checkInTime;
@@ -202,8 +139,7 @@ export default function CheckIn() {
         latitude: coords?.latitude ?? 0,
         longitude: coords?.longitude ?? 0,
         ipAddress,
-        facePhoto: capturedPhoto ?? undefined,
-      } as any);
+      });
       await refetch();
     } catch (e) {
       setError((e as Error).message ?? 'Check-in failed');
@@ -220,8 +156,7 @@ export default function CheckIn() {
         latitude: coords?.latitude ?? 0,
         longitude: coords?.longitude ?? 0,
         ipAddress,
-        facePhoto: capturedPhoto ?? undefined,
-      } as any);
+      });
       await refetch();
     } catch (e) {
       setError((e as Error).message ?? 'Check-out failed');
@@ -373,66 +308,6 @@ export default function CheckIn() {
         </div>
       )}
 
-      {/* Face Capture Section — shown when time window is open */}
-      {!allDone && timeAllowed && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 space-y-3">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-            <Camera className="h-4 w-4" /> Face Capture
-            <span className="text-xs font-normal text-gray-400">(required for attendance)</span>
-          </p>
-
-          {cameraError && (
-            <div className="flex items-start gap-2 text-red-600 dark:text-red-400 text-xs bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2.5 border border-red-200 dark:border-red-800">
-              <VideoOff className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p>{cameraError}</p>
-                <button onClick={startCamera} className="mt-1.5 underline font-medium">
-                  Try again
-                </button>
-              </div>
-            </div>
-          )}
-
-          <canvas ref={canvasRef} className="hidden" />
-
-          {capturedPhoto ? (
-            <div className="flex items-center gap-4">
-              <img src={capturedPhoto} alt="Captured face" className="w-20 h-20 rounded-xl object-cover border-2 border-green-400 dark:border-green-600" />
-              <div>
-                <p className="text-xs text-green-600 dark:text-green-400 font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Photo captured
-                </p>
-                <button onClick={retakePhoto} className="flex items-center gap-1.5 mt-1.5 text-xs text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 rounded-lg px-3 py-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
-                  <RotateCcw className="h-3.5 w-3.5" /> Retake
-                </button>
-              </div>
-            </div>
-          ) : cameraActive ? (
-            <div className="space-y-3">
-              <div className="relative">
-                <video ref={videoRef} className="w-full max-w-[240px] rounded-xl border border-gray-200 dark:border-gray-600"
-                  autoPlay muted playsInline />
-                {/* Overlay face guide */}
-                <div className="absolute inset-0 max-w-[240px] flex items-center justify-center pointer-events-none">
-                  <div className="w-28 h-32 border-2 border-dashed border-white/60 rounded-full" />
-                </div>
-              </div>
-              <button onClick={capturePhoto}
-                className="flex items-center gap-1.5 text-sm bg-indigo-600 text-white rounded-xl px-4 py-2.5 hover:bg-indigo-700 transition font-medium">
-                <Camera className="h-4 w-4" /> Capture Photo
-              </button>
-            </div>
-          ) : (
-            <button onClick={startCamera} disabled={cameraLoading}
-              className="flex items-center gap-1.5 text-sm border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-              {cameraLoading
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting camera…</>
-                : <><Camera className="h-4 w-4" /> Open Camera</>}
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Error */}
       {error && (
         <div className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl px-4 py-3">
@@ -452,33 +327,29 @@ export default function CheckIn() {
         </div>
       ) : !checkedIn ? (
         <button onClick={handleCheckIn}
-          disabled={loading || !actionAllowed || !capturedPhoto}
+          disabled={loading || !actionAllowed}
           className="w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-4 px-6 rounded-2xl transition text-base shadow-sm shadow-indigo-200 dark:shadow-none">
           {loading
             ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             : <LogIn className="h-5 w-5" />}
           {loading
             ? 'Recording check-in…'
-            : !capturedPhoto
-              ? 'Capture photo to check in'
-              : !geofenceAllowed
-                ? 'Outside office — cannot check in'
-                : 'Check In Now'}
+            : !geofenceAllowed
+              ? 'Outside office — cannot check in'
+              : 'Check In Now'}
         </button>
       ) : (
         <button onClick={handleCheckOut}
-          disabled={loading || !actionAllowed || !capturedPhoto}
+          disabled={loading || !actionAllowed}
           className="w-full flex items-center justify-center gap-3 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-semibold py-4 px-6 rounded-2xl transition text-base shadow-sm shadow-orange-200 dark:shadow-none">
           {loading
             ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             : <LogOut className="h-5 w-5" />}
           {loading
             ? 'Recording check-out…'
-            : !capturedPhoto
-              ? 'Capture photo to check out'
-              : !geofenceAllowed
-                ? 'Outside office — cannot check out'
-                : 'Check Out Now'}
+            : !geofenceAllowed
+              ? 'Outside office — cannot check out'
+              : 'Check Out Now'}
         </button>
       )}
 
