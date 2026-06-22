@@ -109,25 +109,29 @@ export default function CustomerReportList() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['customer-reports', { statusFilter }],
-    queryFn: async () => {
-      try { return await apiClient.get('/customer-reports', { params: { status: statusFilter || undefined } } as any); }
-      catch { return []; }
-    },
+    // apiClient.get(url, params) already wraps params for axios — the old
+    // `{ params: {...} }` here double-wrapped it, so the status filter was
+    // silently never actually applied server-side.
+    queryFn: () => apiClient.get('/customer-reports', { status: statusFilter || undefined }),
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload: any) => apiClient.post('/customer-reports', payload).catch(() => ({ ...payload, id: Date.now() })),
+    // Editing reused this same mutation but always POSTed, so "editing" a
+    // report actually created a brand new duplicate every time and the
+    // original was never touched. PATCH /:id when there's an editItem.
+    mutationFn: (payload: any) =>
+      editItem ? apiClient.patch(`/customer-reports/${editItem.id}`, payload) : apiClient.post('/customer-reports', payload),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer-reports'] }); closeModal(); },
   });
 
   const submitMutation = useMutation({
-    mutationFn: (id: number) => apiClient.patch(`/customer-reports/${id}/submit`).catch(() => ({ id, approvalStatus: 'Submitted' })),
+    mutationFn: (id: number) => apiClient.patch(`/customer-reports/${id}/submit`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['customer-reports'] }),
   });
 
   const actionMutation = useMutation({
     mutationFn: ({ id, action, reason }: { id: number; action: string; reason?: string }) =>
-      apiClient.patch(`/customer-reports/${id}/${action}`, { reason }).catch(() => ({ id, action })),
+      apiClient.patch(`/customer-reports/${id}/${action}`, { reason }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer-reports'] }); setActionTarget(null); setActionReason(''); },
   });
 
