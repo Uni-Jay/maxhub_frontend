@@ -20,7 +20,7 @@ import type { AuthUser, AuthTokens } from '@/types/index';
 
 // Auto-logout after this long with zero mouse/keyboard/touch activity. Any
 // activity resets the clock, so a user actively working is never logged out.
-const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 export interface AuthContextType {
   // State
