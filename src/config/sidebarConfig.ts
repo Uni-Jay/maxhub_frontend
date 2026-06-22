@@ -225,6 +225,11 @@ const HOD_NAV: SidebarItem[] = [
   // HOD already holds BROADCAST_CREATE_OWN_DEPARTMENT/READ_OWN_DEPARTMENT in
   // RolesConfig.ts, but had no sidebar path into it either.
   { label: 'Broadcasts', path: '/communication/broadcasts', icon: Send },
+  // Student Management — HOD's read access was STM_STUDENT_READ_ALL (every
+  // department, not just her own) until this same change scoped it down to
+  // STM_STUDENT_READ_OWN_DEPARTMENT, matching the create/update/suspend
+  // grants she already had. No sidebar path into it at all before now.
+  { label: 'Students', path: '/lms/students', icon: GraduationCap },
   ...CRM_NAV,
   ...COMMON_TAIL,
 ];
