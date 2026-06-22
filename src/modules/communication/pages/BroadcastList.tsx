@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Megaphone, Plus, X, Trash2, Users } from 'lucide-react';
-import { broadcastService, BUSINESS_UNIT_LABELS, type Broadcast } from '@services/broadcastService';
+import { broadcastService, BUSINESS_UNIT_LABELS, ROLE_AUDIENCE_LABELS, type Broadcast } from '@services/broadcastService';
 import { departmentService } from '@services/departmentService';
 
 const errMsg = (error: unknown): string =>
@@ -10,7 +10,7 @@ const errMsg = (error: unknown): string =>
 
 const inputClass = 'w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
-const INIT_FORM = { title: '', message: '', audienceType: 'All' as 'All' | 'BusinessUnit' | 'Department', audienceValue: '' };
+const INIT_FORM = { title: '', message: '', audienceType: 'All' as 'All' | 'BusinessUnit' | 'Department' | 'Role', audienceValue: '' };
 
 export default function BroadcastList() {
   const qc = useQueryClient();
@@ -83,8 +83,9 @@ export default function BroadcastList() {
                     <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1.5">
                       <Users className="h-3 w-3" />
                       <span>
-                        {b.audienceType === 'All' ? 'All Staff' : b.audienceType === 'BusinessUnit'
-                          ? (BUSINESS_UNIT_LABELS as any)[b.audienceValue ?? ''] ?? b.audienceValue
+                        {b.audienceType === 'All' ? 'Everyone'
+                          : b.audienceType === 'BusinessUnit' ? (BUSINESS_UNIT_LABELS as any)[b.audienceValue ?? ''] ?? b.audienceValue
+                          : b.audienceType === 'Role' ? ROLE_AUDIENCE_LABELS[(b.audienceValue ?? '').toLowerCase()] ?? b.audienceValue
                           : `Department #${b.audienceValue}`}
                       </span>
                       <span>·</span>
@@ -128,11 +129,21 @@ export default function BroadcastList() {
                   <select value={form.audienceType}
                     onChange={e => setForm(f => ({ ...f, audienceType: e.target.value as typeof f.audienceType, audienceValue: '' }))}
                     className={inputClass}>
-                    <option value="All">All Staff</option>
+                    <option value="All">Everyone</option>
+                    <option value="Role">Role</option>
                     <option value="BusinessUnit">Business Unit</option>
                     <option value="Department">Department</option>
                   </select>
                 </div>
+                {form.audienceType === 'Role' && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Role *</label>
+                    <select value={form.audienceValue} onChange={e => setForm(f => ({ ...f, audienceValue: e.target.value }))} className={inputClass}>
+                      <option value="">Select...</option>
+                      {Object.entries(ROLE_AUDIENCE_LABELS).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+                    </select>
+                  </div>
+                )}
                 {form.audienceType === 'BusinessUnit' && (
                   <div>
                     <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Business Unit *</label>

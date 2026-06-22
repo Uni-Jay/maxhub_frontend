@@ -222,6 +222,9 @@ const HOD_NAV: SidebarItem[] = [
     { label: 'Balance', path: '/leave/balance' },
   ]},
   { label: 'Performance', path: '/hr/appraisals', icon: Award },
+  // HOD already holds BROADCAST_CREATE_OWN_DEPARTMENT/READ_OWN_DEPARTMENT in
+  // RolesConfig.ts, but had no sidebar path into it either.
+  { label: 'Broadcasts', path: '/communication/broadcasts', icon: Send },
   ...CRM_NAV,
   ...COMMON_TAIL,
 ];
