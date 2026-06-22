@@ -279,7 +279,7 @@ export default function CalendarPage() {
 
           {/* Upcoming Events */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Upcoming (14 days)</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Upcoming Events</h3>
             {upcomingEvents.length === 0 ? (
               <div className="text-center py-6">
                 <Calendar className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
