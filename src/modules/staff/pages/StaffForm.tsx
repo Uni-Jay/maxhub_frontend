@@ -161,6 +161,60 @@ export default function StaffForm() {
   const departments = (deptData as any[]) ?? [];
   const designations = (desgData as any[]) ?? [];
 
+  // The form never actually fetched the record being edited at all — it
+  // always rendered blank INIT_DATA regardless of isEdit, so "Edit Staff"
+  // looked exactly like (and was reported as) the blank "New Staff" form.
+  const { data: existingStaff, isLoading: loadingExisting } = useApiQuery(
+    ['staff', id],
+    () => apiClient.get(`/staff/${id}`),
+    { enabled: isEdit }
+  );
+
+  useEffect(() => {
+    if (!isEdit || !existingStaff) return;
+    const s: any = existingStaff;
+    const hasDesignation = !!s.designationId;
+    setData(d => ({
+      ...d,
+      firstName: s.firstName ?? '', lastName: s.lastName ?? '',
+      dateOfBirth: s.dateOfBirth?.slice(0, 10) ?? '', gender: s.gender ?? '',
+      maritalStatus: s.maritalStatus ?? '', nationality: s.nationality ?? d.nationality,
+      validIdType: s.validIdType ?? '', validIdNumber: s.validIdNumber ?? '',
+      homeAddress: s.homeAddress ?? '', phone: s.phone ?? '', whatsapp: s.whatsappNumber ?? '',
+      email: s.email ?? '', facebook: s.socialMediaHandle ?? '',
+      emergencyName: s.emergencyContactName ?? '', emergencyRelationship: s.emergencyRelationship ?? '',
+      emergencyPhone: s.emergencyContactPhone ?? '', emergencyAddress: s.emergencyHomeAddress ?? '',
+      educationLevel: s.educationLevel ?? '', degree: s.degree ?? '', institution: s.institution ?? '',
+      major: s.major ?? '', graduationYear: s.graduationYear ? String(s.graduationYear) : '',
+      nyscStatus: s.nyscCompleted ? 'Completed' : '',
+      certifications: s.certifications ?? [],
+      workExperience: s.previousWorkHistory ?? [], skills: s.skills ?? '',
+      guarantor1Name: s.guarantor1Name ?? '', guarantor1Phone: s.guarantor1Phone ?? '', guarantor1Email: s.guarantor1Email ?? '',
+      guarantor1Address: s.guarantor1Address ?? '', guarantor1Relationship: s.guarantor1Relationship ?? '', guarantor1Occupation: s.guarantor1Occupation ?? '',
+      guarantor2Name: s.guarantor2Name ?? '', guarantor2Phone: s.guarantor2Phone ?? '', guarantor2Email: s.guarantor2Email ?? '',
+      guarantor2Address: s.guarantor2Address ?? '', guarantor2Relationship: s.guarantor2Relationship ?? '', guarantor2Occupation: s.guarantor2Occupation ?? '',
+      employeeId: s.employeeId ?? '', businessUnit: s.businessUnit ?? '',
+      departmentId: s.departmentId ? String(s.departmentId) : '',
+      designationId: hasDesignation ? String(s.designationId) : '',
+      jobTitle: s.jobTitle ?? '', joiningDate: s.joiningDate?.slice(0, 10) ?? '',
+      employmentStatus: s.employmentStatus ?? 'Full-Time',
+      bankName: s.bankName ?? '', accountName: s.accountName ?? '', accountNumber: s.accountNumber ?? '', accountType: s.accountType ?? 'Savings',
+      bloodGroup: s.bloodGroup ?? '', medicalConditions: s.medicalConditions ?? '', medications: s.medications ?? '',
+      acknowledgedHandbook: !!s.readJobDescription, acknowledgedPolicies: !!s.acceptedCompanyPolicy,
+    }));
+    setUseCustomPosition(!hasDesignation && !!s.position);
+    setCustomPosition(!hasDesignation ? (s.position ?? '') : '');
+    setAdditionalUnits(s.businessUnits ?? []);
+    setAdditionalDepartmentIds((s.departments ?? []).filter((d: any) => !d.StaffDepartment?.isPrimary).map((d: any) => String(d.id)));
+    const asUploadResult = (url?: string) => url ? { url, publicId: '', originalFilename: '', format: '', resourceType: '', uploadedAt: '', bytes: 0 } : null;
+    setPassportFile(asUploadResult(s.avatar));
+    setValidIdFile(asUploadResult(s.idDocument));
+    setUtilityBillFile(asUploadResult(s.utilityBillDocument));
+    setCertificateFile(asUploadResult(s.certificateDocument));
+    setSignatureFile(asUploadResult(s.signatureImage));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, existingStaff]);
+
   const set = (field: string, value: any) => setData(d => ({ ...d, [field]: value }));
 
   const discardDraft = () => {
@@ -199,8 +253,12 @@ export default function StaffForm() {
   }, [data, section, useCustomPosition, customPosition, additionalUnits, additionalDepartmentIds, passportFile, validIdFile, utilityBillFile, certificateFile, signatureFile, isEdit, createdStaff]);
 
   const createStaff = useMutation({
+    // The backend only ever registered PATCH /staff/:id — PUT doesn't
+    // exist on that route at all, so saving an edit 404'd outright on top
+    // of the form never having loaded the existing record to edit in the
+    // first place.
     mutationFn: (payload: any) => isEdit
-      ? apiClient.put(`/staff/${id}`, payload)
+      ? apiClient.patch(`/staff/${id}`, payload)
       : apiClient.post('/staff', payload),
     onSuccess: (res: any) => {
       if (isEdit) {
@@ -250,6 +308,17 @@ export default function StaffForm() {
     if (!validateSection('A')) { setSection('A'); return; }
     if (!validateSection('B')) { setSection('B'); return; }
 
+    // Used to be nested under a `metadata: {...}` wrapper that neither
+    // POST /staff nor PATCH /staff/:id ever read — both destructure these
+    // fields directly off the top level of the body — so everything here
+    // (address, emergency contact, education, guarantors, bank details,
+    // etc.) silently never reached the database on create, and the same
+    // shape would've silently failed to save on edit too. A few fields
+    // typed in the form (city/state, social handles besides one, NYSC
+    // state code, sort code/pension/tax ids, genotype, allergies, signature
+    // date) have no matching column on the Staff model at all and are
+    // dropped here — that's a pre-existing schema gap, not something
+    // introduced by this fix.
     const payload: any = {
       firstName: data.firstName, lastName: data.lastName,
       email: data.email, phone: data.phone,
@@ -268,32 +337,50 @@ export default function StaffForm() {
       utilityBillDocument: utilityBillFile?.url,
       certificateDocument: certificateFile?.url,
       signatureImage: signatureFile?.url,
-      metadata: {
-        middleName: data.middleName, maritalStatus: data.maritalStatus,
-        nationality: data.nationality, validIdType: data.validIdType, validIdNumber: data.validIdNumber,
-        homeAddress: data.homeAddress, city: data.city, state: data.state,
-        whatsapp: data.whatsapp, facebook: data.facebook, instagram: data.instagram, linkedin: data.linkedin,
-        emergencyName: data.emergencyName, emergencyRelationship: data.emergencyRelationship,
-        emergencyPhone: data.emergencyPhone, emergencyEmail: data.emergencyEmail,
-        educationLevel: data.educationLevel, degree: data.degree, institution: data.institution,
-        major: data.major, graduationYear: data.graduationYear,
-        nyscStatus: data.nyscStatus, nyscStateCode: data.nyscStateCode,
-        certifications: data.certifications,
-        workExperience: data.workExperience, skills: data.skills,
-        guarantor1: { name: data.guarantor1Name, phone: data.guarantor1Phone, email: data.guarantor1Email, address: data.guarantor1Address, relationship: data.guarantor1Relationship, occupation: data.guarantor1Occupation },
-        guarantor2: { name: data.guarantor2Name, phone: data.guarantor2Phone, email: data.guarantor2Email, address: data.guarantor2Address, relationship: data.guarantor2Relationship, occupation: data.guarantor2Occupation },
-        jobTitle: data.jobTitle, workLocation: data.workLocation, supervisorName: data.supervisorName,
-        bankName: data.bankName, accountName: data.accountName, accountNumber: data.accountNumber,
-        accountType: data.accountType, sortCode: data.sortCode, pensionId: data.pensionId, taxId: data.taxId,
-        bloodGroup: data.bloodGroup, genotype: data.genotype, medicalConditions: data.medicalConditions,
-        medications: data.medications, allergies: data.allergies, disabilityStatus: data.disabilityStatus,
-        acknowledgedHandbook: data.acknowledgedHandbook, acknowledgedPolicies: data.acknowledgedPolicies,
-        acknowledgedDataConsent: data.acknowledgedDataConsent,
-        signatureDate: data.signatureDate,
-      },
+      maritalStatus: data.maritalStatus,
+      nationality: data.nationality,
+      validIdType: data.validIdType,
+      validIdNumber: data.validIdNumber,
+      homeAddress: data.homeAddress,
+      whatsappNumber: data.whatsapp,
+      socialMediaHandle: [data.facebook, data.instagram, data.linkedin].filter(Boolean).join(', ') || undefined,
+      emergencyContactName: data.emergencyName,
+      emergencyContactPhone: data.emergencyPhone,
+      emergencyRelationship: data.emergencyRelationship,
+      emergencyHomeAddress: data.emergencyAddress,
+      educationLevel: data.educationLevel,
+      degree: data.degree,
+      institution: data.institution,
+      major: data.major,
+      graduationYear: data.graduationYear ? Number(data.graduationYear) : undefined,
+      nyscCompleted: data.nyscStatus === 'Completed',
+      certifications: data.certifications,
+      hasCertification: (data.certifications?.length ?? 0) > 0,
+      previousWorkHistory: data.workExperience,
+      skills: data.skills,
+      guarantor1Name: data.guarantor1Name, guarantor1Phone: data.guarantor1Phone, guarantor1Email: data.guarantor1Email,
+      guarantor1Address: data.guarantor1Address, guarantor1Relationship: data.guarantor1Relationship, guarantor1Occupation: data.guarantor1Occupation,
+      guarantor2Name: data.guarantor2Name, guarantor2Phone: data.guarantor2Phone, guarantor2Email: data.guarantor2Email,
+      guarantor2Address: data.guarantor2Address, guarantor2Relationship: data.guarantor2Relationship, guarantor2Occupation: data.guarantor2Occupation,
+      jobTitle: data.jobTitle,
+      bankName: data.bankName, accountName: data.accountName, accountNumber: data.accountNumber, accountType: data.accountType,
+      bloodGroup: data.bloodGroup,
+      medicalConditions: data.medicalConditions,
+      medications: data.medications,
+      hasMedicalCondition: !!(data.medicalConditions || data.medications),
+      readJobDescription: data.acknowledgedHandbook,
+      acceptedCompanyPolicy: data.acknowledgedPolicies,
     };
     createStaff.mutate(payload);
   };
+
+  if (isEdit && loadingExisting) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+      </div>
+    );
+  }
 
   if (createdStaff) {
     const raw = createdStaff?.data ?? createdStaff;

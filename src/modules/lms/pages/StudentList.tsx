@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  GraduationCap, Plus, Search, X, Eye, Loader2, UserCheck, UserX, Mail, Phone,
+  GraduationCap, Plus, Search, X, Eye, Loader2, UserCheck, UserX, Mail, Phone, Pencil, Trash2,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
+import { departmentService } from '@services/departmentService';
 import { useAuth } from '@/contexts/AuthContext';
 
 type StudentStatus = 'Active' | 'Inactive' | 'Graduated' | 'Suspended' | 'Withdrawn';
@@ -16,16 +17,26 @@ const STATUS_STYLES: Record<StudentStatus, string> = {
   Withdrawn: 'bg-amber-100 text-amber-700',
 };
 
+// The only two companies that actually register students today — also
+// drives the student ID prefix server-side (KST for Kurios SAT, BM-VS for
+// Beadmax Vocational School instead of the old one-size-fits-all BVS-).
+const COMPANIES = [
+  { id: 1, name: 'Kurios SAT' },
+  { id: 4, name: 'Beadmax Vocational School' },
+];
+
 interface Student {
   id: number; studentNumber: string; status: StudentStatus;
   user?: { firstName: string; lastName: string; email: string; phone?: string };
   department?: { id: number; name: string; code: string };
+  companyId?: number;
   program?: { name: string; code: string };
-  guardianName?: string; guardianPhone?: string; enrollmentDate?: string;
+  guardianName?: string; guardianPhone?: string; guardianEmail?: string; enrollmentDate?: string;
 }
 
 const INIT_FORM = {
   firstName: '', lastName: '', email: '', phone: '',
+  companyId: String(COMPANIES[0].id), departmentId: '',
   guardianName: '', guardianPhone: '', guardianEmail: '',
 };
 
@@ -35,13 +46,15 @@ export function StudentList() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StudentStatus | 'All'>('All');
   const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [viewing, setViewing] = useState<Student | null>(null);
   const [form, setForm] = useState(INIT_FORM);
   const [formError, setFormError] = useState('');
 
   const canCreate = hasPermission('stm.student.create.all') || hasPermission('stm.student.create.own_department');
-  const canSuspend = hasPermission('stm.student.suspend.all') || hasPermission('stm.student.suspend.own_department')
-    || hasPermission('stm.student.update.all') || hasPermission('stm.student.update.own_department');
+  const canUpdate = hasPermission('stm.student.update.all') || hasPermission('stm.student.update.own_department');
+  const canDelete = hasPermission('stm.student.delete.all');
+  const canSuspend = canUpdate || hasPermission('stm.student.suspend.all') || hasPermission('stm.student.suspend.own_department');
 
   const { data, isLoading } = useQuery({
     queryKey: ['students', search, status],
@@ -49,16 +62,50 @@ export function StudentList() {
   });
   const students: Student[] = (data as any)?.data?.students ?? [];
 
-  const createMutation = useMutation({
-    mutationFn: () => apiClient.post('/students', form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['students'] }); setShowCreate(false); setForm(INIT_FORM); setFormError(''); },
-    onError: (err: any) => setFormError(err?.response?.data?.message || err?.message || 'Failed to register student'),
+  const { data: deptData } = useQuery({ queryKey: ['departments'], queryFn: () => departmentService.getAll() });
+  const departments = (deptData as any[]) ?? [];
+
+  const closeModal = () => { setShowCreate(false); setEditingId(null); setForm(INIT_FORM); setFormError(''); };
+
+  const openCreate = () => { setFormError(''); setForm(INIT_FORM); setEditingId(null); setShowCreate(true); };
+
+  const openEdit = (s: Student) => {
+    setFormError('');
+    setForm({
+      firstName: s.user?.firstName || '', lastName: s.user?.lastName || '',
+      email: s.user?.email || '', phone: s.user?.phone || '',
+      companyId: s.companyId ? String(s.companyId) : String(COMPANIES[0].id),
+      departmentId: s.department?.id ? String(s.department.id) : '',
+      guardianName: s.guardianName || '', guardianPhone: s.guardianPhone || '', guardianEmail: s.guardianEmail || '',
+    });
+    setEditingId(s.id);
+    setShowCreate(true);
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const payload = { ...form, departmentId: form.departmentId || undefined };
+      return editingId ? apiClient.patch(`/students/${editingId}`, payload) : apiClient.post('/students', payload);
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['students'] }); closeModal(); },
+    onError: (err: any) => setFormError(err?.response?.data?.message || err?.message || 'Failed to save student'),
   });
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: StudentStatus }) => apiClient.patch(`/students/${id}/status`, { status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['students'] }),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/students/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['students'] }),
+  });
+
+  const handleDelete = (s: Student) => {
+    if (window.confirm(`Remove ${s.user?.firstName} ${s.user?.lastName}? This cannot be undone.`)) {
+      deleteMutation.mutate(s.id);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -68,7 +115,7 @@ export function StudentList() {
           <p className="text-sm text-gray-500 mt-0.5">Kurios SAT — Student Roster</p>
         </div>
         {canCreate && (
-          <button onClick={() => { setFormError(''); setShowCreate(true); }}
+          <button onClick={openCreate}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">
             <Plus className="w-4 h-4" /> Add Student
           </button>
@@ -110,11 +157,17 @@ export function StudentList() {
                 <div className="flex items-center gap-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[s.status]}`}>{s.status}</span>
                   <button onClick={() => setViewing(s)} className="p-1.5 text-gray-400 hover:text-indigo-600" title="View"><Eye className="w-3.5 h-3.5" /></button>
+                  {canUpdate && (
+                    <button onClick={() => openEdit(s)} className="p-1.5 text-gray-400 hover:text-indigo-600" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                  )}
                   {canSuspend && s.status === 'Active' && (
                     <button onClick={() => statusMutation.mutate({ id: s.id, status: 'Suspended' })} className="p-1.5 text-gray-400 hover:text-rose-600" title="Suspend"><UserX className="w-3.5 h-3.5" /></button>
                   )}
                   {canSuspend && s.status === 'Suspended' && (
                     <button onClick={() => statusMutation.mutate({ id: s.id, status: 'Active' })} className="p-1.5 text-gray-400 hover:text-emerald-600" title="Reactivate"><UserCheck className="w-3.5 h-3.5" /></button>
+                  )}
+                  {canDelete && (
+                    <button onClick={() => handleDelete(s)} className="p-1.5 text-gray-400 hover:text-red-600" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                   )}
                 </div>
               </div>
@@ -131,11 +184,11 @@ export function StudentList() {
       </div>
 
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeModal}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Add Student</h2>
-              <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X className="h-4 w-4" /></button>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">{editingId ? 'Edit Student' : 'Add Student'}</h2>
+              <button onClick={closeModal} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X className="h-4 w-4" /></button>
             </div>
             <div className="p-6 space-y-4">
               {formError && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-3 py-2 text-xs">{formError}</div>}
@@ -164,6 +217,25 @@ export function StudentList() {
                     className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900" />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">School *</label>
+                  <select value={form.companyId} onChange={e => setForm(f => ({ ...f, companyId: e.target.value }))}
+                    disabled={!!editingId}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 disabled:opacity-50">
+                    {COMPANIES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  {editingId && <p className="text-[11px] text-gray-400 mt-1">School can't be changed after registration</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
+                  <select value={form.departmentId} onChange={e => setForm(f => ({ ...f, departmentId: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900">
+                    <option value="">Select department</option>
+                    {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+              </div>
 
               <p className="text-xs font-medium text-gray-500 pt-2">Guardian (optional)</p>
               <div className="grid grid-cols-2 gap-3">
@@ -184,16 +256,16 @@ export function StudentList() {
                   className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900" />
               </div>
 
-              <p className="text-[11px] text-gray-400">A temporary password (Student@123) is set automatically — the student should change it on first login.</p>
+              {!editingId && <p className="text-[11px] text-gray-400">A temporary password (Student@123) is set automatically — the student should change it on first login.</p>}
 
               <div className="flex gap-2 justify-end pt-2">
-                <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300">Cancel</button>
+                <button onClick={closeModal} className="px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300">Cancel</button>
                 <button
-                  onClick={() => createMutation.mutate()}
-                  disabled={!form.firstName || !form.lastName || !form.email || createMutation.isPending}
+                  onClick={() => saveMutation.mutate()}
+                  disabled={!form.firstName || !form.lastName || !form.email || saveMutation.isPending}
                   className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-50"
                 >
-                  {createMutation.isPending ? 'Adding…' : 'Add Student'}
+                  {saveMutation.isPending ? 'Saving…' : editingId ? 'Save Changes' : 'Add Student'}
                 </button>
               </div>
             </div>
