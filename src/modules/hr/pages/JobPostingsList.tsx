@@ -278,7 +278,11 @@ export default function JobPostingsList() {
                   )}
                   {job.status === 'Open' && (
                     <button
-                      onClick={() => statusMutation.mutate({ id: job.id, status: 'Closed' })}
+                      onClick={() => {
+                        if (window.confirm(`Close "${job.title}"? It will stop accepting applications immediately, even before its ${new Date(job.closingDate).toLocaleDateString()} closing date.`)) {
+                          statusMutation.mutate({ id: job.id, status: 'Closed' });
+                        }
+                      }}
                       className="text-xs text-red-500 hover:text-red-600 font-medium"
                     >
                       Close
@@ -341,8 +345,9 @@ export default function JobPostingsList() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Positions *</label>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Number of Openings *</label>
                   <input type="number" min={1} value={form.noOfPositions} onChange={e => setForm(f => ({ ...f, noOfPositions: Number(e.target.value) }))} className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  <p className="text-[11px] text-gray-400 mt-0.5">How many people you're hiring for this role — the role's name goes in Job Title above</p>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Job Type *</label>

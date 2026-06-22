@@ -1,0 +1,2 @@
+import{O as e}from"./index-OOhzAbU3.js";const t={getAll:(t={})=>e.getRaw("/projects",t),getById:t=>e.get(`/projects/${t}`),create:t=>e.post("/projects",t),update:(t,s)=>e.patch(`/projects/${t}`,s),remove:t=>e.delete(`/projects/${t}`),getTasks:t=>e.get(`/projects/${t}/tasks`),getMilestones:t=>e.get(`/projects/${t}/milestones`),getTeam:t=>e.get(`/projects/${t}/team`),getComments:t=>e.get(`/projects/${t}/comments`),addComment:(t,s)=>e.post(`/projects/${t}/comments`,{content:s})};export{t as p};
+//# sourceMappingURL=projectService-CZO13lJ-.js.map
