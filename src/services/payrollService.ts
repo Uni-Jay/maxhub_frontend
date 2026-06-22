@@ -28,9 +28,11 @@ export interface SalaryStructure {
 }
 
 export interface PayrollOverview {
-  activePeriod?: PayrollPeriod;
-  totalStaff: number; processedSalaries: number;
-  totalNetPayout: number; pendingApprovals: number;
+  currentPeriod: { id: number; periodCode: string; status: string } | null;
+  currentMonth: { headcount: number; totalGross: number; totalNet: number; totalDeductions: number; avgNet: number };
+  activeHeadcount: number;
+  yearToDate: { ytdNet: number; ytdGross: number };
+  statusSummary: Record<string, number>;
 }
 
 export interface PeriodListParams {
@@ -42,7 +44,7 @@ export interface SalaryListParams {
 }
 
 export const payrollService = {
-  getOverview: () => apiClient.get<PayrollOverview>('/payroll/overview'),
+  getOverview: () => apiClient.get<PayrollOverview>('/payroll/stats/overview'),
 
   getPeriods: (params: PeriodListParams = {}) =>
     apiClient.getRaw('/payroll/periods', params) as Promise<{

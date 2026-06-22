@@ -28,7 +28,11 @@ export default function PayrollDashboard() {
     queryFn: () => payrollService.getPeriods({ page: 1, limit: 5 }),
   });
 
-  const overview = (overviewRaw as any)?.data;
+  // apiClient.get() already unwraps the {success, data} envelope, so
+  // overviewRaw IS the overview object — a further `.data` here was always
+  // undefined, on top of the route path and field names below also being
+  // wrong (this card has never actually shown real numbers).
+  const overview: any = overviewRaw;
   const periods = (periodsRaw as any)?.data || [];
 
   if (loadingOverview) return (
@@ -38,11 +42,11 @@ export default function PayrollDashboard() {
   );
 
   const stats = [
-    { label: 'Total Staff', value: overview?.totalStaff ?? 0, icon: Users, color: 'from-blue-500 to-indigo-600', format: (v: number) => v.toString() },
-    { label: 'Processed Salaries', value: overview?.processedSalaries ?? 0, icon: CheckCircle, color: 'from-green-500 to-emerald-600', format: (v: number) => v.toString() },
-    { label: 'Net Payout', value: overview?.totalNetPayout ?? 0, icon: DollarSign, color: 'from-violet-500 to-purple-600', format: fmt },
-    { label: 'Pending Approvals', value: overview?.pendingApprovals ?? 0, icon: Clock, color: 'from-orange-500 to-amber-600', format: (v: number) => v.toString() },
-    { label: 'Active Period', value: overview?.activePeriod?.periodName ?? 'None', icon: Calendar, color: 'from-indigo-500 to-violet-600', format: (v: any) => v },
+    { label: 'Total Staff', value: overview?.activeHeadcount ?? 0, icon: Users, color: 'from-blue-500 to-indigo-600', format: (v: number) => v.toString() },
+    { label: 'Processed Salaries', value: overview?.statusSummary?.Processed ?? 0, icon: CheckCircle, color: 'from-green-500 to-emerald-600', format: (v: number) => v.toString() },
+    { label: 'Net Payout', value: overview?.currentMonth?.totalNet ?? 0, icon: DollarSign, color: 'from-violet-500 to-purple-600', format: fmt },
+    { label: 'Pending Approvals', value: overview?.statusSummary?.Draft ?? 0, icon: Clock, color: 'from-orange-500 to-amber-600', format: (v: number) => v.toString() },
+    { label: 'Active Period', value: overview?.currentPeriod?.periodCode ?? 'None', icon: Calendar, color: 'from-indigo-500 to-violet-600', format: (v: any) => v },
   ];
 
   return (
