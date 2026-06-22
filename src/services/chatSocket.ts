@@ -33,7 +33,13 @@ class ChatSocketService {
       // function is invoked fresh on every attempt, so retries always pick
       // up whatever token is current.
       auth: (cb) => cb({ token: this.token }),
-      transports: ['websocket', 'polling'],
+      // Render's free/starter-tier proxy doesn't handle a direct websocket
+      // handshake cleanly — opening with 'websocket' first produced exactly
+      // "WebSocket is closed before the connection is established" followed
+      // by a reconnect, repeatedly, which is what made chat feel slow.
+      // Starting on polling and letting socket.io upgrade once the
+      // connection is actually established is the standard, safe default.
+      transports: ['polling', 'websocket'],
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     });
