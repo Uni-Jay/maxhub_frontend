@@ -294,7 +294,13 @@ function getDepartmentExtraNav(departmentCodes?: string[] | null): SidebarItem[]
 
 export function getNavForRole(role: CanonicalRole, position?: string | null, departmentCodes?: string[] | null): SidebarItem[] {
   const base = SIDEBAR_CONFIG[role] ?? STAFF_NAV;
-  const deptExtra = getDepartmentExtraNav(departmentCodes);
+  // HR manages staff lifecycle across the whole company, not just their own
+  // linked department(s) — give them every department's module nav (Kurios
+  // SAT, VisaMax, BeadMax) regardless of personal StaffDepartment coverage,
+  // unlike HOD/staff who only see the department(s) they're actually in.
+  const deptExtra = role === 'hr'
+    ? getDepartmentExtraNav(Object.keys(DEPARTMENT_MODULES))
+    : getDepartmentExtraNav(departmentCodes);
 
   if (role !== 'staff' || !position) return [...base, ...deptExtra];
   const pos = position.toLowerCase();

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { useApiMutation } from '@hooks/useApiMutation';
 import { clientService } from '@services/clientService';
+import { departmentService } from '@services/departmentService';
 import { ArrowLeft } from 'lucide-react';
 import type { ClientStatus } from '@/types';
 
@@ -41,6 +42,8 @@ export default function ClientForm() {
     () => clientService.getById(id!),
     { enabled: isEdit }
   );
+
+  const { data: departments } = useApiQuery(['departments'], () => departmentService.getAll());
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -137,6 +140,16 @@ export default function ClientForm() {
                 <option value="Inactive">Inactive</option>
                 <option value="Suspended">Suspended</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
+              <select {...register('departmentId')} disabled={isEdit} className={inputClass}>
+                <option value="">Select department</option>
+                {(departments || []).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+              {isEdit
+                ? <p className="text-xs text-gray-400 mt-1">Department can't be changed after creation</p>
+                : <p className="text-xs text-gray-400 mt-1">Sets this client's file number prefix, e.g. KS-0001</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Registration Date</label>
