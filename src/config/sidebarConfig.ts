@@ -301,9 +301,16 @@ export function getNavForRole(role: CanonicalRole, position?: string | null, dep
   // linked department(s) — give them every department's module nav (Kurios
   // SAT, VisaMax, BeadMax) regardless of personal StaffDepartment coverage,
   // unlike HOD/staff who only see the department(s) they're actually in.
-  const deptExtra = role === 'hr'
-    ? getDepartmentExtraNav(Object.keys(DEPARTMENT_MODULES))
-    : getDepartmentExtraNav(departmentCodes);
+  // Super Admin's own SIDEBAR_CONFIG entry already hardcodes every module
+  // (Kurios SAT/VisaMax/BeadMax) unconditionally — appending deptExtra for
+  // them too would just duplicate those entries for any super admin who
+  // also happens to be StaffDepartment-linked (e.g. a CEO record covering
+  // all three business units).
+  const deptExtra = role === 'superadmin'
+    ? []
+    : role === 'hr'
+      ? getDepartmentExtraNav(Object.keys(DEPARTMENT_MODULES))
+      : getDepartmentExtraNav(departmentCodes);
 
   if (role !== 'staff' || !position) return [...base, ...deptExtra];
   const pos = position.toLowerCase();

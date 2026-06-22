@@ -30,6 +30,7 @@ import {
 } from '@components/charts/ChartComponents';
 import { ApprovalCenter } from '@components/dashboard/ApprovalCenter';
 import DashboardClock from '@components/ui/DashboardClock';
+import { useAuthStore } from '@store/authStore';
 import {
   headOfAdminDashboardService,
   type LeaveApprovalData,
@@ -208,6 +209,7 @@ function LeaveRow({
 
 export function HeadOfAdminDashboard() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const today = new Date();
 
   // Local UI state
@@ -362,7 +364,7 @@ export function HeadOfAdminDashboard() {
       >
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {getGreeting()}, Admin
+            {getGreeting()}, {user?.firstName ?? 'Admin'}
           </h1>
           <p className="text-muted-foreground mt-1">{formatDate(today)}</p>
         </div>

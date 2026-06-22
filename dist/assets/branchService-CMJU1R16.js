@@ -1,2 +1,0 @@
-import{O as e}from"./index-K_2-P69G.js";const t={getAll:(t={})=>e.getRaw("/branches",t),getById:t=>e.get(`/branches/${t}`),create:t=>e.post("/branches",t),update:(t,a)=>e.patch(`/branches/${t}`,a),remove:t=>e.delete(`/branches/${t}`)};export{t as b};
-//# sourceMappingURL=branchService-CMJU1R16.js.map

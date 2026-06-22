@@ -32,6 +32,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useAuthStore } from '@store/authStore';
 import { ApprovalCenter } from '@components/dashboard/ApprovalCenter';
 import DashboardClock from '@components/ui/DashboardClock';
 import {
@@ -144,6 +145,7 @@ function formatCurrency(n: number) {
 export function SuperAdminDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const today = new Date();
 
   // ── Queries ──────────────────────────────────────────────────────────────
@@ -270,7 +272,7 @@ export function SuperAdminDashboard() {
       >
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {getGreeting()}, Admin
+            {getGreeting()}, {user?.firstName ?? 'Admin'}
           </h1>
           <p className="text-muted-foreground mt-1">{formatDate(today)}</p>
         </div>
