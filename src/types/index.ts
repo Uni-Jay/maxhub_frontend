@@ -34,6 +34,7 @@ export interface AuthUser {
   // Job position (e.g. "Accountant", "Receptionist") — not an RBAC role, just a Staff field
   position?: string | null;
   phone?: string | null;
+  avatar?: string | null;
   // True for accounts created with a temp password — frontend must force a
   // change before letting them reach anything else.
   mustChangePassword?: boolean;

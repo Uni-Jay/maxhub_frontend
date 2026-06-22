@@ -86,6 +86,7 @@ interface StaffFormDraft {
   customPosition: string;
   additionalUnits: string[];
   additionalDepartmentIds: string[];
+  passportFile: CloudinaryUploadResult | null;
   validIdFile: CloudinaryUploadResult | null;
   utilityBillFile: CloudinaryUploadResult | null;
   certificateFile: CloudinaryUploadResult | null;
@@ -147,6 +148,7 @@ export default function StaffForm() {
   const [additionalDepartmentIds, setAdditionalDepartmentIds] = useState<string[]>(initialDraft?.additionalDepartmentIds ?? []);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [createdStaff, setCreatedStaff] = useState<any>(null);
+  const [passportFile, setPassportFile] = useState<CloudinaryUploadResult | null>(initialDraft?.passportFile ?? null);
   const [validIdFile, setValidIdFile] = useState<CloudinaryUploadResult | null>(initialDraft?.validIdFile ?? null);
   const [utilityBillFile, setUtilityBillFile] = useState<CloudinaryUploadResult | null>(initialDraft?.utilityBillFile ?? null);
   const [certificateFile, setCertificateFile] = useState<CloudinaryUploadResult | null>(initialDraft?.certificateFile ?? null);
@@ -169,6 +171,7 @@ export default function StaffForm() {
     setCustomPosition('');
     setAdditionalUnits([]);
     setAdditionalDepartmentIds([]);
+    setPassportFile(null);
     setValidIdFile(null);
     setUtilityBillFile(null);
     setCertificateFile(null);
@@ -185,7 +188,7 @@ export default function StaffForm() {
         const savedAt = Date.now();
         localStorage.setItem(DRAFT_KEY, JSON.stringify({
           data, section, useCustomPosition, customPosition, additionalUnits, additionalDepartmentIds,
-          validIdFile, utilityBillFile, certificateFile, signatureFile, savedAt,
+          passportFile, validIdFile, utilityBillFile, certificateFile, signatureFile, savedAt,
         } satisfies StaffFormDraft));
         setLastSavedAt(savedAt);
       } catch {
@@ -193,7 +196,7 @@ export default function StaffForm() {
       }
     }, 600);
     return () => clearTimeout(timer);
-  }, [data, section, useCustomPosition, customPosition, additionalUnits, additionalDepartmentIds, validIdFile, utilityBillFile, certificateFile, signatureFile, isEdit, createdStaff]);
+  }, [data, section, useCustomPosition, customPosition, additionalUnits, additionalDepartmentIds, passportFile, validIdFile, utilityBillFile, certificateFile, signatureFile, isEdit, createdStaff]);
 
   const createStaff = useMutation({
     mutationFn: (payload: any) => isEdit
@@ -260,6 +263,7 @@ export default function StaffForm() {
       employmentStatus: data.employmentStatus,
       customPosition: useCustomPosition ? customPosition : undefined,
       additionalUnits,
+      avatar: passportFile?.url,
       idDocument: validIdFile?.url,
       utilityBillDocument: utilityBillFile?.url,
       certificateDocument: certificateFile?.url,
@@ -402,6 +406,22 @@ export default function StaffForm() {
           {/* ── A: Personal Info ── */}
           {section === 'A' && (
             <div className="space-y-4">
+              <Field label="Passport Photo">
+                <div className="flex items-center gap-4">
+                  {passportFile?.url && (
+                    <img src={passportFile.url} alt="Passport preview" className="w-16 h-16 rounded-xl object-cover border border-gray-200 dark:border-gray-600 flex-shrink-0" />
+                  )}
+                  <CloudinaryUpload
+                    compact
+                    folder="maxhub-erp/staff-avatars"
+                    label={passportFile ? 'Change Photo' : 'Upload Photo'}
+                    accept="image/*"
+                    multiple={false}
+                    maxSizeMB={3}
+                    onUpload={results => setPassportFile(results[0])}
+                  />
+                </div>
+              </Field>
               <Grid3>
                 <Field label="First Name" required>
                   <Input value={data.firstName} onChange={e => set('firstName', e.target.value)} placeholder="John" className={errors.firstName ? 'border-red-400' : ''} />

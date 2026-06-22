@@ -4,7 +4,9 @@ import * as z from 'zod';
 import { useApiMutation } from '@hooks/useApiMutation';
 import { authApi } from '@services/auth.api';
 import { useAuthStore } from '@/store/authStore';
-import { User, Mail, Phone, CheckCircle2, AlertCircle, Save } from 'lucide-react';
+import { User, Mail, Phone, CheckCircle2, AlertCircle, Save, Camera, Loader2 } from 'lucide-react';
+import { uploadToCloudinary } from '@services/cloudinaryService';
+import { useState } from 'react';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -22,6 +24,8 @@ const inputClass = (err?: boolean) =>
 
 export default function ProfileSettings() {
   const { user, setUser } = useAuthStore();
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const { register, handleSubmit, formState: { errors, isDirty } } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -36,11 +40,32 @@ export default function ProfileSettings() {
   const { mutate: save, isPending, isSuccess, error } = useApiMutation(
     (data: ProfileFormData) => authApi.updateProfile(data),
     {
+      // The backend only returns the few fields it actually updated (id,
+      // name, email, phone, avatar) — replacing the whole stored user with
+      // that response wipes roles/permissions/departmentId etc. until the
+      // next login. Merging keeps everything else intact.
       onSuccess: (updated) => {
-        if (setUser) setUser(updated);
+        if (setUser && user) setUser({ ...user, ...updated });
       },
     }
   );
+
+  const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setAvatarError(null);
+    setAvatarUploading(true);
+    try {
+      const uploaded = await uploadToCloudinary(file, 'maxhub-erp/avatars');
+      const updated = await authApi.updateProfile({ avatar: uploaded.url });
+      if (setUser && user) setUser({ ...user, ...updated });
+    } catch (err) {
+      setAvatarError((err as Error)?.message ?? 'Failed to upload photo');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const initials = user
     ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
@@ -57,15 +82,28 @@ export default function ProfileSettings() {
       {/* Avatar section */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
-            {initials}
-          </div>
+          <label className="relative w-16 h-16 rounded-2xl flex-shrink-0 cursor-pointer group flex-shrink-0">
+            {user?.avatar ? (
+              <img src={user.avatar} alt="Profile" className="w-16 h-16 rounded-2xl object-cover" />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl">
+                {initials}
+              </div>
+            )}
+            <div className="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition">
+              {avatarUploading
+                ? <Loader2 className="h-5 w-5 text-white animate-spin" />
+                : <Camera className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition" />}
+            </div>
+            <input type="file" accept="image/*" className="hidden" disabled={avatarUploading} onChange={handleAvatarSelect} />
+          </label>
           <div>
             <p className="font-semibold text-gray-900 dark:text-white">
               {user?.firstName} {user?.lastName}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
             <p className="text-xs text-gray-400 mt-0.5 capitalize">{user?.roles?.[0]?.toLowerCase() ?? 'staff'}</p>
+            {avatarError && <p className="text-xs text-red-500 mt-1">{avatarError}</p>}
           </div>
         </div>
       </div>

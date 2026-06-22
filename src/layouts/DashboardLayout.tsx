@@ -141,9 +141,13 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
           to="/settings/profile"
           className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition group mb-1"
         >
-          <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm font-semibold flex-shrink-0">
-            {user?.email?.charAt(0).toUpperCase() ?? 'U'}
-          </div>
+          {user?.avatar ? (
+            <img src={user.avatar} alt="Profile" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm font-semibold flex-shrink-0">
+              {user?.email?.charAt(0).toUpperCase() ?? 'U'}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
               {user?.email ?? 'User'}
