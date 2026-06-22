@@ -214,6 +214,13 @@ const HOD_NAV: SidebarItem[] = [
   { label: 'Tasks', path: '/tasks', icon: CheckSquare },
   { label: 'Weekly Reports', path: '/hr/weekly-report', icon: FileText },
   { label: 'Attendance', path: '/attendance', icon: Calendar },
+  // HOD already holds LEAVE_REQUEST_CREATE_OWN/READ_OWN/APPROVE_OWN_DEPARTMENT
+  // in RolesConfig.ts, but had no sidebar path into Leave at all.
+  { label: 'Leave', path: '/leave', icon: FileText, children: [
+    { label: 'Apply Leave', path: '/leave/apply' },
+    { label: 'Leave Requests', path: '/leave/requests' },
+    { label: 'Balance', path: '/leave/balance' },
+  ]},
   { label: 'Performance', path: '/hr/appraisals', icon: Award },
   ...CRM_NAV,
   ...COMMON_TAIL,

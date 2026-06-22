@@ -208,6 +208,9 @@ export interface LeaveRequestItem extends BaseEntity {
   approvalDate?: string;
   staff?: { firstName: string; lastName: string };
   leaveType?: { name: string; color?: string };
+  // True when the requester is themselves HR or Admin — those can only be
+  // approved/rejected by Super Admin, never by a peer HR/Admin.
+  requiresSuperAdminApproval?: boolean;
 }
 
 export interface LeaveType extends BaseEntity {

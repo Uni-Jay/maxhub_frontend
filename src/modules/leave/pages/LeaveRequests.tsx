@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { useApiQuery } from '@hooks/useApiQuery';
 import { useApiMutation } from '@hooks/useApiMutation';
 import { leaveService } from '@services/leaveService';
+import { useCurrentRoles } from '@/utils/role';
 import type { LeaveRequestItem } from '@/types';
-import { Plus, Calendar, CheckCircle2, XCircle, Clock, FileText, ChevronLeft, ChevronRight, User, Search } from 'lucide-react';
+import { Plus, Calendar, CheckCircle2, XCircle, Clock, FileText, ChevronLeft, ChevronRight, User, Search, ShieldAlert } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, { badge: string; icon: React.ElementType; iconColor: string }> = {
   Pending:   { badge: 'bg-amber-50 text-amber-700 border-amber-200',  icon: Clock,         iconColor: 'text-amber-500' },
@@ -17,6 +18,8 @@ const STATUS_STYLES: Record<string, { badge: string; icon: React.ElementType; ic
 const STATUSES = ['Pending', 'Approved', 'Rejected', 'Cancelled', 'Withdrawn'];
 
 export default function LeaveRequests() {
+  const { roles } = useCurrentRoles();
+  const isSuperAdmin = roles.has('superadmin');
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -161,24 +164,31 @@ export default function LeaveRequests() {
                 </div>
 
                 {r.status === 'Pending' && (
-                  <div className="mt-4 pl-12 flex gap-2">
-                    <button
-                      onClick={() => approve(r.id)}
-                      disabled={approving}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm font-semibold transition"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => reject(r.id)}
-                      disabled={rejecting}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-semibold transition disabled:opacity-50"
-                    >
-                      <XCircle className="h-3.5 w-3.5" />
-                      Reject
-                    </button>
-                  </div>
+                  r.requiresSuperAdminApproval && !isSuperAdmin ? (
+                    <div className="mt-4 pl-12 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+                      <ShieldAlert className="h-3.5 w-3.5 flex-shrink-0" />
+                      Requester is HR/Admin — only Super Admin can approve or reject this request
+                    </div>
+                  ) : (
+                    <div className="mt-4 pl-12 flex gap-2">
+                      <button
+                        onClick={() => approve(r.id)}
+                        disabled={approving}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm font-semibold transition"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => reject(r.id)}
+                        disabled={rejecting}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-semibold transition disabled:opacity-50"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        Reject
+                      </button>
+                    </div>
+                  )
                 )}
               </div>
             );
