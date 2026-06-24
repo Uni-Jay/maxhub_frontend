@@ -48,7 +48,7 @@ export function CourseList() {
 
   const filtered = courses.filter((c) => {
     const u = c.instructor?.user;
-    const instructorName = u ? `${u.firstName} ${u.lastName}` : '';
+    const instructorName = c.instructorName || (u ? `${u.firstName} ${u.lastName}` : '');
     const matchesSearch =
       c.title.toLowerCase().includes(search.toLowerCase()) ||
       instructorName.toLowerCase().includes(search.toLowerCase());
@@ -133,11 +133,12 @@ export function CourseList() {
         {filtered.map((course, i) => {
           const color = COURSE_COLORS[i % COURSE_COLORS.length];
           const u = course.instructor?.user;
-          const instructor = u
-            ? `${u.firstName} ${u.lastName}`
-            : course.instructor
-              ? `${course.instructor.firstName ?? ''} ${course.instructor.lastName ?? ''}`.trim()
-              : 'Unknown Instructor';
+          const instructor = course.instructorName
+            || (u
+              ? `${u.firstName} ${u.lastName}`
+              : course.instructor
+                ? `${course.instructor.firstName ?? ''} ${course.instructor.lastName ?? ''}`.trim()
+                : 'Unknown Instructor');
           const initials = instructor.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
           const deptName = course.department?.name ?? 'General';
 

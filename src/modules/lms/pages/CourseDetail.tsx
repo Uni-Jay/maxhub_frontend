@@ -50,11 +50,12 @@ export function CourseDetail() {
 
   const modules = course.modules ?? [];
   const instructorUser = course.instructor?.user;
-  const instructorName = instructorUser
-    ? `${instructorUser.firstName} ${instructorUser.lastName}`
-    : course.instructor
-      ? `${course.instructor.firstName ?? ''} ${course.instructor.lastName ?? ''}`.trim()
-      : 'Unassigned';
+  const instructorName = course.instructorName
+    || (instructorUser
+      ? `${instructorUser.firstName} ${instructorUser.lastName}`
+      : course.instructor
+        ? `${course.instructor.firstName ?? ''} ${course.instructor.lastName ?? ''}`.trim()
+        : 'Unassigned');
   const initials = instructorName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || '—';
 
   const toggleModule = (modId: number) => {

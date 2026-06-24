@@ -2,7 +2,7 @@ import { apiClient } from './apiClient';
 
 export interface Course {
   id: number; uuid: string; title: string; courseCode: string;
-  description?: string; instructorId: number; departmentId?: number;
+  description?: string; instructorId?: number; instructorName: string; departmentId?: number;
   duration: number; fee?: number; startDate: string; endDate?: string;
   status: 'Draft' | 'Published' | 'Ongoing' | 'Completed' | 'Cancelled';
   passingScore?: number; maxParticipants?: number; totalEnrollments?: number;
@@ -70,7 +70,7 @@ export const lmsService = {
 
   getById: (id: number | string) => apiClient.get<Course>(`/courses/${id}`),
 
-  create: (payload: Partial<Course> & { title: string; courseCode: string; instructorId: number; duration: number; startDate: string }) =>
+  create: (payload: Partial<Course> & { title: string; courseCode: string; instructorName: string; duration: number; startDate: string }) =>
     apiClient.post<Course>('/courses', payload),
 
   update: (id: number | string, payload: Partial<Course>) =>

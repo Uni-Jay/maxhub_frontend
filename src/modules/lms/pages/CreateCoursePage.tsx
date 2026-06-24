@@ -1,16 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, BookOpen } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface StaffOption {
-  id: number;
-  firstName: string;
-  lastName: string;
-  position?: string;
-}
 
 export function CreateCoursePage() {
   const navigate = useNavigate();
@@ -18,19 +11,11 @@ export function CreateCoursePage() {
   const [error, setError] = useState('');
 
   const [form, setForm] = useState({
-    title: '', courseCode: '', description: '', instructorId: '',
+    title: '', courseCode: '', description: '', instructorName: '',
     duration: '', fee: '0', startDate: '', endDate: '',
     certificateRequired: false, passingScore: '70',
     maxParticipants: '', minParticipants: '',
   });
-
-  // Backend auto-scopes this to her own department when she only holds
-  // org.staff.read.own_department — no need to filter client-side.
-  const { data: staffData } = useQuery({
-    queryKey: ['staff', 'for-instructor-pick'],
-    queryFn: () => apiClient.getRaw('/staff', { page: 1, limit: 200 }),
-  });
-  const staffOptions: StaffOption[] = (staffData as any)?.data ?? [];
 
   useEffect(() => {
     if (!form.courseCode && form.title) {
@@ -45,7 +30,7 @@ export function CreateCoursePage() {
       title: form.title,
       courseCode: form.courseCode,
       description: form.description || undefined,
-      instructorId: Number(form.instructorId),
+      instructorName: form.instructorName,
       duration: Number(form.duration),
       fee: Number(form.fee) || 0,
       startDate: form.startDate,
@@ -66,7 +51,7 @@ export function CreateCoursePage() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!form.title || !form.courseCode || !form.instructorId || !form.duration || !form.startDate) {
+    if (!form.title || !form.courseCode || !form.instructorName || !form.duration || !form.startDate) {
       setError('Title, course code, instructor, duration and start date are required.');
       return;
     }
@@ -120,17 +105,13 @@ export function CreateCoursePage() {
           </div>
           <div>
             <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Instructor *</label>
-            <select
-              value={form.instructorId}
-              onChange={e => setForm(f => ({ ...f, instructorId: e.target.value }))}
+            <input
+              value={form.instructorName}
+              onChange={e => setForm(f => ({ ...f, instructorName: e.target.value }))}
+              placeholder="Instructor's full name"
               className="w-full mt-1 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               required
-            >
-              <option value="">Select staff member</option>
-              {staffOptions.map(s => (
-                <option key={s.id} value={s.id}>{s.firstName} {s.lastName}{s.position ? ` — ${s.position}` : ''}</option>
-              ))}
-            </select>
+            />
           </div>
         </div>
 
