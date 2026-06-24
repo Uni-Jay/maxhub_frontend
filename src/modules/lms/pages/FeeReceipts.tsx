@@ -10,7 +10,6 @@ const STATUS_STYLES: Record<string, string> = {
   Pending: 'bg-rose-100 text-rose-700',
 };
 
-const TERMS = ['First Term', 'Second Term', 'Third Term'];
 const PAYMENT_METHODS = ['Cash', 'BankTransfer', 'POS', 'Online'];
 
 function generateSessionLabel() {
@@ -82,24 +81,24 @@ function printReceipt(receipt: any) {
         <div class="info-block"><label>Student Name</label><p>${student}</p></div>
         <div class="info-block"><label>Course</label><p>${course}</p></div>
         <div class="info-block"><label>Academic Session</label><p>${receipt.session}</p></div>
-        <div class="info-block"><label>Term</label><p>${receipt.term}</p></div>
+        <div class="info-block"><label>Balance Remaining</label><p>₦${Number(receipt.balance ?? 0).toLocaleString()}</p></div>
         <div class="info-block"><label>Payment Date</label><p>${new Date(receipt.paymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
         <div class="info-block"><label>Payment Method</label><p>${receipt.paymentMethod}</p></div>
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Description</th><th>Term</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead>
+          <thead><tr><th>Description</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead>
           <tbody>
             <tr>
               <td>${course} Tuition Fee</td>
-              <td>${receipt.term}</td>
               <td>${receipt.paymentMethod}</td>
               <td style="text-align:right; font-weight:600">₦${Number(receipt.amountPaid).toLocaleString()}</td>
             </tr>
-            ${receipt.notes ? `<tr><td colspan="4" style="font-size:12px; color:#6b7280; font-style:italic;">Note: ${receipt.notes}</td></tr>` : ''}
+            ${receipt.notes ? `<tr><td colspan="3" style="font-size:12px; color:#6b7280; font-style:italic;">Note: ${receipt.notes}</td></tr>` : ''}
           </tbody>
           <tfoot>
-            <tr class="total-row"><td colspan="3"><strong>Total Amount Paid</strong></td><td style="text-align:right">₦${Number(receipt.amountPaid).toLocaleString()}</td></tr>
+            <tr class="total-row"><td colspan="2"><strong>Total Amount Paid</strong></td><td style="text-align:right">₦${Number(receipt.amountPaid).toLocaleString()}</td></tr>
+            <tr><td colspan="2"><strong>Balance Remaining</strong></td><td style="text-align:right">₦${Number(receipt.balance ?? 0).toLocaleString()}</td></tr>
           </tfoot>
         </table>
       </div>
@@ -131,7 +130,7 @@ export function FeeReceipts() {
   const [form, setForm] = useState({
     enrollmentId: '', amountPaid: '', paymentMethod: 'BankTransfer',
     paymentDate: new Date().toISOString().slice(0, 10),
-    session: generateSessionLabel(), term: 'First Term', status: 'Paid', notes: '',
+    session: generateSessionLabel(), balance: '0', status: 'Paid', notes: '',
   });
 
   const { data: receipts, isLoading } = useQuery({
@@ -160,12 +159,12 @@ export function FeeReceipts() {
     mutationFn: () => apiClient.post('/fee-receipts', {
       enrollmentId: Number(form.enrollmentId), amountPaid: Number(form.amountPaid),
       paymentMethod: form.paymentMethod, paymentDate: form.paymentDate,
-      session: form.session, term: form.term, status: form.status, notes: form.notes || undefined,
+      session: form.session, balance: Number(form.balance) || 0, status: form.status, notes: form.notes || undefined,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fee-receipts'] });
       setRecording(false);
-      setForm({ enrollmentId: '', amountPaid: '', paymentMethod: 'BankTransfer', paymentDate: new Date().toISOString().slice(0, 10), session: generateSessionLabel(), term: 'First Term', status: 'Paid', notes: '' });
+      setForm({ enrollmentId: '', amountPaid: '', paymentMethod: 'BankTransfer', paymentDate: new Date().toISOString().slice(0, 10), session: generateSessionLabel(), balance: '0', status: 'Paid', notes: '' });
     },
   });
 
@@ -224,12 +223,11 @@ export function FeeReceipts() {
               placeholder="Session (e.g. 2026/2027)"
               className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-gray-900"
             />
-            <select
-              value={form.term} onChange={e => setForm(f => ({ ...f, term: e.target.value }))}
+            <input
+              value={form.balance} onChange={e => setForm(f => ({ ...f, balance: e.target.value }))}
+              placeholder="Balance remaining (₦)" type="number"
               className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-gray-900"
-            >
-              {TERMS.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+            />
             <select
               value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
               className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-gray-900"
@@ -273,11 +271,14 @@ export function FeeReceipts() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">{name}</p>
-                      <p className="text-xs text-gray-500">{enrollment?.course?.title} • {r.receiptNumber} • {r.term} {r.session}</p>
+                      <p className="text-xs text-gray-500">{enrollment?.course?.title} • {r.receiptNumber} • {r.session}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">₦{Number(r.amountPaid).toLocaleString()}</span>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">₦{Number(r.amountPaid).toLocaleString()}</p>
+                      {Number(r.balance) > 0 && <p className="text-xs text-rose-500">Bal: ₦{Number(r.balance).toLocaleString()}</p>}
+                    </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[r.status] ?? 'bg-gray-100 text-gray-600'}`}>{r.status}</span>
                     <button onClick={() => printReceipt(r)} className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">
                       <Printer className="w-3.5 h-3.5" /> Print
