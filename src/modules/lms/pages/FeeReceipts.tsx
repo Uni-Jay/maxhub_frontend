@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Receipt, Plus, Printer, Loader2, X } from 'lucide-react';
+import { Receipt, Plus, Download, Loader2, X } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -17,7 +17,7 @@ function generateSessionLabel() {
   return `${y}/${y + 1}`;
 }
 
-function printReceipt(receipt: any) {
+function downloadReceipt(receipt: any) {
   const enrollment = receipt.enrollment;
   const studentUser = enrollment?.student?.user ?? enrollment?.staff?.user;
   const student = studentUser
@@ -112,7 +112,7 @@ function printReceipt(receipt: any) {
       <div class="authorized"><div class="line">Authorized Signature</div></div>
     </div>
   </div>
-  <button class="print-btn" onclick="window.print()">Print Receipt</button>
+  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
 </body>
 </html>`;
 
@@ -280,8 +280,8 @@ export function FeeReceipts() {
                       {Number(r.balance) > 0 && <p className="text-xs text-rose-500">Bal: ₦{Number(r.balance).toLocaleString()}</p>}
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[r.status] ?? 'bg-gray-100 text-gray-600'}`}>{r.status}</span>
-                    <button onClick={() => printReceipt(r)} className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">
-                      <Printer className="w-3.5 h-3.5" /> Print
+                    <button onClick={() => downloadReceipt(r)} className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">
+                      <Download className="w-3.5 h-3.5" /> Download
                     </button>
                   </div>
                 </div>
