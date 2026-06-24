@@ -4,11 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, Plus, Search, Download, Send, CheckCircle, X,
   Trash2, Eye, DollarSign, Clock, AlertTriangle, ChevronLeft, ChevronRight,
-  GraduationCap, BookOpen,
+  GraduationCap, BookOpen, Wallet, Loader2,
 } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 import { apiClient } from '@services/apiClient';
 import { cn } from '@utils/cn';
 import { format } from 'date-fns';
+
+const INVOICE_PAYMENT_METHODS = ['Cash', 'Cheque', 'BankTransfer', 'CreditCard', 'Online', 'Other'];
 
 type InvoiceStatus = 'Draft' | 'Issued' | 'PartiallyPaid' | 'Paid' | 'Overdue' | 'Cancelled';
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
@@ -97,6 +100,104 @@ function printInvoice(invoice: Invoice) {
   window.open(URL.createObjectURL(blob), '_blank');
 }
 
+const PAYMENT_RECEIPT_STYLE = `
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; }
+  .page { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
+  .header { padding: 28px 36px; color: white; }
+  .header h1 { font-size: 22px; font-weight: 900; }
+  .header p { opacity: 0.8; font-size: 12px; margin-top: 3px; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .badge { text-align: right; }
+  .badge .num { font-size: 16px; font-weight: 700; }
+  .badge .status { display: inline-block; margin-top: 6px; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,0.25); }
+  .body { padding: 28px 36px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .info-block label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; font-weight: 600; }
+  .info-block p { font-size: 14px; font-weight: 600; color: #111827; margin-top: 2px; }
+  .total-box { background: #f0f4ff; border-radius: 10px; padding: 16px; margin-top: 8px; }
+  .total-box .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; color: #374151; }
+  .total-box .row.main { font-size: 16px; font-weight: 700; color: #1a1a2e; border-top: 1px solid #d1d5db; margin-top: 6px; padding-top: 10px; }
+  .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 16px 36px; font-size: 11px; color: #6b7280; }
+`;
+
+function buildPaymentReceiptPage(payment: any, invoice: Invoice) {
+  const brand = getInvoiceBranding(invoice.department?.code);
+  return `<div class="page">
+    <div class="header ${brand.bg}">
+      <div class="header-row">
+        <div><h1>${brand.name}</h1><p>${brand.tagline}</p></div>
+        <div class="badge">
+          <div class="num">${payment.paymentCode ?? ''}</div>
+          <div class="status">PAYMENT RECEIVED</div>
+        </div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="row2">
+        <div class="info-block"><label>Received From</label><p>${invoice.client?.fullName ?? 'Client'}</p></div>
+        <div class="info-block"><label>Invoice</label><p>${invoice.invoiceCode}</p></div>
+        <div class="info-block"><label>Payment Date</label><p>${new Date(payment.paymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
+        <div class="info-block"><label>Payment Method</label><p>${payment.paymentMethod}</p></div>
+        ${payment.referenceNumber ? `<div class="info-block"><label>Reference</label><p>${payment.referenceNumber}</p></div>` : ''}
+      </div>
+      <div class="total-box">
+        <div class="row"><span>Invoice Total</span><span>₦${Number(invoice.total).toLocaleString()}</span></div>
+        <div class="row main"><span>Amount Received</span><span>₦${Number(payment.amount).toLocaleString()}</span></div>
+      </div>
+    </div>
+    <div class="footer">
+      <p><strong>${brand.name}</strong> — Generated ${new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+      <p>This is an official payment receipt. Keep for your records.</p>
+    </div>
+  </div>`;
+}
+
+function viewPaymentReceipt(payment: any, invoice: Invoice) {
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8" /><title>Receipt - ${payment.paymentCode}</title>
+  <style>
+    ${PAYMENT_RECEIPT_STYLE}
+    body { background: #f4f6fb; padding: 20px; }
+    .print-btn { display: block; text-align: center; margin: 24px auto 0; padding: 10px 28px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    @media print { .print-btn { display: none; } body { background: white; padding: 0; } .page { box-shadow: none; border-radius: 0; } }
+  </style></head>
+  <body>${buildPaymentReceiptPage(payment, invoice)}<button class="print-btn" onclick="window.print()">🖨 Print</button></body></html>`;
+  const blob = new Blob([html], { type: 'text/html' });
+  window.open(URL.createObjectURL(blob), '_blank');
+}
+
+// Element passed to html2pdf must stay position:static (normal flow) - html2canvas
+// measures a height of 0 for fixed/absolute elements even when off-screen. Hidden
+// instead via a zero-size, overflow:hidden, fixed-position *wrapper* around it.
+async function downloadPaymentReceipt(payment: any, invoice: Invoice) {
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'fixed';
+  wrapper.style.top = '0';
+  wrapper.style.left = '0';
+  wrapper.style.width = '0';
+  wrapper.style.height = '0';
+  wrapper.style.overflow = 'hidden';
+
+  const container = document.createElement('div');
+  container.innerHTML = `<style>${PAYMENT_RECEIPT_STYLE}</style>${buildPaymentReceiptPage(payment, invoice)}`;
+  wrapper.appendChild(container);
+  document.body.appendChild(wrapper);
+
+  try {
+    await html2pdf()
+      .from(container)
+      .set({
+        margin: 0,
+        filename: `Receipt-${payment.paymentCode}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+      })
+      .save();
+  } finally {
+    document.body.removeChild(wrapper);
+  }
+}
 
 function calcLine(item: LineItem) { return item.qty * item.unitPrice; }
 function calcTotal(items: LineItem[], tax: number, discount: number) {
@@ -641,6 +742,10 @@ export default function InvoiceList() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [form, setForm] = useState(INIT_FORM);
   const [formError, setFormError] = useState('');
+  const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
+  const [paymentForm, setPaymentForm] = useState({ amount: '', paymentMethod: 'BankTransfer', paymentDate: new Date().toISOString().slice(0, 10), reference: '' });
+  const [paymentError, setPaymentError] = useState('');
+  const [recordedPayment, setRecordedPayment] = useState<any | null>(null);
   const qc = useQueryClient();
   const LIMIT = 15;
 
@@ -677,6 +782,23 @@ export default function InvoiceList() {
     mutationFn: (id: number) => apiClient.delete(`/invoices/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['invoices'] }),
   });
+
+  const recordPaymentMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: any }) => apiClient.post<{ payment: any; updatedStatus: string }>(`/invoices/${id}/payments`, payload),
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ['invoices'] });
+      setRecordedPayment(res.payment);
+      setPaymentError('');
+    },
+    onError: (err: any) => setPaymentError(err?.response?.data?.message || err?.message || 'Failed to record payment'),
+  });
+
+  const closePaymentModal = () => {
+    setPayingInvoice(null);
+    setRecordedPayment(null);
+    setPaymentForm({ amount: '', paymentMethod: 'BankTransfer', paymentDate: new Date().toISOString().slice(0, 10), reference: '' });
+    setPaymentError('');
+  };
 
   const stats = { total: invoices.length, paid: invoices.filter(i => i.status === 'Paid').length, pending: invoices.filter(i => i.status === 'Issued').length, overdue: invoices.filter(i => i.status === 'Overdue').length, revenue: invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + Number(i.total), 0) };
 
@@ -807,6 +929,9 @@ export default function InvoiceList() {
                             <button onClick={() => printInvoice(inv)} className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg transition-colors" title="Download PDF"><Download className="h-3.5 w-3.5" /></button>
                             {inv.status === 'Draft' && (
                               <button onClick={() => statusMutation.mutate({ id: inv.id, status: 'Issued' })} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg transition-colors" title="Send"><Send className="h-3.5 w-3.5" /></button>
+                            )}
+                            {!['Paid', 'Cancelled'].includes(inv.status) && (
+                              <button onClick={() => setPayingInvoice(inv)} className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg transition-colors" title="Record Payment"><Wallet className="h-3.5 w-3.5" /></button>
                             )}
                             {(inv.status === 'Issued' || inv.status === 'PartiallyPaid') && (
                               <button onClick={() => statusMutation.mutate({ id: inv.id, status: 'Paid' })} className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg transition-colors" title="Mark Paid"><CheckCircle className="h-3.5 w-3.5" /></button>
@@ -978,6 +1103,91 @@ export default function InvoiceList() {
             {/* Invoice detail modal */}
             <AnimatePresence>
               {selectedInvoice && <InvoiceDetailModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />}
+            </AnimatePresence>
+
+            {/* Record Payment modal */}
+            <AnimatePresence>
+              {payingInvoice && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closePaymentModal}>
+                  <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95 }}
+                    className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                    <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                      <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                        {recordedPayment ? 'Payment Recorded' : `Record Payment — ${payingInvoice.invoiceCode}`}
+                      </h2>
+                      <button onClick={closePaymentModal} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400"><X className="h-4 w-4" /></button>
+                    </div>
+
+                    {recordedPayment ? (
+                      <div className="p-5 space-y-4">
+                        <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3">
+                          <CheckCircle className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                          <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                            ₦{Number(recordedPayment.amount).toLocaleString()} recorded against {payingInvoice.invoiceCode}.
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => viewPaymentReceipt(recordedPayment, payingInvoice)}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            <Eye className="h-3.5 w-3.5" /> View Receipt
+                          </button>
+                          <button onClick={() => downloadPaymentReceipt(recordedPayment, payingInvoice)}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors">
+                            <Download className="h-3.5 w-3.5" /> Download Receipt
+                          </button>
+                        </div>
+                        <button onClick={closePaymentModal} className="w-full px-4 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">Done</button>
+                      </div>
+                    ) : (
+                      <div className="p-5 space-y-3">
+                        {paymentError && (
+                          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-3 py-2 text-xs">{paymentError}</div>
+                        )}
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Invoice total: ₦{Number(payingInvoice.total).toLocaleString()}</p>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Amount Received (₦) *</label>
+                          <input type="number" min={0} value={paymentForm.amount} onChange={e => setPaymentForm(f => ({ ...f, amount: e.target.value }))}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Method</label>
+                            <select value={paymentForm.paymentMethod} onChange={e => setPaymentForm(f => ({ ...f, paymentMethod: e.target.value }))}
+                              className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                              {INVOICE_PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Date</label>
+                            <input type="date" value={paymentForm.paymentDate} onChange={e => setPaymentForm(f => ({ ...f, paymentDate: e.target.value }))}
+                              className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Reference (optional)</label>
+                          <input value={paymentForm.reference} onChange={e => setPaymentForm(f => ({ ...f, reference: e.target.value }))}
+                            placeholder="Transaction ref, cheque no., etc."
+                            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        </div>
+                        <div className="flex gap-2 justify-end pt-2">
+                          <button onClick={closePaymentModal} className="px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancel</button>
+                          <button
+                            onClick={() => recordPaymentMutation.mutate({
+                              id: payingInvoice.id,
+                              payload: { amount: Number(paymentForm.amount), paymentMethod: paymentForm.paymentMethod, paymentDate: paymentForm.paymentDate, reference: paymentForm.reference || undefined },
+                            })}
+                            disabled={!paymentForm.amount || recordPaymentMutation.isPending}
+                            className="flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50">
+                            {recordPaymentMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wallet className="h-3.5 w-3.5" />}
+                            Record Payment
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                </motion.div>
+              )}
             </AnimatePresence>
           </motion.div>
         )}
