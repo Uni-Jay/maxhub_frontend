@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Receipt, Plus, Download, Loader2, X } from 'lucide-react';
+import { Receipt, Plus, Download, Eye, Loader2, X } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 import { apiClient } from '@services/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -17,7 +18,36 @@ function generateSessionLabel() {
   return `${y}/${y + 1}`;
 }
 
-function downloadReceipt(receipt: any) {
+const RECEIPT_STYLE = `
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; }
+  .page { max-width: 750px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #2d5016 100%); color: white; padding: 32px 40px; }
+  .header h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; }
+  .header p { opacity: 0.8; font-size: 12px; margin-top: 2px; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .receipt-badge { text-align: right; }
+  .receipt-badge .num { font-size: 18px; font-weight: 700; }
+  .receipt-badge .status { display: inline-block; margin-top: 6px; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,0.25); }
+  .body { padding: 32px 40px; }
+  .school-name { font-size: 16px; font-weight: 700; color: #4a7c2f; border-bottom: 2px solid #4a7c2f; padding-bottom: 8px; margin-bottom: 24px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+  .info-block label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; font-weight: 600; }
+  .info-block p { font-size: 14px; font-weight: 600; color: #111827; margin-top: 2px; }
+  .table-wrap { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; margin: 24px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: #f3f4f6; }
+  th { padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; font-weight: 700; }
+  td { padding: 12px 14px; border-top: 1px solid #f0f0f0; }
+  .total-row { background: #f0f4ff; }
+  .total-row td { font-weight: 700; color: #4a7c2f; font-size: 15px; }
+  .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+  .footer p { font-size: 11px; color: #6b7280; }
+  .authorized { text-align: right; }
+  .authorized .line { width: 140px; border-top: 1px solid #9ca3af; margin: 0 0 0 auto; padding-top: 4px; font-size: 10px; color: #6b7280; text-align: center; }
+`;
+
+function buildReceiptPage(receipt: any): string {
   const enrollment = receipt.enrollment;
   const studentUser = enrollment?.student?.user ?? enrollment?.staff?.user;
   const student = studentUser
@@ -25,44 +55,7 @@ function downloadReceipt(receipt: any) {
     : `${enrollment?.staff?.firstName ?? ''} ${enrollment?.staff?.lastName ?? ''}`.trim() || 'Unknown';
   const course = enrollment?.course?.title ?? 'Unknown Course';
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Fee Receipt - ${receipt.receiptNumber}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; background: #f4f6fb; padding: 20px; }
-    .page { max-width: 750px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
-    .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #2d5016 100%); color: white; padding: 32px 40px; }
-    .header h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; }
-    .header p { opacity: 0.8; font-size: 12px; margin-top: 2px; }
-    .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
-    .receipt-badge { text-align: right; }
-    .receipt-badge .num { font-size: 18px; font-weight: 700; }
-    .receipt-badge .status { display: inline-block; margin-top: 6px; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,0.25); }
-    .body { padding: 32px 40px; }
-    .school-name { font-size: 16px; font-weight: 700; color: #4a7c2f; border-bottom: 2px solid #4a7c2f; padding-bottom: 8px; margin-bottom: 24px; }
-    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
-    .info-block label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; font-weight: 600; }
-    .info-block p { font-size: 14px; font-weight: 600; color: #111827; margin-top: 2px; }
-    .table-wrap { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; margin: 24px 0; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    thead { background: #f3f4f6; }
-    th { padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; font-weight: 700; }
-    td { padding: 12px 14px; border-top: 1px solid #f0f0f0; }
-    .total-row { background: #f0f4ff; }
-    .total-row td { font-weight: 700; color: #4a7c2f; font-size: 15px; }
-    .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
-    .footer p { font-size: 11px; color: #6b7280; }
-    .authorized { text-align: right; }
-    .authorized .line { width: 140px; border-top: 1px solid #9ca3af; margin: 0 0 0 auto; padding-top: 4px; font-size: 10px; color: #6b7280; text-align: center; }
-    .print-btn { display: block; text-align: center; margin: 24px auto 0; padding: 10px 28px; background: #4a7c2f; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-    @media print { .print-btn { display: none; } body { background: white; padding: 0; } .page { box-shadow: none; border-radius: 0; } }
-  </style>
-</head>
-<body>
-  <div class="page">
+  return `<div class="page">
     <div class="header">
       <div class="header-row">
         <div>
@@ -111,8 +104,25 @@ function downloadReceipt(receipt: any) {
       </div>
       <div class="authorized"><div class="line">Authorized Signature</div></div>
     </div>
-  </div>
-  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+  </div>`;
+}
+
+function viewReceipt(receipt: any) {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fee Receipt - ${receipt.receiptNumber}</title>
+  <style>
+    ${RECEIPT_STYLE}
+    body { background: #f4f6fb; padding: 20px; }
+    .print-btn { display: block; text-align: center; margin: 24px auto 0; padding: 10px 28px; background: #4a7c2f; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    @media print { .print-btn { display: none; } body { background: white; padding: 0; } .page { box-shadow: none; border-radius: 0; } }
+  </style>
+</head>
+<body>
+  ${buildReceiptPage(receipt)}
+  <button class="print-btn" onclick="window.print()">🖨 Print</button>
 </body>
 </html>`;
 
@@ -121,11 +131,45 @@ function downloadReceipt(receipt: any) {
   window.open(url, '_blank');
 }
 
+async function downloadReceipt(receipt: any) {
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.innerHTML = `<style>${RECEIPT_STYLE}</style>${buildReceiptPage(receipt)}`;
+  document.body.appendChild(container);
+
+  try {
+    await html2pdf()
+      .from(container)
+      .set({
+        margin: 0,
+        filename: `Receipt-${receipt.receiptNumber}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+      })
+      .save();
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
 export function FeeReceipts() {
   const { user, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [recording, setRecording] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const canCreate = hasPermission('lms.fee_receipt.create.all') || hasPermission('lms.fee_receipt.create.own_department');
+
+  const handleDownload = async (r: any) => {
+    setDownloadingId(r.id);
+    try {
+      await downloadReceipt(r);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const [form, setForm] = useState({
     enrollmentId: '', amountPaid: '', paymentMethod: 'BankTransfer',
@@ -280,8 +324,18 @@ export function FeeReceipts() {
                       {Number(r.balance) > 0 && <p className="text-xs text-rose-500">Bal: ₦{Number(r.balance).toLocaleString()}</p>}
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[r.status] ?? 'bg-gray-100 text-gray-600'}`}>{r.status}</span>
-                    <button onClick={() => downloadReceipt(r)} className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">
-                      <Download className="w-3.5 h-3.5" /> Download
+                    <button onClick={() => viewReceipt(r)} className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-800 dark:text-gray-300">
+                      <Eye className="w-3.5 h-3.5" /> View
+                    </button>
+                    <button
+                      onClick={() => handleDownload(r)}
+                      disabled={downloadingId === r.id}
+                      className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                    >
+                      {downloadingId === r.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Download className="w-3.5 h-3.5" />}
+                      {downloadingId === r.id ? 'Generating…' : 'Download'}
                     </button>
                   </div>
                 </div>
