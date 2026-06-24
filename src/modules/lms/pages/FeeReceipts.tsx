@@ -20,8 +20,9 @@ function generateSessionLabel() {
 
 function printReceipt(receipt: any) {
   const enrollment = receipt.enrollment;
-  const student = enrollment?.staff?.user
-    ? `${enrollment.staff.user.firstName} ${enrollment.staff.user.lastName}`
+  const studentUser = enrollment?.student?.user ?? enrollment?.staff?.user;
+  const student = studentUser
+    ? `${studentUser.firstName} ${studentUser.lastName}`
     : `${enrollment?.staff?.firstName ?? ''} ${enrollment?.staff?.lastName ?? ''}`.trim() || 'Unknown';
   const course = enrollment?.course?.title ?? 'Unknown Course';
 
@@ -197,7 +198,7 @@ export function FeeReceipts() {
           >
             <option value="">Select student / enrollment</option>
             {(enrollmentOptions ?? []).map((e: any) => {
-              const u = e.staff?.user;
+              const u = e.student?.user ?? e.staff?.user;
               const name = u ? `${u.firstName} ${u.lastName}` : `${e.staff?.firstName ?? ''} ${e.staff?.lastName ?? ''}`.trim();
               return <option key={e.id} value={e.id}>{name} — {e.courseTitle}</option>;
             })}
@@ -262,7 +263,7 @@ export function FeeReceipts() {
           <div className="divide-y divide-gray-50 dark:divide-gray-700">
             {(receipts ?? []).map((r: any) => {
               const enrollment = r.enrollment;
-              const u = enrollment?.staff?.user;
+              const u = enrollment?.student?.user ?? enrollment?.staff?.user;
               const name = u ? `${u.firstName} ${u.lastName}` : `${enrollment?.staff?.firstName ?? ''} ${enrollment?.staff?.lastName ?? ''}`.trim() || 'Unknown';
               return (
                 <div key={r.id} className="flex items-center justify-between p-4">

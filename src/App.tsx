@@ -313,6 +313,7 @@ function App() {
               {/* LMS */}
               <Route path="/lms/courses" element={<CourseList />} />
               <Route path="/lms/courses/create" element={<CreateCoursePage />} />
+              <Route path="/lms/courses/:id/edit" element={<CreateCoursePage />} />
               <Route path="/lms/courses/:id" element={<CourseDetail />} />
               <Route path="/lms/my-enrollments" element={<MyEnrollments />} />
               <Route path="/lms/exams" element={<ExamList />} />

@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, BookOpen, Users, Clock, CheckCircle2,
   Lock, Award, ChevronDown, ChevronRight, Plus, Loader2,
-  GraduationCap, FileText, Trash2, X,
+  GraduationCap, FileText, Trash2, X, Pencil,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +23,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 export function CourseDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, hasPermission } = useAuth();
   const [tab, setTab] = useState<Tab>('curriculum');
   const [openModules, setOpenModules] = useState<Set<number>>(new Set());
@@ -35,10 +37,19 @@ export function CourseDetail() {
 
   const inOwnDept = !!course && !!user?.departmentId && String(course.departmentId) === String(user.departmentId);
   const canManageCourse = hasPermission('lms.course.update.all') || (hasPermission('lms.course.update.own_department') && inOwnDept);
+  const canDeleteCourse = hasPermission('lms.course.delete.all') || (hasPermission('lms.course.delete.own_department') && inOwnDept);
   const canManageExams = hasPermission('lms.exam.update.all') || (hasPermission('lms.exam.update.own_department') && inOwnDept);
   const canManageEnrollments = hasPermission('lms.enrollment.create.all') || (hasPermission('lms.enrollment.create.own_department') && inOwnDept);
   const canIssueCertificates = hasPermission('lms.certificate.issue.all') || (hasPermission('lms.certificate.issue.own_department') && inOwnDept);
   const isAdminView = canManageCourse || canManageExams || canManageEnrollments || canIssueCertificates;
+
+  const deleteCourse = useMutation({
+    mutationFn: () => apiClient.delete(`/courses/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      navigate('/lms/courses', { replace: true });
+    },
+  });
 
   if (isLoading || !course) {
     return (
@@ -90,6 +101,29 @@ export function CourseDetail() {
                 <span>{Number(course.fee) > 0 ? `₦${Number(course.fee).toLocaleString()}` : 'Free'}</span>
               </div>
             </div>
+            {(canManageCourse || canDeleteCourse) && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {canManageCourse && (
+                  <Link
+                    to={`/lms/courses/${id}/edit`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-sm font-medium transition"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Edit
+                  </Link>
+                )}
+                {canDeleteCourse && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Delete this course? This cannot be undone.')) deleteCourse.mutate();
+                    }}
+                    disabled={deleteCourse.isPending}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-rose-500/80 text-sm font-medium transition disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> {deleteCourse.isPending ? 'Deleting…' : 'Delete'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -477,26 +511,26 @@ function QuestionBuilder({ courseId, examId }: { courseId: number; examId: numbe
 function StudentsTab({ courseId, canManage }: { courseId: number; canManage: boolean }) {
   const queryClient = useQueryClient();
   const [picking, setPicking] = useState(false);
-  const [staffId, setStaffId] = useState('');
+  const [studentId, setStudentId] = useState('');
 
   const { data: enrollments, isLoading } = useQuery({
     queryKey: ['courses', String(courseId), 'enrollments'],
     queryFn: () => apiClient.get<any[]>(`/courses/${courseId}/enrollments`),
   });
 
-  const { data: staffData } = useQuery({
-    queryKey: ['staff', 'for-enrollment-pick'],
-    queryFn: () => apiClient.getRaw('/staff', { page: 1, limit: 200 }),
+  const { data: studentData } = useQuery({
+    queryKey: ['students', 'for-enrollment-pick'],
+    queryFn: () => apiClient.getRaw('/students', { page: 1, limit: 200 }),
     enabled: picking,
   });
-  const staffOptions: any[] = (staffData as any)?.data ?? [];
-  const enrolledStaffIds = new Set((enrollments ?? []).map((e: any) => e.staffId));
+  const studentOptions: any[] = (studentData as any)?.data?.students ?? [];
+  const enrolledStudentIds = new Set((enrollments ?? []).map((e: any) => e.studentId));
 
   const enroll = useMutation({
-    mutationFn: () => apiClient.post('/enrollments', { courseId, staffId: Number(staffId) }),
+    mutationFn: () => apiClient.post('/enrollments', { courseId, studentId: Number(studentId) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses', String(courseId), 'enrollments'] });
-      setPicking(false); setStaffId('');
+      setPicking(false); setStudentId('');
     },
   });
 
@@ -521,16 +555,16 @@ function StudentsTab({ courseId, canManage }: { courseId: number; canManage: boo
 
       {picking && (
         <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl flex gap-2">
-          <select value={staffId} onChange={e => setStaffId(e.target.value)}
+          <select value={studentId} onChange={e => setStudentId(e.target.value)}
             className="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900">
-            <option value="">Select a student/staff member</option>
-            {staffOptions.filter(s => !enrolledStaffIds.has(s.id)).map(s => (
-              <option key={s.id} value={s.id}>{s.firstName} {s.lastName}{s.position ? ` — ${s.position}` : ''}</option>
+            <option value="">Select a student</option>
+            {studentOptions.filter(s => !enrolledStudentIds.has(s.id)).map(s => (
+              <option key={s.id} value={s.id}>{s.user?.firstName} {s.user?.lastName}{s.studentNumber ? ` — ${s.studentNumber}` : ''}</option>
             ))}
           </select>
           <button
             onClick={() => enroll.mutate()}
-            disabled={!staffId || enroll.isPending}
+            disabled={!studentId || enroll.isPending}
             className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium disabled:opacity-50"
           >
             {enroll.isPending ? 'Enrolling…' : 'Enroll'}
@@ -544,7 +578,7 @@ function StudentsTab({ courseId, canManage }: { courseId: number; canManage: boo
       ) : (
         <div className="divide-y divide-gray-50 dark:divide-gray-700">
           {(enrollments ?? []).map((e: any) => {
-            const u = e.staff?.user;
+            const u = e.student?.user ?? e.staff?.user;
             const name = u ? `${u.firstName} ${u.lastName}` : `${e.staff?.firstName ?? ''} ${e.staff?.lastName ?? ''}`.trim() || 'Unknown';
             return (
               <div key={e.id} className="flex items-center justify-between py-3">
@@ -613,7 +647,7 @@ function CertificatesTab({ courseId, canIssue }: { courseId: number; canIssue: b
       ) : (
         <div className="divide-y divide-gray-50 dark:divide-gray-700">
           {completed.map((e: any) => {
-            const u = e.staff?.user;
+            const u = e.student?.user ?? e.staff?.user;
             const name = u ? `${u.firstName} ${u.lastName}` : `${e.staff?.firstName ?? ''} ${e.staff?.lastName ?? ''}`.trim() || 'Unknown';
             const cert = certByEnrollment.get(e.id);
             return (
