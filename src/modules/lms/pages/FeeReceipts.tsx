@@ -132,12 +132,24 @@ function viewReceipt(receipt: any) {
 }
 
 async function downloadReceipt(receipt: any) {
+  // html2canvas measures a height of 0 (producing a blank PDF) for elements
+  // that are themselves position:fixed/absolute — even when off-screen via a
+  // large negative offset. So the element passed to html2pdf must stay
+  // position:static (normal flow); it's kept off-page instead by nesting it
+  // inside a fixed, zero-size, overflow:hidden wrapper, which doesn't affect
+  // the static element's own measured dimensions.
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'fixed';
+  wrapper.style.top = '0';
+  wrapper.style.left = '0';
+  wrapper.style.width = '0';
+  wrapper.style.height = '0';
+  wrapper.style.overflow = 'hidden';
+
   const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.left = '-9999px';
-  container.style.top = '0';
   container.innerHTML = `<style>${RECEIPT_STYLE}</style>${buildReceiptPage(receipt)}`;
-  document.body.appendChild(container);
+  wrapper.appendChild(container);
+  document.body.appendChild(wrapper);
 
   try {
     await html2pdf()
@@ -151,7 +163,7 @@ async function downloadReceipt(receipt: any) {
       })
       .save();
   } finally {
-    document.body.removeChild(container);
+    document.body.removeChild(wrapper);
   }
 }
 
