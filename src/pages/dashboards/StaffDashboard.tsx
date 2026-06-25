@@ -17,6 +17,9 @@ import { notificationService } from '@/services/notificationService';
 import { projectService } from '@/services/projectService';
 import { videoCallService } from '@/services/videoCallService';
 import { staffDashboardService } from '@/services/dashboardService';
+import { apiClient } from '@services/apiClient';
+import type { AttendanceRecord } from '@/types';
+import { formatNgTime, ngHour } from '@/utils/ngTime';
 import { useState, useEffect } from 'react';
 
 const TASK_STATUS: Record<string, string> = {
@@ -56,14 +59,18 @@ function SectionTitle({ icon: Icon, color, children }: { icon: React.ElementType
 
 export function StaffDashboard() {
   const { user } = useAuthStore();
-  const [checkedIn, setCheckedIn] = useState(false);
-  const [checkInTime, setCheckInTime] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(timer);
   }, []);
+
+  const { data: todayAttendance } = useApiQuery<AttendanceRecord | null>(
+    ['attendance', 'today'],
+    () => apiClient.get<AttendanceRecord>('/attendance/today').catch(() => null)
+  );
+  const checkedIn = !!todayAttendance?.checkInTime;
 
   const { data: tasksData, isLoading: tasksLoading } = useApiQuery(
     ['staff-tasks'],
@@ -102,7 +109,7 @@ export function StaffDashboard() {
     </div>
   );
 
-  const hour = now.getHours();
+  const hour = ngHour(now);
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase() || 'U';
 
@@ -139,7 +146,7 @@ export function StaffDashboard() {
               </h1>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  {now.toLocaleDateString('en-GB', { timeZone: 'Africa/Lagos', weekday: 'long', day: 'numeric', month: 'long' })}
                 </span>
                 {user?.businessUnit && (
                   <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full font-medium">
@@ -192,7 +199,7 @@ export function StaffDashboard() {
               <Clock className="w-3.5 h-3.5" /> Attendance
             </p>
             <p className="text-2xl font-bold mt-1">
-              {checkedIn ? (checkInTime ? `Checked in at ${checkInTime}` : 'Checked In') : 'Not yet checked in'}
+              {checkedIn ? `Checked in at ${formatNgTime(todayAttendance?.checkInTime)}` : 'Not yet checked in'}
             </p>
             <div className="flex items-center gap-2 mt-2 text-sm text-indigo-200">
               <MapPin className="w-3.5 h-3.5" />
@@ -203,12 +210,6 @@ export function StaffDashboard() {
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                if (!checkedIn) {
-                  setCheckedIn(true);
-                  setCheckInTime(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
-                }
-              }}
               className={`px-6 py-3 rounded-xl font-semibold text-sm transition shadow-md ${
                 checkedIn ? 'bg-white/20 text-white cursor-default' : 'bg-white text-indigo-600 hover:bg-indigo-50'
               }`}

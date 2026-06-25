@@ -7,8 +7,7 @@ import type { AttendanceRecord } from '@/types';
 import {
   Clock, LogIn, LogOut, CheckCircle2, AlertCircle, User,
 } from 'lucide-react';
-
-const NG_TZ = 'Africa/Lagos';
+import { NG_TZ, formatNgTime } from '@/utils/ngTime';
 
 function useCurrentTime() {
   const [time, setTime] = useState(() => new Date());
@@ -40,13 +39,6 @@ function minutesNow(d: Date): number {
   const hour = Number(parts.find(p => p.type === 'hour')?.value ?? 0);
   const minute = Number(parts.find(p => p.type === 'minute')?.value ?? 0);
   return hour * 60 + minute;
-}
-
-function formatNgTime(value: string | Date | null | undefined): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleTimeString('en-US', {
-    timeZone: NG_TZ, hour: '2-digit', minute: '2-digit', hour12: true,
-  });
 }
 
 const CHECK_IN_OPEN  = 7 * 60 + 30;  // 7:30 AM

@@ -4,11 +4,7 @@ import { useApiQuery } from '@hooks/useApiQuery';
 import { apiClient } from '@services/apiClient';
 import type { AttendanceRecord } from '@/types';
 import { Clock, ChevronLeft, ChevronRight, CalendarDays, LogIn, Search } from 'lucide-react';
-
-const NG_TZ = 'Africa/Lagos';
-function formatNgTime(value: string): string {
-  return new Date(value).toLocaleTimeString('en-US', { timeZone: NG_TZ, hour: '2-digit', minute: '2-digit', hour12: true });
-}
+import { NG_TZ, formatNgTime } from '@/utils/ngTime';
 
 const STATUS_STYLES: Record<string, string> = {
   Present:     'bg-green-50 text-green-700 border-green-200',

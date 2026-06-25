@@ -16,10 +16,10 @@ export default function DashboardClock({ className }: { className?: string }) {
       <Clock className="w-4 h-4 text-indigo-500 flex-shrink-0" />
       <div className="leading-tight">
         <p className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
-          {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          {now.toLocaleTimeString([], { timeZone: 'Africa/Lagos', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </p>
         <p className="text-[11px] text-gray-400 dark:text-gray-500">
-          {now.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}
+          {now.toLocaleDateString([], { timeZone: 'Africa/Lagos', weekday: 'short', day: 'numeric', month: 'short' })}
         </p>
       </div>
     </div>
