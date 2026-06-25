@@ -5,6 +5,11 @@ import { apiClient } from '@services/apiClient';
 import type { AttendanceRecord } from '@/types';
 import { Clock, ChevronLeft, ChevronRight, CalendarDays, LogIn, Search } from 'lucide-react';
 
+const NG_TZ = 'Africa/Lagos';
+function formatNgTime(value: string): string {
+  return new Date(value).toLocaleTimeString('en-US', { timeZone: NG_TZ, hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
 const STATUS_STYLES: Record<string, string> = {
   Present:     'bg-green-50 text-green-700 border-green-200',
   Absent:      'bg-red-50 text-red-700 border-red-200',
@@ -147,7 +152,7 @@ export default function AttendanceList() {
                 {/* Date */}
                 <div className="w-28 text-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {new Date(a.attendanceDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    {new Date(a.attendanceDate).toLocaleDateString('en-GB', { timeZone: NG_TZ, day: 'numeric', month: 'short' })}
                   </span>
                 </div>
 
@@ -156,7 +161,7 @@ export default function AttendanceList() {
                   {a.checkInTime ? (
                     <div className="flex items-center justify-center gap-1 text-sm text-green-600 dark:text-green-400">
                       <Clock className="h-3 w-3" />
-                      <span>{a.checkInTime}</span>
+                      <span>{formatNgTime(a.checkInTime)}</span>
                     </div>
                   ) : (
                     <span className="text-sm text-gray-300 dark:text-gray-600">—</span>
@@ -168,7 +173,7 @@ export default function AttendanceList() {
                   {a.checkOutTime ? (
                     <div className="flex items-center justify-center gap-1 text-sm text-orange-600 dark:text-orange-400">
                       <Clock className="h-3 w-3" />
-                      <span>{a.checkOutTime}</span>
+                      <span>{formatNgTime(a.checkOutTime)}</span>
                     </div>
                   ) : (
                     <span className="text-sm text-gray-300 dark:text-gray-600">—</span>
