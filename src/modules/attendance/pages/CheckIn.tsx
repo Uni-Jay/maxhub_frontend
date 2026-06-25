@@ -5,32 +5,8 @@ import { useApiQuery } from '@hooks/useApiQuery';
 import { apiClient } from '@services/apiClient';
 import type { AttendanceRecord } from '@/types';
 import {
-  Clock, MapPin, LogIn, LogOut, CheckCircle2, AlertCircle, User,
-  ShieldCheck, ShieldX, Loader2, Navigation,
+  Clock, LogIn, LogOut, CheckCircle2, AlertCircle, User,
 } from 'lucide-react';
-
-// ─── Office geofence config ────────────────────────────────
-// Update LAT/LNG to your actual office coordinates
-const OFFICE_LAT = 6.5244;   // Lagos, Nigeria (update to real office)
-const OFFICE_LNG = 3.3792;
-const GEOFENCE_RADIUS_M = 500; // 500 metres radius
-
-function haversineDistance(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number,
-): number {
-  const R = 6371000; // Earth radius metres
-  const phi1 = (lat1 * Math.PI) / 180;
-  const phi2 = (lat2 * Math.PI) / 180;
-  const dPhi = ((lat2 - lat1) * Math.PI) / 180;
-  const dLam = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dPhi / 2) ** 2 +
-    Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLam / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-type GeofenceStatus = 'checking' | 'inside' | 'outside' | 'unavailable';
 
 function useCurrentTime() {
   const [time, setTime] = useState(() => new Date());
@@ -66,37 +42,22 @@ export default function CheckIn() {
   const now = useCurrentTime();
 
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [geofenceStatus, setGeofenceStatus] = useState<GeofenceStatus>('checking');
-  const [distanceM, setDistanceM] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [geofenceOverride, setGeofenceOverride] = useState(false); // for approved leave/remote work
 
   const { data: todayRecord, refetch } = useApiQuery<AttendanceRecord | null>(
     ['attendance', 'today'],
     () => apiClient.get<AttendanceRecord>('/attendance/today').catch(() => null)
   );
 
-  // ── Geolocation + geofencing ──
+  // GPS is captured (best-effort) and sent along for the audit trail only -
+  // it never blocks check-in/out. Office wifi/GPS accuracy indoors is
+  // unreliable, and staff legitimately clock in from outside any office too.
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setGeofenceStatus('unavailable');
-      setCoords({ latitude: 0, longitude: 0 });
-      return;
-    }
-    setGeofenceStatus('checking');
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setCoords({ latitude, longitude });
-        const dist = haversineDistance(latitude, longitude, OFFICE_LAT, OFFICE_LNG);
-        setDistanceM(Math.round(dist));
-        setGeofenceStatus(dist <= GEOFENCE_RADIUS_M ? 'inside' : 'outside');
-      },
-      () => {
-        setGeofenceStatus('unavailable');
-        setCoords({ latitude: 0, longitude: 0 });
-      },
+      (pos) => setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      () => setCoords({ latitude: 0, longitude: 0 }),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     );
   }, []);
@@ -120,15 +81,10 @@ export default function CheckIn() {
     if (mins > CHECK_OUT_CLOSE) timeError = `Check-out window closed at 6:00 PM.`;
   }
 
-  const timeAllowed = !allDone && (
+  const actionAllowed = !allDone && (
     (!checkedIn && isCheckInWindow) ||
     (checkedIn && !checkedOut && isCheckOutWindow)
   );
-
-  // Geofence gate: must be inside OR have override
-  const geofenceAllowed = geofenceStatus === 'inside' || geofenceStatus === 'unavailable' || geofenceOverride;
-
-  const actionAllowed = timeAllowed && geofenceAllowed;
 
   // ── Check in / out ──
   const handleCheckIn = async () => {
@@ -243,71 +199,6 @@ export default function CheckIn() {
         </div>
       )}
 
-      {/* Geofencing status */}
-      {!allDone && (
-        <div className={`flex items-start gap-3 rounded-2xl px-4 py-3 border ${
-          geofenceStatus === 'checking'
-            ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-            : geofenceStatus === 'inside'
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-              : geofenceStatus === 'outside'
-                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-        }`}>
-          {geofenceStatus === 'checking' ? (
-            <Loader2 className="h-4 w-4 text-gray-500 animate-spin flex-shrink-0 mt-0.5" />
-          ) : geofenceStatus === 'inside' ? (
-            <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-          ) : geofenceStatus === 'outside' ? (
-            <ShieldX className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-          ) : (
-            <Navigation className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-          )}
-          <div className="flex-1">
-            {geofenceStatus === 'checking' && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">Detecting your location…</p>
-            )}
-            {geofenceStatus === 'inside' && (
-              <>
-                <p className="text-sm font-semibold text-green-700 dark:text-green-300">Within office premises</p>
-                {distanceM !== null && <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">{distanceM}m from office · GPS verified</p>}
-              </>
-            )}
-            {geofenceStatus === 'outside' && (
-              <>
-                <p className="text-sm font-semibold text-red-700 dark:text-red-300">Outside office premises</p>
-                {distanceM !== null && <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{distanceM}m from office (max {GEOFENCE_RADIUS_M}m allowed)</p>}
-                <p className="text-xs text-red-500 dark:text-red-400 mt-1">
-                  You must be at the office to clock in/out. If you have an approved remote assignment, use the override below.
-                </p>
-                {/* Override for approved remote/leave */}
-                <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                  <input type="checkbox" checked={geofenceOverride} onChange={e => setGeofenceOverride(e.target.checked)}
-                    className="w-4 h-4 accent-red-600" />
-                  <span className="text-xs text-red-700 dark:text-red-400 font-medium">
-                    I have approved remote assignment / official travel
-                  </span>
-                </label>
-              </>
-            )}
-            {geofenceStatus === 'unavailable' && (
-              <>
-                <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Location unavailable</p>
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">GPS could not be determined. Clock-in allowed but location will not be verified.</p>
-              </>
-            )}
-          </div>
-          {coords && coords.latitude !== 0 && (
-            <div className="flex-shrink-0 text-right">
-              <MapPin className="h-3 w-3 text-gray-400 ml-auto mb-0.5" />
-              <p className="text-[10px] font-mono text-gray-400">
-                {coords.latitude.toFixed(4)}<br />{coords.longitude.toFixed(4)}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Error */}
       {error && (
         <div className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl px-4 py-3">
@@ -332,11 +223,7 @@ export default function CheckIn() {
           {loading
             ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             : <LogIn className="h-5 w-5" />}
-          {loading
-            ? 'Recording check-in…'
-            : !geofenceAllowed
-              ? 'Outside office — cannot check in'
-              : 'Check In Now'}
+          {loading ? 'Recording check-in…' : 'Check In Now'}
         </button>
       ) : (
         <button onClick={handleCheckOut}
@@ -345,17 +232,11 @@ export default function CheckIn() {
           {loading
             ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             : <LogOut className="h-5 w-5" />}
-          {loading
-            ? 'Recording check-out…'
-            : !geofenceAllowed
-              ? 'Outside office — cannot check out'
-              : 'Check Out Now'}
+          {loading ? 'Recording check-out…' : 'Check Out Now'}
         </button>
       )}
 
-      {/* Geofence legend */}
       <div className="text-center text-xs text-gray-400 dark:text-gray-500 space-y-0.5">
-        <p>Attendance is only allowed within {GEOFENCE_RADIUS_M}m of the office.</p>
         <p>GPS coordinates and device info are recorded for audit purposes.</p>
       </div>
     </div>
