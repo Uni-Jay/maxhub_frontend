@@ -356,9 +356,9 @@ export function SuperAdminDashboard() {
                     Total Students
                   </p>
                   <p className="text-2xl font-bold mt-2">
-                    {studentQuery.isLoading
+                    {statsQuery.isLoading
                       ? '…'
-                      : (students?.totalEnrolled ?? '—')}
+                      : (stats?.totalStudents ?? '—')}
                   </p>
                 </div>
                 <GraduationCap className="w-7 h-7 opacity-50" />

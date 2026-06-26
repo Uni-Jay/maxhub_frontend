@@ -14,6 +14,8 @@ export interface DashboardStats {
   averageAttendance?: number;
   pendingOvertime?: number;
   pendingWeeklyReports?: number;
+  totalStudents?: number;
+  totalRevenue?: number;
 }
 
 export interface AttendanceData {
