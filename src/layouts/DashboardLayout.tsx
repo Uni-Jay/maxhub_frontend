@@ -181,6 +181,7 @@ export function DashboardLayout() {
     queryFn: () => notificationService.getUnreadCount(),
     refetchInterval: 60_000,
     retry: false,
+    enabled: !!tokens?.accessToken,
   });
   const unreadCount = unreadData?.count ?? 0;
 
