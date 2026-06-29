@@ -44,8 +44,6 @@ function minutesNow(d: Date): number {
 const CHECK_IN_OPEN  = 7 * 60 + 30;  // 7:30 AM
 const CHECK_IN_LATE  = 8 * 60;       // 8:00 AM
 const CHECK_IN_CLOSE = 9 * 60;       // 9:00 AM
-const CHECK_OUT_OPEN = 16 * 60 + 30; // 4:30 PM
-const CHECK_OUT_CLOSE = 18 * 60;     // 6:00 PM
 
 export default function CheckIn() {
   const { user } = useAuthStore();
@@ -80,20 +78,19 @@ export default function CheckIn() {
   const mins = minutesNow(now);
   const isCheckInWindow = mins >= CHECK_IN_OPEN && mins <= CHECK_IN_CLOSE;
   const isLateCheckIn = mins > CHECK_IN_LATE && mins <= CHECK_IN_CLOSE;
-  const isCheckOutWindow = mins >= CHECK_OUT_OPEN && mins <= CHECK_OUT_CLOSE;
 
   let timeError: string | null = null;
   if (!allDone && !checkedIn) {
     if (mins < CHECK_IN_OPEN) timeError = `Check-in opens at 7:30 AM.`;
     if (mins > CHECK_IN_CLOSE) timeError = `Check-in window closed at 9:00 AM.`;
-  } else if (checkedIn && !checkedOut) {
-    if (mins < CHECK_OUT_OPEN) timeError = `Check-out opens at 4:30 PM.`;
-    if (mins > CHECK_OUT_CLOSE) timeError = `Check-out window closed at 6:00 PM.`;
   }
 
+  // Check-out has no time window — staff may legitimately leave (and need to
+  // clock out) earlier or later than a fixed close-of-business slot, and the
+  // backend itself enforces no such restriction either.
   const actionAllowed = !allDone && (
     (!checkedIn && isCheckInWindow) ||
-    (checkedIn && !checkedOut && isCheckOutWindow)
+    (checkedIn && !checkedOut)
   );
 
   // ── Check in / out ──
