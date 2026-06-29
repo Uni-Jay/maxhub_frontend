@@ -5,7 +5,6 @@ import {
   ClipboardList, AlertTriangle, CheckCircle2, Clock,
   ChevronDown, ChevronUp, Send, FileWarning,
   CheckSquare, AlertCircle, Ban, Loader2, ArrowRight,
-  Eye,
 } from 'lucide-react';
 import CloudinaryUpload from '@components/ui/CloudinaryUpload';
 import type { CloudinaryUploadResult } from '@services/cloudinaryService';
@@ -31,12 +30,20 @@ interface PastReport {
   weekEnding: string;
   status: 'Submitted' | 'Missed' | 'Approved' | 'Rejected';
   summary: string;
+  challenges?: string;
+  nextWeekPlans?: string;
+  hoursWorked?: number;
+  hasBlocker?: boolean;
+  blockerNotes?: string;
+  taskStatus?: TaskStatus;
+  attachments?: { url: string; publicId: string; name?: string }[];
   submittedAt?: string;
   approvalStatus?: 'Pending' | 'Approved' | 'Rejected';
   approvedBy?: string;
   rejectionReason?: string;
   comments?: string;
   forwardedToCEO?: boolean;
+  staffName?: string;
 }
 
 
@@ -88,6 +95,7 @@ export default function WeeklyReportPage() {
   const { user } = useAuthStore();
   const { roles } = useCurrentRoles();
   const isSuperAdmin = roles.has('superadmin');
+  const canReview = isSuperAdmin || roles.has('admin');
   const qc = useQueryClient();
   const thisFriday = getThisFriday();
   const warning = getDeadlineWarning(thisFriday);
@@ -386,7 +394,9 @@ export default function WeeklyReportPage() {
                     : <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Week ending {r.weekEnding}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    Week ending {r.weekEnding}{r.staffName && <span className="text-gray-400 dark:text-gray-500 font-normal"> — {r.staffName}</span>}
+                  </p>
                   {r.submittedAt && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       Submitted {format(new Date(r.submittedAt), 'dd MMM yyyy HH:mm')}
@@ -412,10 +422,51 @@ export default function WeeklyReportPage() {
               <AnimatePresence>
                 {expandedId === r.id && r.summary && (
                   <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }}
-                    className="px-5 pb-4 pl-16 space-y-2">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/40 rounded-xl p-3">{r.summary}</p>
-                    {/* Approval actions (Super Admin only) */}
-                    {r.approvalStatus === 'Pending' && isSuperAdmin && (
+                    className="px-5 pb-4 pl-16 space-y-3">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Accomplishments</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/40 rounded-xl p-3 whitespace-pre-wrap">{r.summary}</p>
+                    </div>
+                    {r.challenges && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Challenges</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/40 rounded-xl p-3 whitespace-pre-wrap">{r.challenges}</p>
+                      </div>
+                    )}
+                    {r.nextWeekPlans && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Plans for next week</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/40 rounded-xl p-3 whitespace-pre-wrap">{r.nextWeekPlans}</p>
+                      </div>
+                    )}
+                    {r.hasBlocker && r.blockerNotes && (
+                      <div>
+                        <p className="text-xs font-semibold text-red-500 dark:text-red-400 mb-1">Blocker</p>
+                        <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl p-3 whitespace-pre-wrap">{r.blockerNotes}</p>
+                      </div>
+                    )}
+                    {r.taskStatus && (
+                      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                        <span>Assigned: <strong className="text-gray-700 dark:text-gray-300">{r.taskStatus.assigned}</strong></span>
+                        <span>In Progress: <strong className="text-gray-700 dark:text-gray-300">{r.taskStatus.inProgress}</strong></span>
+                        <span>Completed: <strong className="text-gray-700 dark:text-gray-300">{r.taskStatus.completed}</strong></span>
+                        <span>Delayed: <strong className="text-gray-700 dark:text-gray-300">{r.taskStatus.delayed}</strong></span>
+                        <span>Blocked: <strong className="text-gray-700 dark:text-gray-300">{r.taskStatus.blocked}</strong></span>
+                        {r.hoursWorked != null && <span>Hours: <strong className="text-gray-700 dark:text-gray-300">{r.hoursWorked}</strong></span>}
+                      </div>
+                    )}
+                    {r.attachments && r.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {r.attachments.map(a => (
+                          <a key={a.publicId} href={a.url} target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-indigo-600 dark:text-indigo-400 underline">
+                            {a.name || 'Attachment'}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    {/* Approval actions (Super Admin & Admin) */}
+                    {r.approvalStatus === 'Pending' && canReview && (
                       <div className="flex items-center gap-2 pt-1">
                         <button
                           onClick={() => approveMutation.mutate(r.id)}
@@ -431,16 +482,13 @@ export default function WeeklyReportPage() {
                         >
                           <AlertCircle className="h-3.5 w-3.5" /> Reject
                         </button>
-                        <button className="flex items-center gap-1.5 text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                          <Eye className="h-3.5 w-3.5" /> View Full Report
-                        </button>
                       </div>
                     )}
                     {r.approvedBy && (
                       <p className="text-xs text-gray-400 dark:text-gray-500">Approved by {r.approvedBy}</p>
                     )}
-                    {/* Super Admin feedback — independent of approve/reject, never edits the report itself */}
-                    {isSuperAdmin && (
+                    {/* Reviewer feedback — independent of approve/reject, never edits the report itself */}
+                    {canReview && (
                       <div className="pt-2 space-y-1.5">
                         <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Feedback / Comment</label>
                         <textarea
@@ -459,9 +507,9 @@ export default function WeeklyReportPage() {
                         </button>
                       </div>
                     )}
-                    {!isSuperAdmin && r.comments && (
+                    {!canReview && r.comments && (
                       <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 mt-2">
-                        <p className="text-xs font-medium text-indigo-700 dark:text-indigo-300 mb-1">Super Admin feedback</p>
+                        <p className="text-xs font-medium text-indigo-700 dark:text-indigo-300 mb-1">Reviewer feedback</p>
                         <p className="text-xs text-indigo-600 dark:text-indigo-400">{r.comments}</p>
                       </div>
                     )}
