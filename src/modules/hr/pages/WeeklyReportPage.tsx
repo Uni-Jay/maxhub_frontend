@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ClipboardList, AlertTriangle, CheckCircle2, Clock,
   ChevronDown, ChevronUp, Send, FileWarning,
-  CheckSquare, AlertCircle, Ban, Loader2, ArrowRight,
+  CheckSquare, AlertCircle, Ban, Loader2, ArrowRight, Eye,
 } from 'lucide-react';
 import CloudinaryUpload from '@components/ui/CloudinaryUpload';
 import type { CloudinaryUploadResult } from '@services/cloudinaryService';
@@ -414,7 +414,14 @@ export default function WeeklyReportPage() {
                     </span>
                   )}
                   {r.status !== 'Missed' && (
-                    expandedId === r.id ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === r.id ? null : r.id); }}
+                      title="View full report"
+                      className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 px-1.5 py-1 rounded-lg"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      {expandedId === r.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
                   )}
                 </div>
               </div>
