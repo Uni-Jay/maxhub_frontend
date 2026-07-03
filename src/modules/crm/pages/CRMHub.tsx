@@ -480,7 +480,7 @@ function VisaMaxTab() {
   };
 
   const handleSubmit = () => {
-    if (!form.name || !form.passport || !form.country) return;
+    if (!form.name || !form.country) return;
     if (editingId) updateMutation.mutate({ id: editingId, payload: form });
     else createMutation.mutate(form);
   };
@@ -611,7 +611,7 @@ function VisaMaxTab() {
                   <div><label className={LABEL_CLS}>Email</label><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={INPUT_CLS} /></div>
                   <div><label className={LABEL_CLS}>Phone</label><input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={INPUT_CLS} /></div>
                 </div>
-                <div><label className={LABEL_CLS}>Passport Number *</label><input value={form.passport} onChange={e => setForm(f => ({ ...f, passport: e.target.value }))} className={INPUT_CLS} /></div>
+                <div><label className={LABEL_CLS}>Passport Number</label><input value={form.passport} onChange={e => setForm(f => ({ ...f, passport: e.target.value }))} className={INPUT_CLS} /></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className={LABEL_CLS}>Destination Country *</label><input value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} className={INPUT_CLS} /></div>
                   <div>
@@ -635,7 +635,7 @@ function VisaMaxTab() {
               </div>
               <div className="flex gap-3 p-5 border-t border-gray-100 dark:border-gray-700">
                 <button onClick={closePanel} className="flex-1 px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
-                <button onClick={handleSubmit} disabled={!form.name || !form.passport || !form.country || isMutating}
+                <button onClick={handleSubmit} disabled={!form.name || !form.country || isMutating}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50">
                   {isMutating && <Loader2 className="h-4 w-4 animate-spin" />}
                   {editingId ? 'Save Changes' : 'Submit Application'}
