@@ -8,6 +8,8 @@ import {
   Upload, Paperclip, File, Pencil, Loader2,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
+import { departmentService } from '@services/departmentService';
+import { staffService } from '@services/staffService';
 import { cn } from '@utils/cn';
 import FilePreviewModal, { type FilePreviewTarget } from '@components/ui/FilePreviewModal';
 
@@ -399,11 +401,10 @@ function downloadVisaProfile(applicant: VisaApplicant, documents: UploadedDocume
 // ═══════════════════════════════════════════════════════════
 const VISA_STATUSES: VisaStatus[] = ['New', 'Consultation', 'Documents', 'Submitted', 'Processing', 'Approved', 'Rejected'];
 const VISA_TYPES = ['Tourist', 'Student', 'Work', 'Business', 'Residence'];
-const CONSULTANTS = ['Amaka B.', 'Tunde F.', 'Chioma O.'];
 
 const INIT_VISA_FORM = {
   name: '', email: '', phone: '', passport: '', country: '', visaType: 'Tourist',
-  travelPackage: '', notes: '', consultant: 'Amaka B.', followUpDate: '',
+  travelPackage: '', notes: '', consultant: '', followUpDate: '',
 };
 
 function VisaMaxTab() {
@@ -412,6 +413,18 @@ function VisaMaxTab() {
   const [statusFilter, setStatusFilter] = useState('');
   const [consultantFilter, setConsultantFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+
+  // Consultant options are the real VisaMax ("VM") department staff roster —
+  // replaces the old 3-name hardcoded list, which had no connection to who's
+  // actually employed there.
+  const { data: departments } = useQuery({ queryKey: ['departments'], queryFn: () => departmentService.getAll() });
+  const visaDept = (departments ?? []).find(d => d.code === 'VM');
+  const { data: staffData } = useQuery({
+    queryKey: ['visamax-staff', visaDept?.id],
+    queryFn: () => staffService.getAll({ departmentId: visaDept!.id, status: 'Active', limit: 100 }),
+    enabled: !!visaDept?.id,
+  });
+  const CONSULTANTS = (staffData?.data ?? []).map(s => `${s.firstName} ${s.lastName}`);
   const [showPanel, setShowPanel] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(INIT_VISA_FORM);
@@ -472,7 +485,7 @@ function VisaMaxTab() {
     setForm({
       name: a.name, email: a.email, phone: a.phone, passport: a.passport, country: a.country,
       visaType: (a.visaType || 'Tourist') as typeof INIT_VISA_FORM.visaType,
-      travelPackage: a.travelPackage, notes: a.notes, consultant: a.consultant || CONSULTANTS[0],
+      travelPackage: a.travelPackage, notes: a.notes, consultant: a.consultant || '',
       followUpDate: a.followUpDate,
     });
     setEditingId(a.id);
@@ -625,6 +638,7 @@ function VisaMaxTab() {
                   <div>
                     <label className={LABEL_CLS}>Consultant</label>
                     <select value={form.consultant} onChange={e => setForm(f => ({ ...f, consultant: e.target.value }))} className={INPUT_CLS}>
+                      <option value="">{CONSULTANTS.length ? 'Select consultant' : 'No VisaMax staff found'}</option>
                       {CONSULTANTS.map(c => <option key={c}>{c}</option>)}
                     </select>
                   </div>
