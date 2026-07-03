@@ -186,7 +186,7 @@ export function FeeReceipts() {
   const [form, setForm] = useState({
     enrollmentId: '', amountPaid: '', paymentMethod: 'BankTransfer',
     paymentDate: new Date().toISOString().slice(0, 10),
-    session: generateSessionLabel(), balance: '0', status: 'Paid', notes: '',
+    session: generateSessionLabel(), totalFee: '', status: 'Paid', notes: '',
   });
 
   const { data: receipts, isLoading } = useQuery({
@@ -215,14 +215,28 @@ export function FeeReceipts() {
     mutationFn: () => apiClient.post('/fee-receipts', {
       enrollmentId: Number(form.enrollmentId), amountPaid: Number(form.amountPaid),
       paymentMethod: form.paymentMethod, paymentDate: form.paymentDate,
-      session: form.session, balance: Number(form.balance) || 0, status: form.status, notes: form.notes || undefined,
+      session: form.session, totalFee: form.totalFee ? Number(form.totalFee) : undefined,
+      status: form.status, notes: form.notes || undefined,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fee-receipts'] });
       setRecording(false);
-      setForm({ enrollmentId: '', amountPaid: '', paymentMethod: 'BankTransfer', paymentDate: new Date().toISOString().slice(0, 10), session: generateSessionLabel(), balance: '0', status: 'Paid', notes: '' });
+      setForm({ enrollmentId: '', amountPaid: '', paymentMethod: 'BankTransfer', paymentDate: new Date().toISOString().slice(0, 10), session: generateSessionLabel(), totalFee: '', status: 'Paid', notes: '' });
     },
   });
+
+  // Balance is always shown as the running "how much is left", computed
+  // server-side from the enrollment's one agreed total_fee — never summed
+  // from a single receipt's own fields, which is what let an old, since-paid
+  // balance be misread as still-owed. This groups receipts by enrollment so
+  // "Total Paid" is the true sum across every receipt for that student.
+  const totalPaidByEnrollment = new Map<number, number>();
+  for (const r of receipts ?? []) {
+    const enrollId = r.enrollment?.id;
+    if (enrollId == null) continue;
+    totalPaidByEnrollment.set(enrollId, (totalPaidByEnrollment.get(enrollId) ?? 0) + Number(r.amountPaid));
+  }
+  const seenEnrollments = new Set<number>();
 
   return (
     <div className="space-y-6">
@@ -280,8 +294,8 @@ export function FeeReceipts() {
               className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-gray-900"
             />
             <input
-              value={form.balance} onChange={e => setForm(f => ({ ...f, balance: e.target.value }))}
-              placeholder="Balance remaining (₦)" type="number"
+              value={form.totalFee} onChange={e => setForm(f => ({ ...f, totalFee: e.target.value }))}
+              placeholder="Total course fee (₦) — first payment only" type="number"
               className="border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-gray-900"
             />
             <select
@@ -319,6 +333,11 @@ export function FeeReceipts() {
               const enrollment = r.enrollment;
               const u = enrollment?.student?.user ?? enrollment?.staff?.user;
               const name = u ? `${u.firstName} ${u.lastName}` : `${enrollment?.staff?.firstName ?? ''} ${enrollment?.staff?.lastName ?? ''}`.trim() || 'Unknown';
+              // Receipts arrive newest-first, so the first time we see an enrollment
+              // is its most recent payment — the only place its balance is current.
+              const isLatestForEnrollment = enrollment?.id != null && !seenEnrollments.has(enrollment.id);
+              if (enrollment?.id != null) seenEnrollments.add(enrollment.id);
+              const totalPaid = enrollment?.id != null ? totalPaidByEnrollment.get(enrollment.id) : undefined;
               return (
                 <div key={r.id} className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
@@ -328,12 +347,21 @@ export function FeeReceipts() {
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">{name}</p>
                       <p className="text-xs text-gray-500">{enrollment?.course?.title} • {r.receiptNumber} • {r.session}</p>
+                      {isLatestForEnrollment && totalPaid != null && (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
+                          Total paid to date: ₦{totalPaid.toLocaleString()}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">₦{Number(r.amountPaid).toLocaleString()}</p>
-                      {Number(r.balance) > 0 && <p className="text-xs text-rose-500">Bal: ₦{Number(r.balance).toLocaleString()}</p>}
+                      {Number(r.balance) > 0 && (
+                        <p className="text-xs text-rose-500">
+                          {isLatestForEnrollment ? 'Balance owing: ' : 'Balance owing at the time: '}₦{Number(r.balance).toLocaleString()}
+                        </p>
+                      )}
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[r.status] ?? 'bg-gray-100 text-gray-600'}`}>{r.status}</span>
                     <button onClick={() => viewReceipt(r)} className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-800 dark:text-gray-300">

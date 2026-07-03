@@ -1,11 +1,11 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users, Search, Plus, Download, X, Eye, Calendar, RefreshCw,
   Globe, Briefcase, ShoppingBag, FileText, Phone, Mail,
   TrendingUp, CheckCircle, Clock, AlertCircle, Filter,
-  Upload, Paperclip, File,
+  Upload, Paperclip, File, Pencil, Loader2,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
 import { cn } from '@utils/cn';
@@ -17,7 +17,7 @@ type BizUnit = 'visa' | 'kurios' | 'bead';
 type VisaStatus = 'New' | 'Consultation' | 'Documents' | 'Submitted' | 'Processing' | 'Approved' | 'Rejected';
 
 interface VisaApplicant {
-  id: number; name: string; email: string; phone: string;
+  id: number; clientCode: string; name: string; email: string; phone: string;
   passport: string; visaType: string; country: string;
   status: VisaStatus; consultant: string; nextAction: string;
   followUpDate: string; travelPackage: string; notes: string;
@@ -407,11 +407,13 @@ const INIT_VISA_FORM = {
 };
 
 function VisaMaxTab() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [consultantFilter, setConsultantFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [showPanel, setShowPanel] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(INIT_VISA_FORM);
   const [viewApplicant, setViewApplicant] = useState<VisaApplicant | null>(null);
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
@@ -433,7 +435,7 @@ function VisaMaxTab() {
         Approved: 'Approved', Rejected: 'Rejected', 'On Hold': 'Consultation',
       };
       return apps.map((a): VisaApplicant => ({
-        id: a.id, name: a.clientName, email: a.clientEmail, phone: a.clientPhone,
+        id: a.id, clientCode: a.clientCode ?? '', name: a.clientName, email: a.clientEmail, phone: a.clientPhone,
         passport: '', visaType: a.serviceType ?? '', country: a.destination ?? '',
         status: statusMap[a.status] ?? 'New', consultant: a.assignedTo ?? '',
         nextAction: '', followUpDate: a.expectedCompletion ?? '',
@@ -443,6 +445,47 @@ function VisaMaxTab() {
   });
 
   const applicants = (data ?? []) as VisaApplicant[];
+
+  const closePanel = () => { setShowPanel(false); setEditingId(null); setForm(INIT_VISA_FORM); };
+
+  const createMutation = useMutation({
+    mutationFn: (payload: typeof INIT_VISA_FORM) => apiClient.post('/visamax/applications', {
+      clientName: payload.name, clientEmail: payload.email, clientPhone: payload.phone,
+      serviceType: payload.visaType, destination: payload.country,
+      assignedTo: payload.consultant, expectedCompletion: payload.followUpDate,
+      notes: [payload.notes, payload.passport && `Passport: ${payload.passport}`, payload.travelPackage && `Travel Package: ${payload.travelPackage}`].filter(Boolean).join('\n'),
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['crm-visa-applicants'] }); closePanel(); },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: typeof INIT_VISA_FORM }) => apiClient.put(`/visamax/applications/${id}`, {
+      clientName: payload.name, clientEmail: payload.email, clientPhone: payload.phone,
+      serviceType: payload.visaType, destination: payload.country,
+      assignedTo: payload.consultant, expectedCompletion: payload.followUpDate,
+      notes: [payload.notes, payload.passport && `Passport: ${payload.passport}`, payload.travelPackage && `Travel Package: ${payload.travelPackage}`].filter(Boolean).join('\n'),
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['crm-visa-applicants'] }); closePanel(); },
+  });
+
+  const openEdit = (a: VisaApplicant) => {
+    setForm({
+      name: a.name, email: a.email, phone: a.phone, passport: a.passport, country: a.country,
+      visaType: (a.visaType || 'Tourist') as typeof INIT_VISA_FORM.visaType,
+      travelPackage: a.travelPackage, notes: a.notes, consultant: a.consultant || CONSULTANTS[0],
+      followUpDate: a.followUpDate,
+    });
+    setEditingId(a.id);
+    setShowPanel(true);
+  };
+
+  const handleSubmit = () => {
+    if (!form.name || !form.passport || !form.country) return;
+    if (editingId) updateMutation.mutate({ id: editingId, payload: form });
+    else createMutation.mutate(form);
+  };
+
+  const isMutating = createMutation.isPending || updateMutation.isPending;
 
   const filtered = applicants.filter(a =>
     (!search || a.name.toLowerCase().includes(search.toLowerCase()) || a.passport.includes(search)) &&
@@ -489,7 +532,7 @@ function VisaMaxTab() {
           className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300 transition-colors">
           <Download className="h-3.5 w-3.5" /> Export CSV
         </button>
-        <button onClick={() => setShowPanel(true)}
+        <button onClick={() => { setForm(INIT_VISA_FORM); setEditingId(null); setShowPanel(true); }}
           className="flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors">
           <Plus className="h-4 w-4" /> New Application
         </button>
@@ -500,7 +543,7 @@ function VisaMaxTab() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-700">
-                {['Client Name', 'Passport #', 'Visa Type', 'Country', 'Status', 'Consultant', 'Next Action', 'Follow-up', 'Actions'].map(h => (
+                {['Client', 'Passport #', 'Visa Type', 'Country', 'Status', 'Consultant', 'Next Action', 'Follow-up', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{h}</th>
                 ))}
               </tr>
@@ -510,7 +553,10 @@ function VisaMaxTab() {
                 <motion.tr key={a.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
                   className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900 dark:text-white">{a.name}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {a.name}
+                      {a.clientCode && <span className="ml-2 text-[11px] font-mono font-normal text-indigo-500 dark:text-indigo-400">{a.clientCode}</span>}
+                    </p>
                     <p className="text-xs text-gray-400 mt-0.5">{a.email}</p>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">{a.passport}</td>
@@ -531,6 +577,9 @@ function VisaMaxTab() {
                       <button onClick={() => setViewApplicant(a)} className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors" title="View">
                         <Eye className="h-3.5 w-3.5" />
                       </button>
+                      <button onClick={() => openEdit(a)} className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors" title="Edit">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
                       <button className="p-1.5 text-gray-400 hover:text-amber-600 rounded-lg transition-colors" title="Schedule Follow-up">
                         <Calendar className="h-3.5 w-3.5" />
                       </button>
@@ -549,12 +598,12 @@ function VisaMaxTab() {
       <AnimatePresence>
         {showPanel && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex justify-end" onClick={() => setShowPanel(false)}>
+            className="fixed inset-0 bg-black/50 z-50 flex justify-end" onClick={closePanel}>
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 20 }}
               className="w-full max-w-md bg-white dark:bg-gray-900 h-full overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">New Visa Application</h2>
-                <button onClick={() => setShowPanel(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"><X className="h-4 w-4" /></button>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">{editingId ? 'Edit Visa Application' : 'New Visa Application'}</h2>
+                <button onClick={closePanel} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"><X className="h-4 w-4" /></button>
               </div>
               <div className="p-5 space-y-4">
                 <div><label className={LABEL_CLS}>Full Name *</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={INPUT_CLS} /></div>
@@ -585,10 +634,11 @@ function VisaMaxTab() {
                 <div><label className={LABEL_CLS}>Notes</label><textarea rows={3} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className={cn(INPUT_CLS, 'resize-none')} /></div>
               </div>
               <div className="flex gap-3 p-5 border-t border-gray-100 dark:border-gray-700">
-                <button onClick={() => setShowPanel(false)} className="flex-1 px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
-                <button disabled={!form.name || !form.passport || !form.country}
-                  className="flex-1 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50">
-                  Submit Application
+                <button onClick={closePanel} className="flex-1 px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
+                <button onClick={handleSubmit} disabled={!form.name || !form.passport || !form.country || isMutating}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50">
+                  {isMutating && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {editingId ? 'Save Changes' : 'Submit Application'}
                 </button>
               </div>
             </motion.div>
@@ -611,6 +661,7 @@ function VisaMaxTab() {
               </div>
               <div className="p-5 space-y-3 text-sm">
                 {[
+                  ['Client ID', viewApplicant.clientCode || '—'],
                   ['Passport', viewApplicant.passport], ['Email', viewApplicant.email], ['Phone', viewApplicant.phone],
                   ['Consultant', viewApplicant.consultant], ['Status', viewApplicant.status],
                   ['Next Action', viewApplicant.nextAction], ['Follow-up Date', viewApplicant.followUpDate],

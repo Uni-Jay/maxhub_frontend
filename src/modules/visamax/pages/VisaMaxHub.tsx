@@ -53,6 +53,7 @@ const STATUS_STYLE: Record<AppStatus, string> = {
 
 interface Application {
   id: number;
+  clientCode: string;
   clientName: string;
   clientPhone: string;
   clientEmail: string;
@@ -129,7 +130,7 @@ export default function VisaMaxHub() {
 
   const filtered = apps.filter(a => {
     const q = search.toLowerCase();
-    const matchQ = !q || a.clientName.toLowerCase().includes(q) || a.destination.toLowerCase().includes(q) || a.serviceType.toLowerCase().includes(q);
+    const matchQ = !q || a.clientName.toLowerCase().includes(q) || a.destination.toLowerCase().includes(q) || a.serviceType.toLowerCase().includes(q) || a.clientCode?.toLowerCase().includes(q);
     const matchS = !serviceFilter || a.serviceType === serviceFilter;
     const matchSt = !statusFilter || a.status === statusFilter;
     return matchQ && matchS && matchSt;
@@ -261,7 +262,10 @@ export default function VisaMaxHub() {
                         <SvcIcon className={cn('h-5 w-5', svcColor)} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{app.clientName}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                          {app.clientName}
+                          {app.clientCode && <span className="ml-2 text-[11px] font-mono font-normal text-indigo-500 dark:text-indigo-400">{app.clientCode}</span>}
+                        </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{app.serviceType} · {app.destination}</p>
                       </div>
                       <div className="hidden md:block text-right">
@@ -291,6 +295,7 @@ export default function VisaMaxHub() {
                           className="overflow-hidden">
                           <div className="px-5 py-4 bg-indigo-50/40 dark:bg-indigo-900/10 border-b border-gray-100 dark:border-gray-700">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                              <DetailCell label="Client ID" value={app.clientCode} />
                               <DetailCell label="Phone" value={app.clientPhone} />
                               <DetailCell label="Email" value={app.clientEmail} />
                               <DetailCell label="Assigned To" value={app.assignedTo || '—'} />
