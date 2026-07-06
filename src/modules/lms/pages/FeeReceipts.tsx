@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Receipt, Plus, Download, Eye, Loader2, X } from 'lucide-react';
+import { Receipt, Plus, Download, Eye, Loader2, X, Trash2 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { apiClient } from '@services/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -116,13 +116,23 @@ function viewReceipt(receipt: any) {
   <style>
     ${RECEIPT_STYLE}
     body { background: #f4f6fb; padding: 20px; }
-    .print-btn { display: block; text-align: center; margin: 24px auto 0; padding: 10px 28px; background: #4a7c2f; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-    @media print { .print-btn { display: none; } body { background: white; padding: 0; } .page { box-shadow: none; border-radius: 0; } }
+    .btn-row { display: flex; gap: 12px; justify-content: center; margin: 24px auto 0; }
+    .print-btn { padding: 10px 28px; background: #4a7c2f; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .delete-btn { padding: 10px 28px; background: #e11d48; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    @media print { .btn-row { display: none; } body { background: white; padding: 0; } .page { box-shadow: none; border-radius: 0; } }
   </style>
 </head>
 <body>
   ${buildReceiptPage(receipt)}
-  <button class="print-btn" onclick="window.print()">🖨 Print</button>
+  <div class="btn-row">
+    <button class="print-btn" onclick="window.print()">🖨 Print</button>
+    <button class="delete-btn" onclick="
+      if (confirm('Delete receipt ${receipt.receiptNumber} for ₦${Number(receipt.amountPaid).toLocaleString()}? This cannot be undone.')) {
+        window.opener.postMessage({ type: 'maxhub-delete-fee-receipt', id: ${receipt.id} }, '*');
+        window.close();
+      }
+    ">🗑 Delete Receipt</button>
+  </div>
 </body>
 </html>`;
 
@@ -173,6 +183,7 @@ export function FeeReceipts() {
   const [recording, setRecording] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const canCreate = hasPermission('lms.fee_receipt.create.all') || hasPermission('lms.fee_receipt.create.own_department');
+  const canDelete = hasPermission('lms.fee_receipt.delete.all') || hasPermission('lms.fee_receipt.delete.own_department');
 
   const handleDownload = async (r: any) => {
     setDownloadingId(r.id);
@@ -210,6 +221,32 @@ export function FeeReceipts() {
     },
     enabled: recording && courseList.length > 0,
   });
+
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const deleteReceipt = useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/fee-receipts/${id}`),
+    onMutate: (id: number) => setDeletingId(id),
+    onSettled: () => setDeletingId(null),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fee-receipts'] }),
+  });
+
+  const handleDelete = (r: any) => {
+    if (!window.confirm(`Delete receipt ${r.receiptNumber} for ₦${Number(r.amountPaid).toLocaleString()}? This cannot be undone.`)) return;
+    deleteReceipt.mutate(r.id);
+  };
+
+  // The "View Receipt" screen opens in its own tab (a static blob document, not
+  // part of this React tree), so its Delete button can't call the mutation
+  // directly — it posts a message back to this window instead.
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'maxhub-delete-fee-receipt' && e.data.id) {
+        deleteReceipt.mutate(e.data.id);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [deleteReceipt]);
 
   const record = useMutation({
     mutationFn: () => apiClient.post('/fee-receipts', {
@@ -377,6 +414,18 @@ export function FeeReceipts() {
                         : <Download className="w-3.5 h-3.5" />}
                       {downloadingId === r.id ? 'Generating…' : 'Download'}
                     </button>
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDelete(r)}
+                        disabled={deletingId === r.id}
+                        className="flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                      >
+                        {deletingId === r.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <Trash2 className="w-3.5 h-3.5" />}
+                        {deletingId === r.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
