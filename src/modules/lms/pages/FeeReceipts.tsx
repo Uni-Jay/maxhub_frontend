@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Receipt, Plus, Download, Eye, Loader2, X, Trash2 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
@@ -116,23 +116,13 @@ function viewReceipt(receipt: any) {
   <style>
     ${RECEIPT_STYLE}
     body { background: #f4f6fb; padding: 20px; }
-    .btn-row { display: flex; gap: 12px; justify-content: center; margin: 24px auto 0; }
-    .print-btn { padding: 10px 28px; background: #4a7c2f; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-    .delete-btn { padding: 10px 28px; background: #e11d48; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-    @media print { .btn-row { display: none; } body { background: white; padding: 0; } .page { box-shadow: none; border-radius: 0; } }
+    .print-btn { display: block; text-align: center; margin: 24px auto 0; padding: 10px 28px; background: #4a7c2f; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    @media print { .print-btn { display: none; } body { background: white; padding: 0; } .page { box-shadow: none; border-radius: 0; } }
   </style>
 </head>
 <body>
   ${buildReceiptPage(receipt)}
-  <div class="btn-row">
-    <button class="print-btn" onclick="window.print()">🖨 Print</button>
-    <button class="delete-btn" onclick="
-      if (confirm('Delete receipt ${receipt.receiptNumber} for ₦${Number(receipt.amountPaid).toLocaleString()}? This cannot be undone.')) {
-        window.opener.postMessage({ type: 'maxhub-delete-fee-receipt', id: ${receipt.id} }, '*');
-        window.close();
-      }
-    ">🗑 Delete Receipt</button>
-  </div>
+  <button class="print-btn" onclick="window.print()">🖨 Print</button>
 </body>
 </html>`;
 
@@ -234,19 +224,6 @@ export function FeeReceipts() {
     if (!window.confirm(`Delete receipt ${r.receiptNumber} for ₦${Number(r.amountPaid).toLocaleString()}? This cannot be undone.`)) return;
     deleteReceipt.mutate(r.id);
   };
-
-  // The "View Receipt" screen opens in its own tab (a static blob document, not
-  // part of this React tree), so its Delete button can't call the mutation
-  // directly — it posts a message back to this window instead.
-  useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      if (e.data?.type === 'maxhub-delete-fee-receipt' && e.data.id) {
-        deleteReceipt.mutate(e.data.id);
-      }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [deleteReceipt]);
 
   const record = useMutation({
     mutationFn: () => apiClient.post('/fee-receipts', {
