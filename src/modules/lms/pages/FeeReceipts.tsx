@@ -381,16 +381,6 @@ export function FeeReceipts() {
                     <button onClick={() => viewReceipt(r)} className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-800 dark:text-gray-300">
                       <Eye className="w-3.5 h-3.5" /> View
                     </button>
-                    <button
-                      onClick={() => handleDownload(r)}
-                      disabled={downloadingId === r.id}
-                      className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
-                    >
-                      {downloadingId === r.id
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <Download className="w-3.5 h-3.5" />}
-                      {downloadingId === r.id ? 'Generating…' : 'Download'}
-                    </button>
                     {canDelete && (
                       <button
                         onClick={() => handleDelete(r)}
@@ -403,6 +393,16 @@ export function FeeReceipts() {
                         {deletingId === r.id ? 'Deleting…' : 'Delete'}
                       </button>
                     )}
+                    <button
+                      onClick={() => handleDownload(r)}
+                      disabled={downloadingId === r.id}
+                      className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                    >
+                      {downloadingId === r.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Download className="w-3.5 h-3.5" />}
+                      {downloadingId === r.id ? 'Generating…' : 'Download'}
+                    </button>
                   </div>
                 </div>
               );
