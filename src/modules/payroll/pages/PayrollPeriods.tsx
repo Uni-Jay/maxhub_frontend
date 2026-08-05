@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Calendar, Plus, Play, X, CheckCircle2, ChevronRight, Clock, AlertCircle } from 'lucide-react';
+import { Calendar, Plus, Play, X, CheckCircle2, ChevronRight, Clock, AlertCircle, UploadCloud } from 'lucide-react';
 import { payrollService, type PayrollPeriod } from '@services/payrollService';
+import PayrollUploadModal from '../components/PayrollUploadModal';
+import { useCurrentRoles, useCurrentPermissions, hasPermission } from '@utils/role';
 import { cn } from '@utils/cn';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -16,7 +18,7 @@ const STATUS_STYLES: Record<string, string> = {
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 const INIT_FORM = {
-  periodName: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1, year: new Date().getFullYear(),
   startDate: '', endDate: '',
 };
 
@@ -24,9 +26,14 @@ const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-xl 
 
 export default function PayrollPeriods() {
   const qc = useQueryClient();
+  const { roles } = useCurrentRoles();
+  const permissions = useCurrentPermissions();
+  const canManage = hasPermission(roles, permissions, 'hr.payroll.manage.all');
+
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [uploadTarget, setUploadTarget] = useState<PayrollPeriod | null>(null);
   const [form, setForm] = useState(INIT_FORM);
 
   const { data, isLoading } = useQuery({
@@ -66,10 +73,12 @@ export default function PayrollPeriods() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Pay Periods</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Configure and manage payroll cycles</p>
         </div>
-        <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm shadow-indigo-200 dark:shadow-none transition">
-          <Plus className="h-4 w-4" /> New Pay Period
-        </button>
+        {canManage && (
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm shadow-indigo-200 dark:shadow-none transition">
+            <Plus className="h-4 w-4" /> New Pay Period
+          </button>
+        )}
       </div>
 
       {/* Filter */}
@@ -115,27 +124,35 @@ export default function PayrollPeriods() {
                 {p.status}
               </span>
               {/* Actions */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {p.status === 'Draft' && (
-                  <button onClick={() => processMutation.mutate(p.id)} disabled={processMutation.isPending}
-                    className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg disabled:opacity-50 transition font-medium">
-                    <Play className="h-3 w-3" /> Process
-                  </button>
-                )}
-                {p.status === 'Draft' && (
-                  <button onClick={() => statusMutation.mutate({ id: p.id, status: 'Cancelled' })}
-                    className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition px-2 py-1.5">
-                    Cancel
-                  </button>
-                )}
-                {p.status === 'Processed' && (
-                  <button onClick={() => statusMutation.mutate({ id: p.id, status: 'Paid' })}
-                    className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg transition font-medium">
-                    <CheckCircle2 className="h-3 w-3" /> Mark Paid
-                  </button>
-                )}
-                <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-              </div>
+              {canManage && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {(p.status === 'Draft' || p.status === 'Processing') && (
+                    <button onClick={() => setUploadTarget(p)}
+                      className="flex items-center gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg transition font-medium">
+                      <UploadCloud className="h-3 w-3" /> Upload
+                    </button>
+                  )}
+                  {p.status === 'Draft' && (
+                    <button onClick={() => processMutation.mutate(p.id)} disabled={processMutation.isPending}
+                      className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg disabled:opacity-50 transition font-medium">
+                      <Play className="h-3 w-3" /> Process
+                    </button>
+                  )}
+                  {p.status === 'Draft' && (
+                    <button onClick={() => statusMutation.mutate({ id: p.id, status: 'Cancelled' })}
+                      className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition px-2 py-1.5">
+                      Cancel
+                    </button>
+                  )}
+                  {p.status === 'Processed' && (
+                    <button onClick={() => statusMutation.mutate({ id: p.id, status: 'Paid' })}
+                      className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg transition font-medium">
+                      <CheckCircle2 className="h-3 w-3" /> Mark Paid
+                    </button>
+                  )}
+                  <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
+                </div>
+              )}
             </motion.div>
           ))}
         </div>
@@ -179,12 +196,6 @@ export default function PayrollPeriods() {
               </div>
 
               <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Period Name *</label>
-                  <input value={form.periodName} onChange={e => setForm(f => ({ ...f, periodName: e.target.value }))}
-                    placeholder="e.g. June 2026 Payroll" className={inputCls} />
-                </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Month *</label>
@@ -212,7 +223,7 @@ export default function PayrollPeriods() {
 
                 {createMutation.isError && (
                   <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl px-3 py-2.5">
-                    <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" /> Failed to create period. Please try again.
+                    <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" /> {(createMutation.error as any)?.message || 'Failed to create period. Please try again.'}
                   </div>
                 )}
               </div>
@@ -223,7 +234,7 @@ export default function PayrollPeriods() {
                   Cancel
                 </button>
                 <button onClick={() => createMutation.mutate(form)}
-                  disabled={createMutation.isPending || !form.periodName || !form.startDate || !form.endDate}
+                  disabled={createMutation.isPending || !form.startDate || !form.endDate}
                   className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition">
                   {createMutation.isPending
                     ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -235,6 +246,14 @@ export default function PayrollPeriods() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {uploadTarget && (
+        <PayrollUploadModal
+          periodId={uploadTarget.id}
+          periodLabel={`${uploadTarget.periodName} · ${uploadTarget.periodCode}`}
+          onClose={() => setUploadTarget(null)}
+        />
+      )}
     </div>
   );
 }

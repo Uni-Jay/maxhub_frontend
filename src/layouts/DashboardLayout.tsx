@@ -35,15 +35,15 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-br from-indigo-50/60 via-white to-white dark:from-indigo-950/30 dark:via-gray-900 dark:to-gray-900">
         <img
           src="/images/maxhublogo.jpeg"
           alt="MaxHub"
-          className="h-8 w-auto object-contain flex-shrink-0"
+          className="h-8 w-auto object-contain flex-shrink-0 rounded-lg shadow-sm"
         />
         <div>
-          <p className="font-bold text-gray-900 dark:text-white text-sm">MaxHub ERP</p>
-          <p className="text-xs text-gray-400">Three Brands. One Vision.</p>
+          <p className="font-bold text-gray-900 dark:text-white text-sm tracking-tight">MaxHub ERP</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">Three Brands. One Vision.</p>
         </div>
         {onClose && (
           <button onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-gray-600 lg:hidden">
@@ -68,15 +68,20 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
                 onClick={onClose}
                 className={({ isActive: a }) =>
                   cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                    'relative flex items-center gap-3 pl-3 pr-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                     a
-                      ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                      ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-semibold'
                       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
                   )
                 }
               >
-                <Icon className="h-4 w-4 flex-shrink-0" />
-                {item.label}
+                {({ isActive: a }) => (
+                  <>
+                    {a && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-indigo-600 dark:bg-indigo-400" />}
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    {item.label}
+                  </>
+                )}
               </NavLink>
             );
           }
@@ -86,12 +91,13 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
               <button
                 onClick={() => setExpanded(isExpanded ? null : item.path)}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                  'relative w-full flex items-center gap-3 pl-3 pr-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                   isActive
-                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-semibold'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
                 )}
               >
+                {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-indigo-600 dark:bg-indigo-400" />}
                 <Icon className="h-4 w-4 flex-shrink-0" />
                 <span className="flex-1 text-left">{item.label}</span>
                 <ChevronRight
@@ -299,7 +305,7 @@ export function DashboardLayout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Topbar */}
-        <header className="h-16 flex items-center gap-4 px-6 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+        <header className="h-16 flex items-center gap-4 px-6 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 shadow-sm shadow-gray-100/50 dark:shadow-none z-10">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
@@ -325,7 +331,7 @@ export function DashboardLayout() {
             {/* Search */}
             <button
               onClick={() => setSearchOpen(true)}
-              className="hidden md:flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition min-w-[180px]"
+              className="hidden md:flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-white dark:hover:bg-gray-800 transition min-w-[180px]"
             >
               <Search className="h-3.5 w-3.5" />
               <span className="text-xs">Search anything...</span>

@@ -73,20 +73,45 @@ body {
   font-feature-settings: 'rlig' 1, 'calt' 1;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar — thin & indigo-tinted to match the app's accent color
+   instead of the generic OS-grey default. */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-muted;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground rounded-full;
+  background-color: rgb(199 210 254 / 0.7); /* indigo-200 */
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-foreground;
+  background-color: rgb(129 140 248 / 0.9); /* indigo-400 */
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgb(55 48 163 / 0.5); /* indigo-800 */
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(99 102 241 / 0.7); /* indigo-500 */
+}
+
+/* Keyboard-navigation focus ring — visible and on-brand, but only for
+   keyboard users (mouse clicks don't show the browser's default outline
+   either way, so this only ever appears when it's actually useful). */
+:focus-visible {
+  outline: 2px solid rgb(99 102 241 / 0.6); /* indigo-500 */
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Selection color to match the brand instead of the browser's default blue. */
+::selection {
+  background-color: rgb(199 210 254 / 0.6); /* indigo-200 */
+  color: rgb(30 27 75); /* indigo-950 */
 }

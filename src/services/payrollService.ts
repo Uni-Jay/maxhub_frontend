@@ -3,28 +3,31 @@ import { apiClient } from './apiClient';
 export interface PayrollPeriod {
   id: number; uuid: string; periodCode: string; periodName: string;
   month: number; year: number; startDate: string; endDate: string;
-  status: 'Draft' | 'Processing' | 'Processed' | 'Paid' | 'Cancelled';
-  processedAt?: string; salaryCount?: number; totalNetPayout?: number;
-  createdAt: string;
+  salaryProcessDate: string; bankTransferDate?: string;
+  status: 'Draft' | 'Processing' | 'Processed' | 'Approved' | 'Transferred' | 'Closed';
+  remarks?: string; createdAt: string;
 }
 
 export interface EmployeeSalary {
-  id: number; uuid: string; salaryCode: string; periodId: number; staffId: number;
+  id: number; uuid: string; salaryCode: string;
+  payrollPeriodId: number; staffId: number;
   baseSalary: number; bonus: number; grossSalary: number;
   incomeTax: number; providentFund: number; healthInsurance: number;
-  otherDeductions: number; totalDeductions: number; netSalary: number;
-  status: 'Draft' | 'Approved' | 'Processed' | 'Paid';
-  paidAt?: string; notes?: string;
-  staff?: { user: { firstName: string; lastName: string; avatar?: string } };
-  period?: PayrollPeriod;
+  otherDeductions: number; advanceAmount: number; totalDeductions: number;
+  totalEarnings: number; netSalary: number;
+  status: 'Draft' | 'Approved' | 'Processed' | 'Paid' | 'OnHold';
+  bankAccountNumber?: string; remarks?: string;
+  paidOn?: string; processedOn?: string;
+  staff?: { id: number; employeeId?: string; firstName: string; lastName: string; email: string };
+  payrollPeriod?: { id: number; periodCode: string; periodName: string; month: number; year: number; status: string };
 }
 
 export interface SalaryStructure {
-  id: number; uuid: string; structureName: string;
-  baseSalary: number; bonus: number; incomeTax: number;
-  providentFund: number; healthInsurance: number; isDefault: boolean;
+  id: number; uuid: string; code: string; name: string; description?: string;
+  baseSalary: number; status: 'Active' | 'Inactive';
+  applicableFromDate: string; applicableToDate?: string;
   departmentId?: number; designationId?: number;
-  department?: { name: string }; designation?: { name: string };
+  department?: { id: number; name: string }; designation?: { id: number; name: string };
 }
 
 export interface PayrollOverview {
@@ -43,6 +46,11 @@ export interface SalaryListParams {
   page?: number; limit?: number; periodId?: number; staffId?: number; status?: string; search?: string;
 }
 
+export interface UploadSummary {
+  periodCode: string;
+  summary: { created: number; updated: number; skipped: number; errors: Array<{ row: number; reason: string }> };
+}
+
 export const payrollService = {
   getOverview: () => apiClient.get<PayrollOverview>('/payroll/stats/overview'),
 
@@ -52,16 +60,23 @@ export const payrollService = {
       pagination: { total: number; page: number; limit: number; totalPages: number };
     }>,
 
-  getPeriodById: (id: number | string) => apiClient.get<PayrollPeriod>(`/payroll/periods/${id}`),
+  getPeriodById: (id: number | string) => apiClient.get<PayrollPeriod & { salaryStats?: Record<string, any> }>(`/payroll/periods/${id}`),
 
-  createPeriod: (payload: { periodName: string; month: number; year: number; startDate: string; endDate: string }) =>
+  createPeriod: (payload: { month: number; year: number; startDate: string; endDate: string; salaryProcessDate?: string; bankTransferDate?: string; remarks?: string }) =>
     apiClient.post<PayrollPeriod>('/payroll/periods', payload),
 
   updatePeriodStatus: (id: number | string, status: string) =>
     apiClient.patch<PayrollPeriod>(`/payroll/periods/${id}/status`, { status }),
 
   processPeriod: (id: number | string) =>
-    apiClient.post<{ processed: number }>(`/payroll/periods/${id}/process`, {}),
+    apiClient.post<{ periodCode: string; status: string; summary: any }>(`/payroll/periods/${id}/process`, {}),
+
+  /** Bulk salary upload for a pay period — admin/hr only. `file` must be a .csv Blob/File. */
+  uploadSalaries: (id: number | string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiClient.post<UploadSummary>(`/payroll/periods/${id}/upload`, form);
+  },
 
   getSalaries: (params: SalaryListParams = {}) =>
     apiClient.getRaw('/payroll/salaries', params) as Promise<{
@@ -71,16 +86,20 @@ export const payrollService = {
 
   getSalaryById: (id: number | string) => apiClient.get<EmployeeSalary>(`/payroll/salaries/${id}`),
 
-  createSalary: (payload: Partial<EmployeeSalary> & { periodId: number; staffId: number; baseSalary: number }) =>
-    apiClient.post<EmployeeSalary>('/payroll/salaries', payload),
+  updateSalary: (id: number | string, payload: Partial<EmployeeSalary>) =>
+    apiClient.patch<EmployeeSalary>(`/payroll/salaries/${id}`, payload),
 
   updateSalaryStatus: (id: number | string, status: string) =>
     apiClient.patch<EmployeeSalary>(`/payroll/salaries/${id}/status`, { status }),
 
-  getStructures: () => apiClient.get<SalaryStructure[]>('/payroll/structures'),
+  getStructures: (params: { status?: string; departmentId?: number; designationId?: number } = {}) =>
+    apiClient.get<SalaryStructure[]>('/payroll/structures', params),
 
-  createStructure: (payload: Partial<SalaryStructure> & { structureName: string; baseSalary: number }) =>
-    apiClient.post<SalaryStructure>('/payroll/structures', payload),
+  createStructure: (payload: {
+    code: string; name: string; description?: string; baseSalary: number;
+    status?: 'Active' | 'Inactive'; applicableFromDate: string; applicableToDate?: string;
+    departmentId?: number; designationId?: number;
+  }) => apiClient.post<SalaryStructure>('/payroll/structures', payload),
 
   updateStructure: (id: number | string, payload: Partial<SalaryStructure>) =>
     apiClient.put<SalaryStructure>(`/payroll/structures/${id}`, payload),

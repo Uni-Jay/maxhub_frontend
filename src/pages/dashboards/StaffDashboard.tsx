@@ -12,7 +12,6 @@ import { useAuthStore } from '@store/authStore';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { taskService } from '@/services/taskService';
 import { leaveService } from '@/services/leaveService';
-import { payrollService } from '@/services/payrollService';
 import { notificationService } from '@/services/notificationService';
 import { projectService } from '@/services/projectService';
 import { videoCallService } from '@/services/videoCallService';
@@ -80,9 +79,14 @@ export function StaffDashboard() {
     ['staff-leave-balance'],
     () => leaveService.getBalance()
   );
-  const { data: payslipsData, isLoading: payslipsLoading } = useApiQuery(
+  // `payrollService.getSalaries()` is the admin/HR endpoint (gated on
+  // hr.payroll.view.all) — plain Staff never has that permission, so this
+  // used to 403 for every staff member, and had it worked it would have
+  // returned every employee's salary records, not just this user's own. The
+  // self-service `/payroll/my-slips` route is what MyPayslips.tsx uses too.
+  const { data: mySlipsRaw, isLoading: payslipsLoading } = useApiQuery(
     ['staff-payslips'],
-    () => payrollService.getSalaries({ limit: 3 })
+    () => apiClient.get<any[]>('/payroll/my-slips')
   );
   const { data: notificationsData, isLoading: notifLoading } = useApiQuery(
     ['staff-notifications'],
@@ -117,7 +121,7 @@ export function StaffDashboard() {
   const pendingTasks = tasks.filter((t) => t.status !== 'Done').length;
   const leaveTypes = leaveBalance?.leaveTypes ?? [];
   const totalLeaveAvailable = leaveBalance?.available ?? 0;
-  const payslips = payslipsData?.data ?? [];
+  const payslips: any[] = (Array.isArray(mySlipsRaw) ? mySlipsRaw : (mySlipsRaw as any)?.data ?? []).slice(0, 3);
   const notifications = notificationsData?.data ?? [];
   const myProjectsCount = projectsData?.pagination?.total ?? 0;
   const upcomingMeetings = meetingsData?.data ?? [];
@@ -341,7 +345,7 @@ export function StaffDashboard() {
                     <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{p.period?.periodName ?? `${p.period?.month}/${p.period?.year}`}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{p.periodName}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">₦{p.netSalary?.toLocaleString() ?? '—'}</p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${

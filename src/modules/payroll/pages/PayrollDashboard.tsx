@@ -3,9 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Users, DollarSign, CheckCircle, Clock,
-  Calendar, ChevronRight, Play, FileText, Settings,
+  Calendar, ChevronRight, Play, FileText, Settings, UploadCloud,
 } from 'lucide-react';
 import { payrollService } from '@services/payrollService';
+import { useCurrentRoles, useCurrentPermissions, hasPermission } from '@utils/role';
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'bg-gray-100 text-gray-700',
@@ -18,6 +19,10 @@ const STATUS_COLORS: Record<string, string> = {
 const fmt = (n: number) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(n);
 
 export default function PayrollDashboard() {
+  const { roles } = useCurrentRoles();
+  const permissions = useCurrentPermissions();
+  const canManage = hasPermission(roles, permissions, 'hr.payroll.manage.all');
+
   const { data: overviewRaw, isLoading: loadingOverview } = useQuery({
     queryKey: ['payroll-overview'],
     queryFn: () => payrollService.getOverview(),
@@ -50,17 +55,25 @@ export default function PayrollDashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    // Just `space-y-6`, matching every other Payroll page — DashboardLayout's
+    // <main> already wraps routed pages in `p-6`, so this used to double the
+    // padding on every side versus Periods/Slips/Structures.
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Payroll Management</h1>
-          <p className="text-gray-500 text-sm">Manage salaries, periods, and structures</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Payroll Management</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">Manage salaries, periods, and structures</p>
         </div>
-        <div className="flex gap-2">
-          <Link to="/payroll/periods" className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium">
-            <Play className="h-4 w-4" /> Run Payroll
-          </Link>
-        </div>
+        {canManage && (
+          <div className="flex gap-2">
+            <Link to="/payroll/periods" className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-semibold">
+              <UploadCloud className="h-4 w-4" /> Upload Payroll
+            </Link>
+            <Link to="/payroll/periods" className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white px-4 py-2.5 rounded-xl transition-colors text-sm font-semibold shadow-sm shadow-indigo-200 dark:shadow-none">
+              <Play className="h-4 w-4" /> Run Payroll
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Stats */}
@@ -88,20 +101,20 @@ export default function PayrollDashboard() {
       {/* Quick Links */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { to: '/payroll/periods', icon: Calendar, label: 'Pay Periods', desc: 'Manage payroll cycles', color: 'text-indigo-600 bg-indigo-50' },
-          { to: '/payroll/slips', icon: FileText, label: 'Salary Slips', desc: 'View & approve salaries', color: 'text-green-600 bg-green-50' },
-          { to: '/payroll/structures', icon: Settings, label: 'Salary Structures', desc: 'Configure pay templates', color: 'text-violet-600 bg-violet-50' },
+          { to: '/payroll/periods', icon: Calendar, label: 'Pay Periods', desc: 'Manage payroll cycles', color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' },
+          { to: '/payroll/slips', icon: FileText, label: 'Salary Slips', desc: 'View & approve salaries', color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30' },
+          { to: '/payroll/structures', icon: Settings, label: 'Salary Structures', desc: 'Configure pay templates', color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30' },
         ].map((item, i) => {
           const Icon = item.icon;
           return (
             <motion.div key={item.to} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 + i * 0.1 }}>
-              <Link to={item.to} className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow group">
+              <Link to={item.to} className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow group">
                 <div className={`p-3 rounded-xl ${item.color}`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-gray-900 text-sm">{item.label}</p>
-                  <p className="text-xs text-gray-500">{item.desc}</p>
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{item.label}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{item.desc}</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
               </Link>
@@ -111,40 +124,40 @@ export default function PayrollDashboard() {
       </div>
 
       {/* Recent Pay Periods */}
-      <div className="bg-white rounded-xl border border-gray-100">
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Recent Pay Periods</h2>
-          <Link to="/payroll/periods" className="text-sm text-indigo-600 hover:text-indigo-700">View all</Link>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Recent Pay Periods</h2>
+          <Link to="/payroll/periods" className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300">View all</Link>
         </div>
         {periods.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
+          <div className="text-center py-12 text-gray-400 dark:text-gray-600">
             <Calendar className="h-8 w-8 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No pay periods yet</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
             {periods.map((period: any, i: number) => (
               <motion.div
                 key={period.id}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.6 + i * 0.05 }}
-                className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
-                    <Calendar className="h-5 w-5 text-indigo-600" />
+                  <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                    <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900 text-sm">{period.periodName}</p>
-                    <p className="text-xs text-gray-500">{period.periodCode} · {new Date(period.startDate).toLocaleDateString()} – {new Date(period.endDate).toLocaleDateString()}</p>
+                    <p className="font-medium text-gray-900 dark:text-white text-sm">{period.periodName}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{period.periodCode} · {new Date(period.startDate).toLocaleDateString()} – {new Date(period.endDate).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[period.status] || 'bg-gray-100'}`}>
                     {period.status}
                   </span>
-                  <Link to="/payroll/periods" className="text-gray-400 hover:text-gray-600">
+                  <Link to="/payroll/periods" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                 </div>

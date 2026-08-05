@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, ChevronDown, ChevronRight, Check, Download, User } from 'lucide-react';
 import { payrollService, type EmployeeSalary } from '@services/payrollService';
+import { useCurrentRoles, useCurrentPermissions, hasPermission } from '@utils/role';
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'bg-gray-100 text-gray-700',
@@ -18,10 +19,10 @@ const STATUS_NEXT: Record<string, string> = {
 const fmt = (n: number) => `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function downloadPayslip(salary: EmployeeSalary) {
-  const employeeName = salary.staff?.user
-    ? `${salary.staff.user.firstName} ${salary.staff.user.lastName}`
+  const employeeName = salary.staff
+    ? `${salary.staff.firstName} ${salary.staff.lastName}`
     : `Staff #${salary.staffId}`;
-  const period = (salary as any).period?.periodName || salary.salaryCode;
+  const period = salary.payrollPeriod?.periodName || salary.salaryCode;
   const today = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
 
   const html = `<!DOCTYPE html>
@@ -82,7 +83,7 @@ function downloadPayslip(salary: EmployeeSalary) {
     <div class="meta">
       <div class="meta-item"><p>Employee Name</p><p>${employeeName}</p></div>
       <div class="meta-item"><p>Pay Period</p><p>${period}</p></div>
-      <div class="meta-item"><p>Employee ID</p><p>${salary.salaryCode.split('-')[0] || 'N/A'}</p></div>
+      <div class="meta-item"><p>Employee ID</p><p>${salary.staff?.employeeId || `Staff #${salary.staffId}`}</p></div>
       <div class="meta-item"><p>Payment Date</p><p>${today}</p></div>
     </div>
     <h3>Earnings</h3>
@@ -128,6 +129,9 @@ function downloadPayslip(salary: EmployeeSalary) {
 
 export default function PayrollSlips() {
   const qc = useQueryClient();
+  const { roles } = useCurrentRoles();
+  const permissions = useCurrentPermissions();
+  const canManage = hasPermission(roles, permissions, 'hr.payroll.manage.all');
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [periodFilter, setPeriodFilter] = useState('');
@@ -213,7 +217,7 @@ export default function PayrollSlips() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">
-                      {salary.staff?.user ? `${salary.staff.user.firstName} ${salary.staff.user.lastName}` : `Staff #${salary.staffId}`}
+                      {salary.staff ? `${salary.staff.firstName} ${salary.staff.lastName}` : `Staff #${salary.staffId}`}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">{salary.salaryCode}</p>
                   </div>
@@ -228,7 +232,7 @@ export default function PayrollSlips() {
                   <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${STATUS_COLORS[salary.status] || 'bg-gray-100 text-gray-700'}`}>
                     {salary.status}
                   </span>
-                  {STATUS_NEXT[salary.status] && (
+                  {canManage && STATUS_NEXT[salary.status] && (
                     <button
                       onClick={e => { e.stopPropagation(); statusMutation.mutate({ id: salary.id, status: STATUS_NEXT[salary.status] }); }}
                       disabled={statusMutation.isPending}

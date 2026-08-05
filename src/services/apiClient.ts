@@ -81,10 +81,19 @@ class ApiClient {
   }
 
   /**
-   * POST request
+   * POST request. File uploads (FormData) are detected automatically — the
+   * instance-wide 'application/json' default is cleared for that request so
+   * the browser can set the correct multipart/form-data boundary itself;
+   * leaving 'application/json' in place makes axios silently JSON-stringify
+   * the FormData instead of sending it as a real file upload.
    */
   async post<T>(url: string, data?: any): Promise<T> {
-    const response = await this.client.post<ApiResponse<T>>(url, data);
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+    const response = await this.client.post<ApiResponse<T>>(
+      url,
+      data,
+      isFormData ? { headers: { 'Content-Type': undefined } } : undefined
+    );
     return response.data.data as T;
   }
 
