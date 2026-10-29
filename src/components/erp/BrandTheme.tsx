@@ -1,3 +1,4 @@
+import { AgendaStrip } from './AgendaStrip';
 import type { CSSProperties, ReactNode } from 'react';
 import { useBrands } from '@hooks/useErp';
 
@@ -50,6 +51,7 @@ export function BrandTheme({ code, children, header = false }: { code?: string |
           </div>
         </div>
       )}
+      {header && code && <AgendaStrip brand={code} />}
       {children}
     </div>
   );

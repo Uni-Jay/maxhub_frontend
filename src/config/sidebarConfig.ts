@@ -79,6 +79,8 @@ const PAYROLL_FULL: SidebarItem = { label: 'Payroll', path: '/payroll', icon: Do
 ]};
 const MY_PAYSLIP: SidebarItem = { label: 'My Payslip', path: '/payroll/my-slips', icon: Wallet };
 const FINANCE_FULL: SidebarItem = { label: 'Accounts', path: '/finance', icon: Receipt, children: [
+  { label: 'Profit & Loss', path: '/finance/profit' },
+  { label: 'Business Expenses', path: '/finance/expenses' },
   { label: 'Payments & Receipts', path: '/receipts' },
   { label: 'Invoices', path: '/invoices' },
   { label: 'School Fee Receipts', path: '/lms/fee-receipts' },
@@ -170,7 +172,7 @@ const HOD_NAV: SidebarItem[] = [
     MY_ATTENDANCE, MY_LEAVE,
     { label: 'Appraisals', path: '/hr/appraisals', icon: Award },
   ]),
-  ...s('Finance', [RECEIPTS, MY_PAYSLIP]),
+  ...s('Finance', [RECEIPTS, { label: 'Business Expenses', path: '/finance/expenses', icon: Wallet }, MY_PAYSLIP]),
   ...s('Sales', [CRM]),
   ...s('Communication', [MESSAGES, BROADCASTS, AI]),
   ...s('Administration', [MY_SETTINGS]),

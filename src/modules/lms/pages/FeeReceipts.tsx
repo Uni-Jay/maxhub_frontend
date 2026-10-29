@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Receipt, Plus, Download, Eye, Loader2, X, Trash2 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { useSchool, SchoolBar } from '@components/erp/School';
+import { OutstandingFees } from '../components/OutstandingFees';
 import { apiClient } from '@services/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -311,6 +312,8 @@ export function FeeReceipts() {
           </button>
         )}
       </div>
+
+      <OutstandingFees school={school} />
 
       {recording && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 space-y-3">

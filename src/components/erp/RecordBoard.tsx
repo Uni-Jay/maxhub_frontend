@@ -106,8 +106,14 @@ export const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'CAD', 'AED', 'GHS', 'ZAR
 // ─── Form modal ─────────────────────────────────────────────────────────────
 function RecordForm({ cfg, initial, onClose, onSaved }: { cfg: RecordBoardConfig; initial: any | null; onClose: () => void; onSaved: (r: any) => void }) {
   const { data: people = [] } = usePeople();
+  const { departments } = useBrands();
   const [form, setForm] = useState<any>(() => {
-    const f: any = { brand: initial?.departmentId ?? cfg.brandCode };
+    // Show the record's own brand/division in the brand picker when editing.
+    const deptCode = initial ? departments.find((d: any) => String(d.id) === String(initial.departmentId))?.code : undefined;
+    const initialBrand = initial
+      ? (cfg.brandChoices?.some((c) => c.code === deptCode) ? deptCode : initial.departmentId ?? '')
+      : cfg.brandCode;
+    const f: any = { brand: initialBrand };
     for (const d of cfg.fields) f[d.name] = initial ? toInput(initial[d.name], d.type) : (d.default ?? (d.type === 'checkbox' ? false : ''));
     if (initial && initial.items !== undefined) f.items = initial.items; // line items are edited inside the form (formExtras)
     return f;

@@ -109,6 +109,8 @@ const PayrollSlips = React.lazy(() => import('@modules/payroll/pages/PayrollSlip
 const StaffPay = React.lazy(() => import('@modules/payroll/pages/StaffPay'));
 const TrackingPage = React.lazy(() => import('@modules/tracking/pages/TrackingPage'));
 const CurrencyPage = React.lazy(() => import('@modules/erp/pages/CurrencyPage'));
+const ProfitPage = React.lazy(() => import('@modules/erp/pages/ProfitPage'));
+const ExpensesPage = React.lazy(() => import('@modules/erp/pages/ExpensesPage'));
 const MyPayslips = React.lazy(() => import('@modules/payroll/pages/MyPayslips'));
 
 // ─── CRM ───
@@ -345,6 +347,8 @@ function App() {
               <Route path="/payroll/staff-pay" element={<StaffPay />} />
               <Route path="/tracking" element={<TrackingPage />} />
               <Route path="/finance/currency" element={<CurrencyPage />} />
+              <Route path="/finance/profit" element={<ProfitPage />} />
+              <Route path="/finance/expenses" element={<ExpensesPage />} />
               <Route path="/payroll/structures" element={<Navigate to="/payroll/staff-pay" replace />} />
               <Route path="/payroll/my-slips" element={<MyPayslips />} />
 
