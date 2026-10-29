@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Users, Calendar, Briefcase, CheckSquare, Settings,
-  FileText, MessageSquare, BarChart3, HelpCircle, UserCircle, Send,
+  FileText, MessageSquare, BarChart3, HelpCircle, Send,
   GraduationCap, Video, DollarSign, Package, UserCheck, ShoppingCart,
   FolderOpen, Receipt, BarChart2, Bot, Building2, Globe,
   Award, ArrowUpCircle, Wallet, ClipboardList,
@@ -60,12 +60,13 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
   ]},
   { label: 'Staff Queries', path: '/queries', icon: HelpCircle },
   { label: 'CRM', path: '/crm', icon: ShoppingCart, children: [
-    { label: 'Contacts', path: '/crm/contacts' },
+    { label: 'Clients', path: '/clients' },
+    { label: 'Contacts & Leads', path: '/crm/contacts' },
     { label: 'Pipeline', path: '/crm/pipeline' },
     { label: 'Forecast', path: '/crm/forecast' },
     { label: 'Proposals', path: '/crm/proposals' },
+    { label: 'Customer Reports', path: '/customer-reports' },
   ]},
-  { label: 'Clients', path: '/clients', icon: UserCircle },
   { label: 'Inventory', path: '/inventory', icon: Package, children: [
     { label: 'Dashboard', path: '/inventory/dashboard' },
     { label: 'Items', path: '/inventory/items' },
@@ -77,7 +78,6 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
     { label: 'Student Fee Receipts', path: '/lms/fee-receipts' },
     { label: 'Audit Logs', path: '/audit-logs' },
   ]},
-  { label: 'Customer Reports', path: '/customer-reports', icon: BarChart2 },
   { label: 'Analytics', path: '/analytics', icon: BarChart2 },
   { label: 'AI Assistant', path: '/ai-assistant', icon: Bot },
   { label: 'Calendar', path: '/calendar', icon: Calendar },
@@ -110,7 +110,6 @@ const COMMON_TAIL: SidebarItem[] = [
   { label: 'Files', path: '/files', icon: FolderOpen },
   { label: 'AI Assistant', path: '/ai-assistant', icon: Bot },
   { label: 'My Payslip', path: '/payroll/my-slips', icon: DollarSign },
-  { label: 'Customer Reports', path: '/customer-reports', icon: BarChart2 },
   { label: 'Settings', path: '/settings', icon: Settings, children: [
     { label: 'Profile', path: '/settings/profile' },
     { label: 'Security', path: '/settings/security' },
@@ -121,10 +120,12 @@ const COMMON_TAIL: SidebarItem[] = [
 // ─── Full CRM group — available to every role (Contacts/Pipeline/Forecast/Proposals) ───
 const CRM_NAV: SidebarItem[] = [
   { label: 'CRM', path: '/crm', icon: ShoppingCart, children: [
-    { label: 'Contacts', path: '/crm/contacts' },
+    { label: 'Clients', path: '/clients' },
+    { label: 'Contacts & Leads', path: '/crm/contacts' },
     { label: 'Pipeline', path: '/crm/pipeline' },
     { label: 'Forecast', path: '/crm/forecast' },
     { label: 'Proposals', path: '/crm/proposals' },
+    { label: 'Customer Reports', path: '/customer-reports' },
   ]},
 ];
 
@@ -247,7 +248,7 @@ const STAFF_NAV: SidebarItem[] = [
   ]},
   { label: 'My Tasks', path: '/tasks', icon: CheckSquare },
   { label: 'My Projects', path: '/projects', icon: Briefcase },
-  { label: 'My Reports', path: '/hr/weekly-report', icon: FileText },
+  { label: 'Weekly Report', path: '/hr/weekly-report', icon: FileText },
   { label: 'Training', path: '/hr/training', icon: GraduationCap },
   ...CRM_NAV,
   ...COMMON_TAIL,
@@ -276,7 +277,6 @@ const ACCOUNTANT_EXTRA_NAV: SidebarItem[] = [
 ];
 
 const RECEPTIONIST_EXTRA_NAV: SidebarItem[] = [
-  { label: 'Clients', path: '/clients', icon: Users },
   { label: 'Staff Queries', path: '/queries', icon: ClipboardList },
 ];
 
@@ -316,27 +316,22 @@ function sharedErpNav(role: CanonicalRole): SidebarItem[] {
 
 export function getNavForRole(role: CanonicalRole, position?: string | null, departmentCodes?: string[] | null): SidebarItem[] {
   const base = SIDEBAR_CONFIG[role] ?? STAFF_NAV;
-  // HR manages staff lifecycle across the whole company, not just their own
-  // linked department(s) — give them every department's module nav (Kurios
-  // SAT, VisaMax, BeadMax) regardless of personal StaffDepartment coverage,
-  // unlike HOD/staff who only see the department(s) they're actually in.
-  // Super Admin's own SIDEBAR_CONFIG entry already hardcodes every module
-  // (Kurios SAT/VisaMax/BeadMax) unconditionally — appending deptExtra for
-  // them too would just duplicate those entries for any super admin who
-  // also happens to be StaffDepartment-linked (e.g. a CEO record covering
-  // all three business units).
-  // Every staff member currently works across all brands (VisaMax, Kurios SAT,
-  // BeadMax, Maxfood Farm), so every role gets every brand's menu. What each
-  // person can see/do inside a brand is still enforced by the backend
-  // (department scope for HOD/staff, full access for Admin/Super Admin).
+  // Every staff member currently works across all brands, so every role gets
+  // every brand's menu (what they can see inside is enforced by the backend).
+  // Clean order: Dashboard → brands → the role's own menu → shared pages,
+  // with each page appearing exactly once.
   void departmentCodes;
-  const deptExtra = [...getDepartmentExtraNav(BRAND_CODES), ...sharedErpNav(role)];
-
-  if (role !== 'staff' || !position) return [...base, ...deptExtra];
-  const pos = position.toLowerCase();
-  if (pos === 'accountant') return [...base, ...ACCOUNTANT_EXTRA_NAV, ...deptExtra];
-  if (pos === 'receptionist') return [...base, ...RECEPTIONIST_EXTRA_NAV, ...deptExtra];
-  return [...base, ...deptExtra];
+  const brandMenus = getDepartmentExtraNav(BRAND_CODES);
+  const pos = (position || '').toLowerCase();
+  const extra = role === 'staff' && pos === 'accountant' ? ACCOUNTANT_EXTRA_NAV : role === 'staff' && pos === 'receptionist' ? RECEPTIONIST_EXTRA_NAV : [];
+  const [dash, ...rest] = base;
+  const shared = sharedErpNav(role);
+  const brandsHub = shared.filter((i) => i.path === '/brands');
+  const tail = shared.filter((i) => i.path !== '/brands');
+  const seen = new Set<string>();
+  const settings = rest.filter((i) => i.path === '/settings' || i.path.startsWith('/settings/'));
+  const body = rest.filter((i) => !settings.includes(i));
+  return [dash, ...brandsHub, ...brandMenus, ...body, ...extra, ...tail, ...settings].filter((i) => (seen.has(i.path) ? false : (seen.add(i.path), true)));
 }
 
 /** Every item across every role's config, deduped by path — used only for page-title/breadcrumb lookups. */

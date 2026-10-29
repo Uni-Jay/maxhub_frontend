@@ -161,16 +161,6 @@ export const hrService = {
   recordAttendance: (trainingId: number | string, payload: { staffId: number; attendanceDate: string; status: string; notes?: string }) =>
     apiClient.post<TrainingAttendance>(`/training/${trainingId}/attendance`, payload),
 
-  // Job Sync Dashboard
-  getJobSyncStats: () => apiClient.get<{ total: number; synced: number; pending: number; failed: number }>('/job-sync/stats'),
-
-  getJobSyncList: (params: { page?: number; limit?: number; syncStatus?: string; businessUnit?: string } = {}) =>
-    apiClient.getRaw('/job-sync', params) as Promise<{ data: JobPosting[]; pagination: any }>,
-
-  retryJobSync: (id: number | string) => apiClient.patch<JobPosting>(`/job-sync/${id}/retry`, {}),
-
-  getJobSyncLogs: (id: number | string) => apiClient.get<JobSyncLog[]>(`/job-sync/${id}/logs`),
-
   // Promotions
   getPromotions: (status?: string) =>
     apiClient.get<EmployeePromotion[]>('/promotions', status ? { status } : undefined),

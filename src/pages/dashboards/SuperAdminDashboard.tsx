@@ -133,9 +133,9 @@ function formatDate(d: Date) {
 }
 
 function formatCurrency(n: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-NG', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'NGN',
     maximumFractionDigits: 0,
   }).format(n);
 }
@@ -375,15 +375,12 @@ export function SuperAdminDashboard() {
                     Total Revenue
                   </p>
                   <p className="text-2xl font-bold mt-2">
-                    {revenueQuery.isLoading
+                    {/* All-time cash received (fee receipts + payments & receipts) — the
+                        same figure as the receipts pages, not a 6-month chart sum. */}
+                    {statsQuery.isLoading
                       ? '…'
-                      : revenueQuery.data && revenueQuery.data.length > 0
-                      ? formatCurrency(
-                          revenueQuery.data.reduce(
-                            (sum: number, d: RevenueData) => sum + d.revenue,
-                            0,
-                          ),
-                        )
+                      : stats?.totalRevenue !== undefined
+                      ? formatCurrency(Number(stats.totalRevenue))
                       : '—'}
                   </p>
                 </div>

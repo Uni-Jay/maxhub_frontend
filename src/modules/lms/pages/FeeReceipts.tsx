@@ -18,91 +18,138 @@ function generateSessionLabel() {
   return `${y}/${y + 1}`;
 }
 
-const RECEIPT_STYLE = `
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; }
-  .page { max-width: 750px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
-  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #2d5016 100%); color: white; padding: 32px 40px; }
-  .header h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; }
-  .header p { opacity: 0.8; font-size: 12px; margin-top: 2px; }
-  .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
-  .receipt-badge { text-align: right; }
-  .receipt-badge .num { font-size: 18px; font-weight: 700; }
-  .receipt-badge .status { display: inline-block; margin-top: 6px; padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,0.25); }
-  .body { padding: 32px 40px; }
-  .school-name { font-size: 16px; font-weight: 700; color: #4a7c2f; border-bottom: 2px solid #4a7c2f; padding-bottom: 8px; margin-bottom: 24px; }
-  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
-  .info-block label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; font-weight: 600; }
-  .info-block p { font-size: 14px; font-weight: 600; color: #111827; margin-top: 2px; }
-  .table-wrap { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; margin: 24px 0; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  thead { background: #f3f4f6; }
-  th { padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; font-weight: 700; }
-  td { padding: 12px 14px; border-top: 1px solid #f0f0f0; }
-  .total-row { background: #f0f4ff; }
-  .total-row td { font-weight: 700; color: #4a7c2f; font-size: 15px; }
-  .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
-  .footer p { font-size: 11px; color: #6b7280; }
-  .authorized { text-align: right; }
-  .authorized .line { width: 140px; border-top: 1px solid #9ca3af; margin: 0 0 0 auto; padding-top: 4px; font-size: 10px; color: #6b7280; text-align: center; }
-`;
+// ─── Receipt design ─────────────────────────────────────────────────────────
+// School fee receipts carry the brand of the school: Kurios SAT ICT Training
+// Center by default, BeadMax Design Vocational School when the course belongs
+// to a BeadMax department.
+interface SchoolBrand { name: string; school: string; tagline: string; logo: string; primary: string; dark: string; address: string; phone: string; email: string; website: string }
+const SCHOOL_BRANDS: Record<'KS' | 'BM', SchoolBrand> = {
+  KS: {
+    name: 'Kurios SAT', school: 'ICT Training Center', tagline: 'Endless Possibilities', logo: '/brands/kuriossat.jpeg',
+    primary: '#4c9a2a', dark: '#1f2a30', address: '51, Ayangburen Road, Opposite Ayangburen Palace, Top Floor, Ikorodu, Lagos',
+    phone: '+234 817 002 0431', email: 'info@kurios-sat.tech', website: 'www.kurios-sat.tech',
+  },
+  BM: {
+    name: 'BeadMax Design', school: 'Vocational School', tagline: 'Beads • Beauty • Creativity', logo: '/brands/beadmax.jpeg',
+    primary: '#7a1f33', dark: '#3d0f19', address: '51, Ayangburen Road, Opposite Ayangburen Palace, Top Floor, Ikorodu, Lagos',
+    phone: '+234 817 002 0431', email: 'info@beadmax.net', website: 'www.beadmax.net',
+  },
+};
 
-function buildReceiptPage(receipt: any): string {
+function schoolBrandFor(receipt: any): SchoolBrand {
+  const course = receipt.enrollment?.course;
+  const code = String(course?.department?.code || course?.departmentCode || course?.businessUnit || '').toUpperCase();
+  const text = `${course?.title || ''} ${course?.category || ''}`.toLowerCase();
+  return code.startsWith('BM') || /bead/.test(text) ? SCHOOL_BRANDS.BM : SCHOOL_BRANDS.KS;
+}
+
+const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+function words(n: number): string {
+  n = Math.floor(n);
+  if (n === 0) return 'zero';
+  const chunk = (x: number): string => {
+    const h = Math.floor(x / 100), r = x % 100;
+    const t = r < 20 ? ONES[r] : `${TENS[Math.floor(r / 10)]}${r % 10 ? '-' + ONES[r % 10] : ''}`;
+    return [h ? `${ONES[h]} hundred` : '', t].filter(Boolean).join(r && h ? ' and ' : '');
+  };
+  const parts: string[] = [];
+  [[1e9, 'billion'], [1e6, 'million'], [1e3, 'thousand'], [1, '']].forEach(([v, label]) => {
+    const q = Math.floor(n / (v as number)); n %= v as number;
+    if (q) parts.push(`${chunk(q)}${label ? ' ' + label : ''}`);
+  });
+  return parts.join(', ');
+}
+const naira = (v: any) => `₦${Number(v || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const esc = (v: any) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+
+function receiptStyle(b: SchoolBrand) {
+  return `
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1f2937; }
+  .page { width: 760px; margin: 0 auto; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); position: relative; }
+  .bar { height: 8px; background: linear-gradient(90deg, ${b.primary}, ${b.dark}); }
+  .head { display: flex; justify-content: space-between; align-items: center; padding: 26px 40px 20px; border-bottom: 1px solid #eef0f3; }
+  .head img { height: 78px; max-width: 270px; object-fit: contain; }
+  .head .meta { text-align: right; }
+  .head .title { font-size: 20px; font-weight: 800; letter-spacing: 2px; color: ${b.dark}; }
+  .head .school { font-size: 12px; color: ${b.primary}; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 2px; }
+  .head .num { margin-top: 10px; font-size: 13px; color: #6b7280; }
+  .head .num strong { color: #111827; font-family: Consolas, monospace; font-size: 14px; }
+  .body { padding: 26px 40px 10px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 24px; margin-bottom: 22px; }
+  .grid label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; font-weight: 700; }
+  .grid p { font-size: 14px; font-weight: 600; color: #111827; margin-top: 3px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+  th { background: ${b.dark}; color: #fff; padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  td { padding: 12px 14px; border-top: 1px solid #f0f0f0; }
+  .r { text-align: right; }
+  .sum td { background: #f9fafb; font-weight: 700; }
+  .paid td { background: ${b.primary}; color: #fff; font-size: 15px; font-weight: 800; }
+  .wordsrow { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 14px; }
+  .words { flex: 1; padding: 10px 14px; border-left: 4px solid ${b.primary}; background: #f6faf4; font-size: 12px; color: #374151; }
+  .words strong { text-transform: capitalize; color: #111827; }
+  .stamp { flex-shrink: 0; transform: rotate(-8deg); border: 3px solid ${b.primary}; color: ${b.primary}; padding: 6px 16px; font-weight: 900; font-size: 18px; letter-spacing: 3px; border-radius: 8px; opacity: 0.85; }
+  .stamp.part { border-color: #d97706; color: #d97706; }
+  .note { margin-top: 12px; font-size: 12px; color: #6b7280; font-style: italic; }
+  .sig { display: flex; justify-content: space-between; gap: 40px; padding: 30px 40px 18px; }
+  .sig div { flex: 1; border-top: 1px solid #9ca3af; padding-top: 6px; font-size: 11px; color: #6b7280; text-align: center; }
+  .foot { background: ${b.dark}; color: #e5e7eb; padding: 14px 40px; font-size: 11px; display: flex; justify-content: space-between; gap: 16px; }
+  .foot strong { color: #fff; }
+`;
+}
+
+export function buildReceiptPage(receipt: any, origin = window.location.origin): string {
+  const b = schoolBrandFor(receipt);
   const enrollment = receipt.enrollment;
   const studentUser = enrollment?.student?.user ?? enrollment?.staff?.user;
   const student = studentUser
     ? `${studentUser.firstName} ${studentUser.lastName}`
     : `${enrollment?.staff?.firstName ?? ''} ${enrollment?.staff?.lastName ?? ''}`.trim() || 'Unknown';
-  const course = enrollment?.course?.title ?? 'Unknown Course';
+  const course = enrollment?.course?.title ?? 'Course';
+  const paid = Number(receipt.amountPaid || 0);
+  const balance = Number(receipt.balance ?? 0);
+  const fullyPaid = balance <= 0;
+  const date = new Date(receipt.paymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  return `<div class="page">
-    <div class="header">
-      <div class="header-row">
-        <div>
-          <h1>Kurios SAT School</h1>
-          <p>Endless Possibilities · ICT &amp; Vocational Training</p>
-        </div>
-        <div class="receipt-badge">
-          <div class="num">${receipt.receiptNumber}</div>
-          <div class="status">${receipt.status.toUpperCase()}</div>
-        </div>
+  return `<style>${receiptStyle(b)}</style><div class="page">
+    <div class="bar"></div>
+    <div class="head">
+      <img src="${origin}${b.logo}" alt="${b.name}" crossorigin="anonymous" />
+      <div class="meta">
+        <div class="title">FEE RECEIPT</div>
+        <div class="school">${b.name} · ${b.school}</div>
+        <div class="num">Receipt No. <strong>${esc(receipt.receiptNumber)}</strong></div>
+        <div class="num">Date: <strong style="font-family:inherit">${date}</strong></div>
       </div>
     </div>
     <div class="body">
-      <div class="school-name">Kurios SAT School — Official Fee Receipt</div>
-      <div class="row2">
-        <div class="info-block"><label>Student Name</label><p>${student}</p></div>
-        <div class="info-block"><label>Course</label><p>${course}</p></div>
-        <div class="info-block"><label>Academic Session</label><p>${receipt.session}</p></div>
-        <div class="info-block"><label>Balance Remaining</label><p>₦${Number(receipt.balance ?? 0).toLocaleString()}</p></div>
-        <div class="info-block"><label>Payment Date</label><p>${new Date(receipt.paymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
-        <div class="info-block"><label>Payment Method</label><p>${receipt.paymentMethod}</p></div>
+      <div class="grid">
+        <div><label>Student</label><p>${esc(student)}</p></div>
+        <div><label>Course / Programme</label><p>${esc(course)}</p></div>
+        <div><label>Session</label><p>${esc(receipt.session)}</p></div>
+        <div><label>Payment method</label><p>${esc(receipt.paymentMethod)}</p></div>
+        <div><label>Status</label><p>${esc(String(receipt.status || '').replace(/^./, (c) => c.toUpperCase()))}</p></div>
+        <div><label>Balance remaining</label><p style="color:${fullyPaid ? b.primary : '#d97706'}">${naira(balance)}</p></div>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Description</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead>
-          <tbody>
-            <tr>
-              <td>${course} Tuition Fee</td>
-              <td>${receipt.paymentMethod}</td>
-              <td style="text-align:right; font-weight:600">₦${Number(receipt.amountPaid).toLocaleString()}</td>
-            </tr>
-            ${receipt.notes ? `<tr><td colspan="3" style="font-size:12px; color:#6b7280; font-style:italic;">Note: ${receipt.notes}</td></tr>` : ''}
-          </tbody>
-          <tfoot>
-            <tr class="total-row"><td colspan="2"><strong>Total Amount Paid</strong></td><td style="text-align:right">₦${Number(receipt.amountPaid).toLocaleString()}</td></tr>
-            <tr><td colspan="2"><strong>Balance Remaining</strong></td><td style="text-align:right">₦${Number(receipt.balance ?? 0).toLocaleString()}</td></tr>
-          </tfoot>
-        </table>
+      <table>
+        <thead><tr><th>Description</th><th>Method</th><th class="r">Amount</th></tr></thead>
+        <tbody>
+          <tr><td>${esc(course)} — tuition fee (${esc(receipt.session)})</td><td>${esc(receipt.paymentMethod)}</td><td class="r"><strong>${naira(paid)}</strong></td></tr>
+          <tr class="sum"><td colspan="2">Balance remaining</td><td class="r">${naira(balance)}</td></tr>
+          <tr class="paid"><td colspan="2">Amount paid</td><td class="r">${naira(paid)}</td></tr>
+        </tbody>
+      </table>
+      <div class="wordsrow">
+        <div class="words">Amount in words: <strong>${words(paid)} naira only</strong></div>
+        <div class="stamp ${fullyPaid ? '' : 'part'}">${fullyPaid ? 'PAID IN FULL' : 'PART PAYMENT'}</div>
       </div>
+      ${receipt.notes ? `<div class="note">Note: ${esc(receipt.notes)}</div>` : ''}
     </div>
-    <div class="footer">
-      <div>
-        <p><strong>Kurios SAT School</strong></p>
-        <p>Generated: ${new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-        <p>This is an official school fee receipt. Keep for your records.</p>
-      </div>
-      <div class="authorized"><div class="line">Authorized Signature</div></div>
+    <div class="sig"><div>Student / Guardian</div><div>Cashier</div><div>For ${b.name}</div></div>
+    <div class="foot">
+      <div><strong>${b.name} — ${b.school}</strong><br/>${b.tagline}</div>
+      <div style="text-align:right">${b.address}<br/>${b.phone} · ${b.email} · ${b.website}</div>
     </div>
   </div>`;
 }
@@ -114,10 +161,10 @@ function viewReceipt(receipt: any) {
   <meta charset="UTF-8" />
   <title>Fee Receipt - ${receipt.receiptNumber}</title>
   <style>
-    ${RECEIPT_STYLE}
     body { background: #f4f6fb; padding: 20px; }
-    .print-btn { display: block; text-align: center; margin: 24px auto 0; padding: 10px 28px; background: #4a7c2f; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-    @media print { .print-btn { display: none; } body { background: white; padding: 0; } .page { box-shadow: none; border-radius: 0; } }
+    .print-btn { display: block; text-align: center; margin: 24px auto 0; padding: 10px 28px; background: ${schoolBrandFor(receipt).primary}; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    @media print { .print-btn { display: none; } body { background: white; padding: 0; } .page { box-shadow: none !important; border-radius: 0 !important; } }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   </style>
 </head>
 <body>
@@ -147,7 +194,7 @@ async function downloadReceipt(receipt: any) {
   wrapper.style.overflow = 'hidden';
 
   const container = document.createElement('div');
-  container.innerHTML = `<style>${RECEIPT_STYLE}</style>${buildReceiptPage(receipt)}`;
+  container.innerHTML = buildReceiptPage(receipt);
   wrapper.appendChild(container);
   document.body.appendChild(wrapper);
 

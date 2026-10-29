@@ -121,7 +121,6 @@ const WarehouseList = React.lazy(() => import('@modules/inventory/pages/Warehous
 
 // ─── HR ───
 const JobPostingsList = React.lazy(() => import('@modules/hr/pages/JobPostingsList'));
-const JobSyncDashboard = React.lazy(() => import('@modules/hr/pages/JobSyncDashboard'));
 const AppraisalList = React.lazy(() => import('@modules/hr/pages/AppraisalList'));
 const PromotionsList = React.lazy(() => import('@modules/hr/pages/PromotionsList'));
 const TrainingList = React.lazy(() => import('@modules/hr/pages/TrainingList'));
@@ -356,7 +355,7 @@ function App() {
 
               {/* HR */}
               <Route path="/hr/jobs" element={<JobPostingsList />} />
-              <Route path="/hr/job-sync" element={<JobSyncDashboard />} />
+              <Route path="/hr/job-sync" element={<Navigate to="/hr/careers" replace />} />
               <Route path="/hr/appraisals" element={<AppraisalList />} />
               <Route path="/hr/promotions" element={<PromotionsList />} />
               <Route path="/hr/training" element={<TrainingList />} />
