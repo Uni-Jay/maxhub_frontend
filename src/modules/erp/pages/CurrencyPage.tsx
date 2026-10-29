@@ -7,7 +7,7 @@ import { toast } from '@components/ui/toaster';
 import { cn } from '@utils/cn';
 
 const NAMES: Record<string, string> = {
-  NGN: 'Nigerian naira', USD: 'US dollar', GBP: 'British pound', EUR: 'Euro', CAD: 'Canadian dollar', AED: 'UAE dirham',
+  NGN: 'Nigerian naira', USD: 'US dollar', GBP: 'British pound', EUR: 'Euro', CAD: 'Canadian dollar', AED: 'UAE dirham', QAR: 'Qatari riyal', SAR: 'Saudi riyal',
   GHS: 'Ghanaian cedi', ZAR: 'South African rand', CNY: 'Chinese yuan', KES: 'Kenyan shilling',
 };
 const ngn = (n: any) => `₦${Number(n || 0).toLocaleString('en-NG', { maximumFractionDigits: 2 })}`;

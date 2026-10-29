@@ -12,8 +12,8 @@ interface PayRow {
   pay: null | { currency: string; basicSalary: number; allowances: Line[]; deductions: Line[]; gross: number; totalDeductions: number; net: number; paymentMethod?: string; effectiveFrom?: string; notes?: string };
 }
 
-const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR'];
-const money = (n: any, c = 'NGN') => `${({ NGN: '₦', USD: '$', GBP: '£', EUR: '€' } as any)[c] || ''}${Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'QAR', 'AED'];
+const money = (n: any, c = 'NGN') => `${({ NGN: '₦', USD: '$', GBP: '£', EUR: '€' } as any)[c] || `${c} `}${Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const ALLOWANCE_SUGGESTIONS = ['Housing', 'Transport', 'Feeding', 'Data & airtime', 'Responsibility'];
 const NG_BANKS = ['Access Bank', 'Citibank', 'Ecobank', 'Fidelity Bank', 'First Bank', 'FCMB', 'Globus Bank', 'GTBank', 'Jaiz Bank', 'Keystone Bank', 'Kuda', 'Moniepoint', 'OPay', 'PalmPay', 'Parallex Bank', 'Polaris Bank', 'Providus Bank', 'Stanbic IBTC', 'Standard Chartered', 'Sterling Bank', 'SunTrust Bank', 'Titan Trust Bank', 'Union Bank', 'UBA', 'Unity Bank', 'Wema Bank', 'Zenith Bank'];
 const DEDUCTION_SUGGESTIONS = ['PAYE tax', 'Pension (8%)', 'HMO', 'Loan repayment', 'Cooperative'];

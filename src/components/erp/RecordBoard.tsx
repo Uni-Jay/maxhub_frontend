@@ -101,7 +101,7 @@ function toInput(v: any, type?: string) {
   return v;
 }
 
-export const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'CAD', 'AED', 'GHS', 'ZAR', 'CNY', 'KES'];
+export const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'CAD', 'AED', 'QAR', 'SAR', 'GHS', 'ZAR', 'CNY', 'KES'];
 
 // ─── Form modal ─────────────────────────────────────────────────────────────
 function RecordForm({ cfg, initial, onClose, onSaved }: { cfg: RecordBoardConfig; initial: any | null; onClose: () => void; onSaved: (r: any) => void }) {

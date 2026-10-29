@@ -3,7 +3,7 @@ import {
   FileText, MessageSquare, BarChart2, HelpCircle, Send,
   GraduationCap, DollarSign, Package, UserCheck, ShoppingCart,
   FolderOpen, Receipt, Bot, Building2, Award, Wallet, Route, ShieldCheck,
-  FileSignature, ClipboardList, Network, Target,
+  FileSignature, ClipboardList, Network, Target, ShoppingBag, ScrollText,
 } from 'lucide-react';
 import type { CanonicalRole } from '@utils/role';
 import { DEPARTMENT_MODULES, BRAND_CODES } from './departmentModules';
@@ -38,9 +38,12 @@ const DASHBOARD: SidebarItem = { label: 'Dashboard', path: '/dashboard', icon: L
 const BRANDS_HUB: SidebarItem = { label: 'Brands Overview', path: '/brands', icon: Building2 };
 const TRACKING: SidebarItem = { label: 'Tracking', path: '/tracking', icon: Route };
 const TARGETS: SidebarItem = { label: 'Targets', path: '/targets', icon: Target };
-const MY_GROWTH: SidebarItem = { label: 'My Reviews & Onboarding', path: '/hr/reviews', icon: Award, children: [
+const PURCHASES: SidebarItem = { label: 'Purchase Requests', path: '/purchases', icon: ShoppingBag };
+const POLICIES: SidebarItem = { label: 'Company Policies', path: '/policies', icon: ScrollText };
+const MY_GROWTH: SidebarItem = { label: 'My Growth', path: '/hr/reviews', icon: Award, children: [
   { label: 'My Reviews', path: '/hr/reviews' },
   { label: 'My Onboarding', path: '/hr/onboarding?mine=1' },
+  { label: 'My Training & Certificates', path: '/training-records?mine=1' },
 ]};
 const ANALYTICS: SidebarItem = { label: 'Analytics', path: '/analytics', icon: BarChart2 };
 
@@ -57,14 +60,17 @@ const DOCUMENTS: SidebarItem = { label: 'Documents & Agreements', path: '/docume
 const WEEKLY: SidebarItem = { label: 'Weekly Reports', path: '/hr/weekly-report', icon: ClipboardList };
 
 const HR_FULL: SidebarItem = { label: 'HR', path: '/hr', icon: UserCheck, children: [
-  { label: 'Recruitment', path: '/hr/jobs' },
+  { label: 'Recruitment', path: '/hr/recruitment' },
+  { label: 'Job Adverts', path: '/hr/jobs' },
   { label: 'Careers on Websites', path: '/hr/careers' },
   { label: 'Attendance', path: '/attendance' },
   { label: 'Leave', path: '/leave/requests' },
   { label: 'Onboarding', path: '/hr/onboarding' },
   { label: 'Performance Reviews', path: '/hr/reviews' },
   { label: 'Promotions', path: '/hr/promotions' },
-  { label: 'Training', path: '/hr/training' },
+  { label: 'Training Programmes', path: '/hr/training' },
+  { label: 'Training Records', path: '/training-records' },
+  { label: 'Company Policies', path: '/policies' },
 ]};
 const STAFF_DIR: SidebarItem = { label: 'Staff', path: '/staff', icon: Users };
 const QUERIES: SidebarItem = { label: 'Staff Queries', path: '/queries', icon: HelpCircle };
@@ -143,7 +149,7 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
   ...s('', [DASHBOARD, BRANDS_HUB, TARGETS, TRACKING, ANALYTICS]),
   ...s('Work', [PROJECTS_FULL, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
   ...s('People', [STAFF_DIR, HR_FULL, QUERIES]),
-  ...s('Finance', [FINANCE_FULL, PAYROLL_FULL, INVENTORY]),
+  ...s('Finance', [FINANCE_FULL, PURCHASES, PAYROLL_FULL, INVENTORY]),
   ...s('Sales', [CRM]),
   ...s('Communication', [MESSAGES, BROADCAST_FULL, AI]),
   ...s('Administration', [ORGANIZATION, AUDIT, SYSTEM_SETTINGS]),
@@ -153,7 +159,7 @@ const ADMIN_NAV: SidebarItem[] = [
   ...s('', [DASHBOARD, BRANDS_HUB, TARGETS, TRACKING, ANALYTICS]),
   ...s('Work', [PROJECTS_FULL, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
   ...s('People', [STAFF_DIR, HR_FULL, QUERIES]),
-  ...s('Finance', [FINANCE_FULL, PAYROLL_FULL, INVENTORY]),
+  ...s('Finance', [FINANCE_FULL, PURCHASES, PAYROLL_FULL, INVENTORY]),
   ...s('Sales', [CRM]),
   ...s('Communication', [MESSAGES, BROADCAST_FULL, AI]),
   ...s('Administration', [AUDIT, MY_SETTINGS]),
@@ -163,7 +169,7 @@ const HR_NAV: SidebarItem[] = [
   ...s('', [DASHBOARD, BRANDS_HUB, TARGETS, TRACKING]),
   ...s('Work', [PROJECTS_FULL, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
   ...s('People', [STAFF_DIR, HR_FULL, QUERIES]),
-  ...s('Finance', [PAYROLL_FULL, RECEIPTS]),
+  ...s('Finance', [PAYROLL_FULL, RECEIPTS, PURCHASES]),
   ...s('Sales', [CRM]),
   ...s('Communication', [MESSAGES, BROADCAST_FULL, AI]),
   ...s('Administration', [AUDIT, MY_SETTINGS]),
@@ -178,8 +184,11 @@ const HOD_NAV: SidebarItem[] = [
     MY_ATTENDANCE, MY_LEAVE,
     { label: 'Onboarding', path: '/hr/onboarding', icon: ClipboardList },
     { label: 'Performance Reviews', path: '/hr/reviews', icon: Award },
+    { label: 'Recruitment', path: '/hr/recruitment', icon: UserCheck },
+    { label: 'Training Records', path: '/training-records', icon: GraduationCap },
+    POLICIES,
   ]),
-  ...s('Finance', [RECEIPTS, { label: 'Business Expenses', path: '/finance/expenses', icon: Wallet }, MY_PAYSLIP]),
+  ...s('Finance', [RECEIPTS, { label: 'Business Expenses', path: '/finance/expenses', icon: Wallet }, PURCHASES, MY_PAYSLIP]),
   ...s('Sales', [CRM]),
   ...s('Communication', [MESSAGES, BROADCASTS, AI]),
   ...s('Administration', [MY_SETTINGS]),
@@ -188,8 +197,8 @@ const HOD_NAV: SidebarItem[] = [
 const ACCOUNTANT_NAV: SidebarItem[] = [
   ...s('', [DASHBOARD, BRANDS_HUB, TARGETS, TRACKING]),
   ...s('Work', [MY_WORK, MY_PROJECTS, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
-  ...s('People', [MY_ATTENDANCE, MY_LEAVE, TRAINING, MY_GROWTH]),
-  ...s('Finance', [FINANCE_FULL, PAYROLL_FULL, INVENTORY]),
+  ...s('People', [MY_ATTENDANCE, MY_LEAVE, TRAINING, MY_GROWTH, POLICIES]),
+  ...s('Finance', [FINANCE_FULL, PURCHASES, PAYROLL_FULL, INVENTORY]),
   ...s('Sales', [CRM]),
   ...s('Communication', [MESSAGES, AI]),
   ...s('Administration', [MY_SETTINGS]),
@@ -198,8 +207,8 @@ const ACCOUNTANT_NAV: SidebarItem[] = [
 const STAFF_NAV: SidebarItem[] = [
   ...s('', [DASHBOARD, BRANDS_HUB, { ...TRACKING, label: 'My Tracking' }]),
   ...s('Work', [MY_WORK, MY_PROJECTS, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
-  ...s('People', [MY_ATTENDANCE, MY_LEAVE, TRAINING, MY_GROWTH]),
-  ...s('Finance', [RECEIPTS, MY_PAYSLIP]),
+  ...s('People', [MY_ATTENDANCE, MY_LEAVE, TRAINING, MY_GROWTH, POLICIES]),
+  ...s('Finance', [RECEIPTS, PURCHASES, MY_PAYSLIP]),
   ...s('Sales', [CRM]),
   ...s('Communication', [MESSAGES, AI]),
   ...s('Administration', [MY_SETTINGS]),

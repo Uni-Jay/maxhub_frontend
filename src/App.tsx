@@ -110,6 +110,10 @@ const StaffPay = React.lazy(() => import('@modules/payroll/pages/StaffPay'));
 const TrackingPage = React.lazy(() => import('@modules/tracking/pages/TrackingPage'));
 const CurrencyPage = React.lazy(() => import('@modules/erp/pages/CurrencyPage'));
 const TargetsPage = React.lazy(() => import('@modules/erp/pages/TargetsPage'));
+const PurchasesPage = React.lazy(() => import('@modules/erp/pages/PurchasesPage'));
+const RecruitmentPage = React.lazy(() => import('@modules/hr/pages/RecruitmentPage'));
+const PoliciesPage = React.lazy(() => import('@modules/hr/pages/PoliciesPage'));
+const TrainingRecordsPage = React.lazy(() => import('@modules/hr/pages/TrainingRecordsPage'));
 const OnboardingPage = React.lazy(() => import('@modules/hr/pages/OnboardingPage'));
 const ReviewsPage = React.lazy(() => import('@modules/hr/pages/ReviewsPage'));
 const ProfitPage = React.lazy(() => import('@modules/erp/pages/ProfitPage'));
@@ -350,6 +354,10 @@ function App() {
               <Route path="/tracking" element={<TrackingPage />} />
               <Route path="/finance/currency" element={<CurrencyPage />} />
               <Route path="/targets" element={<TargetsPage />} />
+              <Route path="/purchases" element={<PurchasesPage />} />
+              <Route path="/hr/recruitment" element={<RecruitmentPage />} />
+              <Route path="/policies" element={<PoliciesPage />} />
+              <Route path="/training-records" element={<TrainingRecordsPage />} />
               <Route path="/hr/onboarding" element={<OnboardingPage />} />
               <Route path="/hr/reviews" element={<ReviewsPage />} />
               <Route path="/finance/profit" element={<ProfitPage />} />
