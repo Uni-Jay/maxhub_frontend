@@ -414,7 +414,7 @@ export function StaffDashboard() {
               { label: 'My Tasks', href: '/tasks', icon: CheckSquare, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' },
               { label: 'Weekly Report', href: '/hr/weekly-report', icon: Send, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
               { label: 'My Payslips', href: '/payroll/my-slips', icon: DollarSign, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20' },
-              { label: 'Appraisals', href: '/hr/appraisals', icon: Star, color: 'text-sky-600 bg-sky-50 dark:bg-sky-900/20' },
+              { label: 'Performance reviews', href: '/hr/reviews', icon: Star, color: 'text-sky-600 bg-sky-50 dark:bg-sky-900/20' },
               { label: 'Promotions', href: '/hr/promotions', icon: ArrowUpCircle, color: 'text-fuchsia-600 bg-fuchsia-50 dark:bg-fuchsia-900/20' },
               { label: 'Meetings', href: '/calls', icon: Video, color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-900/20' },
               { label: 'Calendar', href: '/calendar', icon: Calendar, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },

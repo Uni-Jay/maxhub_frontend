@@ -78,6 +78,12 @@ export default function CalendarPage() {
     staleTime: 1000 * 60 * 60,
   });
 
+  const bdayQ = useQuery({
+    queryKey: ['birthdays', 366],
+    queryFn: () => apiClient.get<any[]>('/erp/birthdays', { days: 366 }).catch(() => []),
+    staleTime: 1000 * 60 * 60,
+  });
+
   const toItem = (e: any): CalItem => ({
     id: String(e.id), title: e.title, date: day(e.date), endDate: day(e.endDate) || undefined, kind: (e.type as EventType) || 'Other',
     description: e.description || '', attendees: e.attendees || '', createdById: e.createdById,
@@ -102,9 +108,18 @@ export default function CalendarPage() {
       if (seen.has(`${d}|${name.toLowerCase().slice(0, 8)}`) || (h.holidayCode || '').startsWith('NG-')) continue;
       list.push({ id: `hol-${h.id}`, title: name, date: d, kind: 'Holiday', description: h.description, editable: false });
     }
+    // Staff birthdays (shown for this year and next, so every month is covered).
+    for (const b of Array.isArray(bdayQ.data) ? bdayQ.data : []) {
+      for (const shift of [0, -1, 1]) {
+        const y = Number(String(b.date).slice(0, 4)) + shift;
+        const d = `${y}${String(b.date).slice(4)}`;
+        if (d < range.start || d > range.end) continue;
+        list.push({ id: `bday-${b.staffId}-${y}`, title: `🎂 ${b.name}`, date: d, kind: 'Birthday', description: [b.position, b.department].filter(Boolean).join(' · '), editable: false });
+      }
+    }
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventsQ.data, obsQ.data, holQ.data, show, range.start, range.end, me?.id]);
+  }, [eventsQ.data, obsQ.data, holQ.data, bdayQ.data, show, range.start, range.end, me?.id]);
 
   const byDay = useMemo(() => {
     const map: Record<string, CalItem[]> = {};

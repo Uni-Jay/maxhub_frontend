@@ -13,6 +13,8 @@ import { useAuthStore } from '@store/authStore';
 import { useThemeStore } from '@store/themeStore';
 import { CallProvider } from '@components/calls/CallProvider';
 import { SaveToFolderHost } from '@components/files/SaveToFolder';
+import { BirthdayStrip } from '@components/dashboard/BirthdayStrip';
+import { TargetsCard } from '@modules/erp/pages/TargetsPage';
 import { toast } from '@components/ui/toaster';
 import { pushSupported, registerServiceWorker, enablePush, chime } from '@services/pushService';
 import { cn } from '@utils/cn';
@@ -403,6 +405,8 @@ export function DashboardLayout() {
             </div>
           )}
           <div className="p-6 max-w-7xl mx-auto">
+            {location.pathname.startsWith('/dashboard') && <BirthdayStrip />}
+            {/^\/dashboard\/(superadmin|admin|accountant|hod|hr)/.test(location.pathname) && <TargetsCard />}
             <Outlet />
           </div>
         </main>

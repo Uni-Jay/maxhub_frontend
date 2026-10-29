@@ -109,6 +109,9 @@ const PayrollSlips = React.lazy(() => import('@modules/payroll/pages/PayrollSlip
 const StaffPay = React.lazy(() => import('@modules/payroll/pages/StaffPay'));
 const TrackingPage = React.lazy(() => import('@modules/tracking/pages/TrackingPage'));
 const CurrencyPage = React.lazy(() => import('@modules/erp/pages/CurrencyPage'));
+const TargetsPage = React.lazy(() => import('@modules/erp/pages/TargetsPage'));
+const OnboardingPage = React.lazy(() => import('@modules/hr/pages/OnboardingPage'));
+const ReviewsPage = React.lazy(() => import('@modules/hr/pages/ReviewsPage'));
 const ProfitPage = React.lazy(() => import('@modules/erp/pages/ProfitPage'));
 const ExpensesPage = React.lazy(() => import('@modules/erp/pages/ExpensesPage'));
 const MyPayslips = React.lazy(() => import('@modules/payroll/pages/MyPayslips'));
@@ -125,7 +128,6 @@ const WarehouseList = React.lazy(() => import('@modules/inventory/pages/Warehous
 
 // ─── HR ───
 const JobPostingsList = React.lazy(() => import('@modules/hr/pages/JobPostingsList'));
-const AppraisalList = React.lazy(() => import('@modules/hr/pages/AppraisalList'));
 const PromotionsList = React.lazy(() => import('@modules/hr/pages/PromotionsList'));
 const TrainingList = React.lazy(() => import('@modules/hr/pages/TrainingList'));
 
@@ -347,6 +349,9 @@ function App() {
               <Route path="/payroll/staff-pay" element={<StaffPay />} />
               <Route path="/tracking" element={<TrackingPage />} />
               <Route path="/finance/currency" element={<CurrencyPage />} />
+              <Route path="/targets" element={<TargetsPage />} />
+              <Route path="/hr/onboarding" element={<OnboardingPage />} />
+              <Route path="/hr/reviews" element={<ReviewsPage />} />
               <Route path="/finance/profit" element={<ProfitPage />} />
               <Route path="/finance/expenses" element={<ExpensesPage />} />
               <Route path="/payroll/structures" element={<Navigate to="/payroll/staff-pay" replace />} />
@@ -365,7 +370,7 @@ function App() {
               {/* HR */}
               <Route path="/hr/jobs" element={<JobPostingsList />} />
               <Route path="/hr/job-sync" element={<Navigate to="/hr/careers" replace />} />
-              <Route path="/hr/appraisals" element={<AppraisalList />} />
+              <Route path="/hr/appraisals" element={<Navigate to="/hr/reviews" replace />} />
               <Route path="/hr/promotions" element={<PromotionsList />} />
               <Route path="/hr/training" element={<TrainingList />} />
 

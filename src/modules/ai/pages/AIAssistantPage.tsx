@@ -14,7 +14,7 @@ import { useAuthStore } from '@store/authStore';
 import { cn } from '@utils/cn';
 
 type RightTab = 'tasks' | 'report' | 'meeting' | 'email' | 'reminder';
-type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-2.5-flash-lite' | 'gemini-3.5-flash';
+type GeminiModel = 'gemini-3.8-flash' | 'gemini-3.6-flash' | 'gemini-3.5-flash-lite';
 
 interface ChatMessage {
   id: string;
@@ -32,10 +32,9 @@ interface ConversationSummary {
 }
 
 const MODELS: { value: GeminiModel; label: string }[] = [
-  { value: 'gemini-2.5-flash',      label: 'Gemini 2.5 Flash' },
-  { value: 'gemini-2.5-pro',        label: 'Gemini 2.5 Pro' },
-  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
-  { value: 'gemini-3.5-flash',      label: 'Gemini 3.5 Flash' },
+  { value: 'gemini-3.8-flash',      label: 'Best (Gemini 3.8 Flash)' },
+  { value: 'gemini-3.6-flash',      label: 'Balanced (Gemini 3.6 Flash)' },
+  { value: 'gemini-3.5-flash-lite', label: 'Fastest (Gemini 3.5 Flash-Lite)' },
 ];
 
 const QUICK_PROMPTS = [
@@ -84,7 +83,7 @@ export default function AIAssistantPage() {
   const user = useAuthStore(s => s.user);
   const userName = (user as any)?.firstName || 'there';
 
-  const [model, setModel] = useState<GeminiModel>('gemini-2.5-flash');
+  const [model, setModel] = useState<GeminiModel>('gemini-3.8-flash');
   const [available, setAvailable] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<RightTab>('tasks');
   const [copied, setCopied] = useState(false);
@@ -195,10 +194,8 @@ export default function AIAssistantPage() {
       if (resp.conversationId) setConversationId(resp.conversationId);
       setMessages(m => [...m, { id: (Date.now() + 1).toString(), role: 'assistant', content: resp.reply, ts: new Date() }]);
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? '';
-      const errorText = msg.includes('429') || msg.toLowerCase().includes('quota')
-        ? '⚠️ Gemini rate limit reached. Please wait a moment and try again.'
-        : 'Failed to reach the AI service. Please try again.';
+      const msg: string = err?.response?.data?.message ?? err?.message ?? '';
+      const errorText = `⚠️ ${msg || 'Could not reach the AI service. Check your connection and try again.'}`;
       setMessages(m => [...m, { id: (Date.now() + 1).toString(), role: 'assistant', content: errorText, ts: new Date() }]);
     } finally {
       setIsTyping(false);

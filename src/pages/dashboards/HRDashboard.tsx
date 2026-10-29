@@ -445,7 +445,7 @@ export function HRDashboard() {
             <Star className="w-5 h-5 text-amber-500" />
             Upcoming Appraisals
           </h2>
-          <Link to="/hr/appraisals" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+          <Link to="/hr/reviews" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
             View all <ArrowUpRight className="w-3 h-3" />
           </Link>
         </div>
@@ -480,7 +480,7 @@ export function HRDashboard() {
       <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'New Job Posting', href: '/hr/jobs', icon: Briefcase, color: 'text-violet-600 bg-violet-50' },
-          { label: 'View Appraisals', href: '/hr/appraisals', icon: Star, color: 'text-amber-600 bg-amber-50' },
+          { label: 'Performance reviews', href: '/hr/reviews', icon: Star, color: 'text-amber-600 bg-amber-50' },
           { label: 'Training', href: '/hr/training', icon: ClipboardList, color: 'text-emerald-600 bg-emerald-50' },
           { label: 'Staff List', href: '/staff', icon: Users, color: 'text-indigo-600 bg-indigo-50' },
         ].map((q) => (

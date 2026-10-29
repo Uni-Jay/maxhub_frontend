@@ -3,7 +3,7 @@ import {
   FileText, MessageSquare, BarChart2, HelpCircle, Send,
   GraduationCap, DollarSign, Package, UserCheck, ShoppingCart,
   FolderOpen, Receipt, Bot, Building2, Award, Wallet, Route, ShieldCheck,
-  FileSignature, ClipboardList, Network,
+  FileSignature, ClipboardList, Network, Target,
 } from 'lucide-react';
 import type { CanonicalRole } from '@utils/role';
 import { DEPARTMENT_MODULES, BRAND_CODES } from './departmentModules';
@@ -37,6 +37,11 @@ const s = (section: string, items: SidebarItem[]): SidebarItem[] => items.map((i
 const DASHBOARD: SidebarItem = { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard };
 const BRANDS_HUB: SidebarItem = { label: 'Brands Overview', path: '/brands', icon: Building2 };
 const TRACKING: SidebarItem = { label: 'Tracking', path: '/tracking', icon: Route };
+const TARGETS: SidebarItem = { label: 'Targets', path: '/targets', icon: Target };
+const MY_GROWTH: SidebarItem = { label: 'My Reviews & Onboarding', path: '/hr/reviews', icon: Award, children: [
+  { label: 'My Reviews', path: '/hr/reviews' },
+  { label: 'My Onboarding', path: '/hr/onboarding?mine=1' },
+]};
 const ANALYTICS: SidebarItem = { label: 'Analytics', path: '/analytics', icon: BarChart2 };
 
 const PROJECTS_FULL: SidebarItem = { label: 'Projects & Tasks', path: '/projects', icon: Briefcase, children: [
@@ -56,7 +61,8 @@ const HR_FULL: SidebarItem = { label: 'HR', path: '/hr', icon: UserCheck, childr
   { label: 'Careers on Websites', path: '/hr/careers' },
   { label: 'Attendance', path: '/attendance' },
   { label: 'Leave', path: '/leave/requests' },
-  { label: 'Appraisals', path: '/hr/appraisals' },
+  { label: 'Onboarding', path: '/hr/onboarding' },
+  { label: 'Performance Reviews', path: '/hr/reviews' },
   { label: 'Promotions', path: '/hr/promotions' },
   { label: 'Training', path: '/hr/training' },
 ]};
@@ -134,7 +140,7 @@ const MY_SETTINGS: SidebarItem = { label: 'Settings', path: '/settings', icon: S
 
 // ── Per role ─────────────────────────────────────────────────────────────────
 const SUPER_ADMIN_NAV: SidebarItem[] = [
-  ...s('', [DASHBOARD, BRANDS_HUB, TRACKING, ANALYTICS]),
+  ...s('', [DASHBOARD, BRANDS_HUB, TARGETS, TRACKING, ANALYTICS]),
   ...s('Work', [PROJECTS_FULL, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
   ...s('People', [STAFF_DIR, HR_FULL, QUERIES]),
   ...s('Finance', [FINANCE_FULL, PAYROLL_FULL, INVENTORY]),
@@ -144,7 +150,7 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
 ];
 
 const ADMIN_NAV: SidebarItem[] = [
-  ...s('', [DASHBOARD, BRANDS_HUB, TRACKING, ANALYTICS]),
+  ...s('', [DASHBOARD, BRANDS_HUB, TARGETS, TRACKING, ANALYTICS]),
   ...s('Work', [PROJECTS_FULL, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
   ...s('People', [STAFF_DIR, HR_FULL, QUERIES]),
   ...s('Finance', [FINANCE_FULL, PAYROLL_FULL, INVENTORY]),
@@ -154,7 +160,7 @@ const ADMIN_NAV: SidebarItem[] = [
 ];
 
 const HR_NAV: SidebarItem[] = [
-  ...s('', [DASHBOARD, BRANDS_HUB, TRACKING]),
+  ...s('', [DASHBOARD, BRANDS_HUB, TARGETS, TRACKING]),
   ...s('Work', [PROJECTS_FULL, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
   ...s('People', [STAFF_DIR, HR_FULL, QUERIES]),
   ...s('Finance', [PAYROLL_FULL, RECEIPTS]),
@@ -164,13 +170,14 @@ const HR_NAV: SidebarItem[] = [
 ];
 
 const HOD_NAV: SidebarItem[] = [
-  ...s('', [DASHBOARD, BRANDS_HUB, TRACKING]),
+  ...s('', [DASHBOARD, BRANDS_HUB, TARGETS, TRACKING]),
   ...s('Work', [PROJECTS_FULL, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
   ...s('People', [
     { label: 'My Team', path: '/my-team', icon: Users },
     { label: 'Students', path: '/lms/students', icon: GraduationCap },
     MY_ATTENDANCE, MY_LEAVE,
-    { label: 'Appraisals', path: '/hr/appraisals', icon: Award },
+    { label: 'Onboarding', path: '/hr/onboarding', icon: ClipboardList },
+    { label: 'Performance Reviews', path: '/hr/reviews', icon: Award },
   ]),
   ...s('Finance', [RECEIPTS, { label: 'Business Expenses', path: '/finance/expenses', icon: Wallet }, MY_PAYSLIP]),
   ...s('Sales', [CRM]),
@@ -179,9 +186,9 @@ const HOD_NAV: SidebarItem[] = [
 ];
 
 const ACCOUNTANT_NAV: SidebarItem[] = [
-  ...s('', [DASHBOARD, BRANDS_HUB, TRACKING]),
+  ...s('', [DASHBOARD, BRANDS_HUB, TARGETS, TRACKING]),
   ...s('Work', [MY_WORK, MY_PROJECTS, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
-  ...s('People', [MY_ATTENDANCE, MY_LEAVE, TRAINING]),
+  ...s('People', [MY_ATTENDANCE, MY_LEAVE, TRAINING, MY_GROWTH]),
   ...s('Finance', [FINANCE_FULL, PAYROLL_FULL, INVENTORY]),
   ...s('Sales', [CRM]),
   ...s('Communication', [MESSAGES, AI]),
@@ -191,7 +198,7 @@ const ACCOUNTANT_NAV: SidebarItem[] = [
 const STAFF_NAV: SidebarItem[] = [
   ...s('', [DASHBOARD, BRANDS_HUB, { ...TRACKING, label: 'My Tracking' }]),
   ...s('Work', [MY_WORK, MY_PROJECTS, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
-  ...s('People', [MY_ATTENDANCE, MY_LEAVE, TRAINING]),
+  ...s('People', [MY_ATTENDANCE, MY_LEAVE, TRAINING, MY_GROWTH]),
   ...s('Finance', [RECEIPTS, MY_PAYSLIP]),
   ...s('Sales', [CRM]),
   ...s('Communication', [MESSAGES, AI]),
