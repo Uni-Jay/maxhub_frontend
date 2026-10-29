@@ -101,9 +101,9 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
   const totalResults = groups.reduce((s, g) => s + g.items.length, 0);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-start justify-center pt-24 px-4" onClick={onClose}>
+    <div className="fixed inset-0 overflow-y-auto bg-black/50 z-[100] flex items-start justify-center pt-24 px-4" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden"
+        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700">

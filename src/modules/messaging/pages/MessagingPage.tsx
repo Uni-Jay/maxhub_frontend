@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -598,9 +599,9 @@ function NewChatModal({ onClose, onStartDM, onCreateGroup }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+        className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 bg-indigo-600">
           <div className="flex gap-3">
@@ -712,9 +713,9 @@ function ForwardModal({ msg, conversations, onForward, onClose }: {
     return next;
   });
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center bg-black/60 p-4">
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-        className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+        className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm max-h-[92vh] overflow-y-auto shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
           <h2 className="font-bold text-gray-900 dark:text-white">Forward Message</h2>
           <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
@@ -884,7 +885,20 @@ export default function MessagingPage() {
   const token = useAuthStore(s => s.tokens?.accessToken);
 
   // ── UI state ───────────────────────────────────────────────────────────────
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // The open chat lives in the URL (?c=id) so notification links open it and
+  // alerts are skipped for the chat you're already reading.
+  const [urlParams, setUrlParams] = useSearchParams();
+  const [selectedId, setSelectedIdState] = useState<number | null>(() => (urlParams.get('c') ? Number(urlParams.get('c')) : null));
+  const setSelectedId = useCallback((next: number | null) => {
+    setSelectedIdState(next);
+    const p = new URLSearchParams(window.location.search);
+    if (next) p.set('c', String(next)); else p.delete('c');
+    setUrlParams(p, { replace: true });
+  }, [setUrlParams]);
+  useEffect(() => {
+    const c = urlParams.get('c');
+    if (c && String(c) !== String(selectedId)) setSelectedIdState(Number(c));
+  }, [urlParams]); // eslint-disable-line react-hooks/exhaustive-deps
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [messageText, setMessageText] = useState('');
@@ -1154,8 +1168,8 @@ export default function MessagingPage() {
     setUploadProgress(prev => { const next = { ...prev }; delete next[tempId]; return next; });
   }, []);
 
-  const selectedConv = conversations.find(c => c.id === selectedId) ??
-    allConversations.find(c => c.id === selectedId) ?? null;
+  const selectedConv = conversations.find(c => String(c.id) === String(selectedId)) ??
+    allConversations.find(c => String(c.id) === String(selectedId)) ?? null;
 
   const isGroup = selectedConv?.conversationType === 'Group' || selectedConv?.conversationType === 'Team' || selectedConv?.conversationType === 'Channel';
 
@@ -1602,7 +1616,7 @@ export default function MessagingPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800">
+    <div className="flex h-[calc(100vh-170px)] min-h-[480px] overflow-hidden bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800">
 
       {/* ═══════════════ LEFT SIDEBAR ═══════════════ */}
       <div className={cn(
@@ -1711,7 +1725,7 @@ export default function MessagingPage() {
             filtered.map(conv => (
               <ConversationItem
                 key={conv.id} conv={conv}
-                isSelected={conv.id === selectedId}
+                isSelected={String(conv.id) === String(selectedId)}
                 onClick={() => selectConv(conv.id)}
                 onlineUserIds={onlineUserIds}
               />

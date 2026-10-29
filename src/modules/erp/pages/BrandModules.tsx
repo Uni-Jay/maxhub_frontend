@@ -137,11 +137,11 @@ export function KuriosSolutions() {
 
 export function KuriosTraining() {
   return <BrandTheme code="KS" header><QuickLinks title="Kurios SAT — ICT Training Center" links={[
-    { to: '/lms/courses', label: 'Courses', icon: BookOpen, desc: 'Programmes, modules and lessons' },
-    { to: '/lms/students', label: 'Students', icon: Users, desc: 'Enrolled students and progress' },
-    { to: '/lms/exams', label: 'Exams (CBT)', icon: ClipboardList, desc: 'Computer-based tests and results' },
-    { to: '/lms/certificates', label: 'Certificates', icon: Award, desc: 'Issue and verify certificates' },
-    { to: '/lms/fee-receipts', label: 'Fee receipts', icon: Receipt, desc: 'Tuition payments and balances' },
+    { to: '/lms/courses?school=KS', label: 'Courses', icon: BookOpen, desc: 'Programmes, modules and lessons' },
+    { to: '/lms/students?school=KS', label: 'Students', icon: Users, desc: 'Enrolled students and progress' },
+    { to: '/lms/exams?school=KS', label: 'Exams (CBT)', icon: ClipboardList, desc: 'Computer-based tests and results' },
+    { to: '/lms/certificates?school=KS', label: 'Certificates', icon: Award, desc: 'Issue and verify certificates' },
+    { to: '/lms/fee-receipts?school=KS', label: 'Fee receipts', icon: Receipt, desc: 'Tuition payments and balances' },
     { to: '/documents?brand=KS', label: 'Student terms & agreements', icon: GraduationCap, desc: 'Send T&Cs for students to sign' },
   ]} /></BrandTheme>;
 }
@@ -184,10 +184,10 @@ export function BeadMaxCustomOrders() {
 
 export function BeadMaxSchool() {
   return <BrandTheme code="BM" header><QuickLinks title="Beadmax Design Vocational School" links={[
-    { to: '/lms/students', label: 'Students', icon: Users, desc: 'Register and manage students' },
-    { to: '/lms/courses', label: 'Courses', icon: BookOpen, desc: 'Bag making, jewellery, accessories' },
-    { to: '/lms/fee-receipts', label: 'Fee receipts', icon: Receipt, desc: 'Course fees and balances' },
-    { to: '/lms/certificates', label: 'Certificates', icon: Award, desc: 'Graduation certificates' },
+    { to: '/lms/students?school=BM', label: 'Students', icon: Users, desc: 'Register and manage students' },
+    { to: '/lms/courses?school=BM', label: 'Courses', icon: BookOpen, desc: 'Bag making, jewellery, accessories' },
+    { to: '/lms/fee-receipts?school=BM', label: 'Fee receipts', icon: Receipt, desc: 'Course fees and balances' },
+    { to: '/lms/certificates?school=BM', label: 'Certificates', icon: Award, desc: 'Graduation certificates' },
     { to: '/documents?brand=BM', label: 'Enrolment agreements', icon: GraduationCap, desc: 'Send the enrolment agreement to sign' },
   ]} /></BrandTheme>;
 }

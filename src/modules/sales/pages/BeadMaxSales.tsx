@@ -423,9 +423,9 @@ export default function BeadMaxSales() {
 
       <AnimatePresence>
         {showAddProduct && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+              className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4 bg-indigo-600">
                 <h2 className="font-bold text-white">Add Product</h2>
                 <button onClick={() => { setShowAddProduct(false); setNewProduct(INIT_PRODUCT); }} className="p-1.5 hover:bg-white/20 rounded-full text-white/80 hover:text-white">

@@ -64,7 +64,7 @@ export default function VideoCallHub() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -85,7 +85,7 @@ export default function VideoCallHub() {
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/60 dark:bg-indigo-900/10 px-4 py-3">
         <Video className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
         <p className="flex-1 min-w-[200px] text-sm text-gray-700 dark:text-gray-300">Need to talk now? Open any chat, department or branch channel in Messages and tap the phone or camera icon — it rings everyone instantly, with screen sharing.</p>
-        <NavLink to="/messages" className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Start a call</NavLink>
+        <NavLink to="/messages" className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Open chats</NavLink>
       </div>
 
       {/* Tabs */}
@@ -246,7 +246,7 @@ function SchedulerModal({ onClose, onCreated }: { onClose: () => void; onCreated
   const linkLooksValid = googleMeetUrlPattern.test(form.meetingLink.trim());
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4">
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
         className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">

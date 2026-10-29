@@ -292,9 +292,9 @@ export default function ExamTaking() {
       <AnimatePresence>
         {showConfirm && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4">
             <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl text-center">
+              className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl text-center">
               <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="h-7 w-7 text-amber-600" />
               </div>

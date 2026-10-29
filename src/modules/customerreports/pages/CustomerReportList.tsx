@@ -354,9 +354,9 @@ export default function CustomerReportList() {
       <AnimatePresence>
         {actionTarget && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            className="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm shadow-2xl border border-gray-100 dark:border-gray-800 p-6">
+              className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-sm max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-800 p-6">
               <h3 className="font-bold text-gray-900 dark:text-white mb-3 capitalize">
                 {actionTarget.action === 'approve' ? '✓ Approve Report' : actionTarget.action === 'reject' ? '✗ Reject Report' : actionTarget.action === 'revision' ? '↺ Request Revision' : 'Archive Report'}
               </h3>
@@ -386,7 +386,7 @@ export default function CustomerReportList() {
       <AnimatePresence>
         {showModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            className="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
               {/* Modal header */}

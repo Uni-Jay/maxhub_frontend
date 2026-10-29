@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useParams } from 'react-router-dom';
+import { useNavigate, Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, BookOpen } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
@@ -10,6 +10,8 @@ const STATUSES = ['Draft', 'Published', 'Ongoing', 'Completed', 'Cancelled', 'Ar
 export function CreateCoursePage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [sp] = useSearchParams();
+  const school = (sp.get('school') || localStorage.getItem('maxhub-school') || 'KS').toUpperCase();
   const isEdit = !!id;
   const { user } = useAuth();
   const [error, setError] = useState('');
@@ -67,7 +69,7 @@ export function CreateCoursePage() {
     passingScore: Number(form.passingScore) || undefined,
     maxParticipants: form.maxParticipants ? Number(form.maxParticipants) : undefined,
     minParticipants: form.minParticipants ? Number(form.minParticipants) : undefined,
-    ...(isEdit ? { status: form.status } : {}),
+    ...(isEdit ? { status: form.status } : { school }),
   };
 
   const saveMutation = useMutation({

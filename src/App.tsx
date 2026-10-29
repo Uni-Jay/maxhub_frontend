@@ -126,10 +126,9 @@ const PromotionsList = React.lazy(() => import('@modules/hr/pages/PromotionsList
 const TrainingList = React.lazy(() => import('@modules/hr/pages/TrainingList'));
 
 // ─── Messaging ───
-const MessagingPage = React.lazy(() => import('@modules/messaging/pages/MessagingPage'));
+const CommunicationHub = React.lazy(() => import('@modules/messaging/pages/CommunicationHub'));
 
 // ─── Video Calls ───
-const VideoCallHub = React.lazy(() => import('@modules/videocall/pages/VideoCallHub'));
 
 // ─── Calendar ───
 const CalendarPage = React.lazy(() => import('@modules/calendar/pages/CalendarPage'));
@@ -361,10 +360,10 @@ function App() {
               <Route path="/hr/training" element={<TrainingList />} />
 
               {/* Messaging */}
-              <Route path="/messages" element={<MessagingPage />} />
+              <Route path="/messages" element={<CommunicationHub />} />
 
               {/* Video Calls */}
-              <Route path="/calls" element={<VideoCallHub />} />
+              <Route path="/calls" element={<Navigate to="/messages?tab=meetings" replace />} />
 
               {/* Calendar */}
               <Route path="/calendar" element={<CalendarPage />} />

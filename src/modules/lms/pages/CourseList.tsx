@@ -26,20 +26,23 @@ const STATUS_STYLES: Record<string, string> = {
   Archived: 'bg-amber-100 text-amber-700',
 };
 
+import { useSchool, SchoolBar } from '@components/erp/School';
+
 export function CourseList() {
   const { hasPermission } = useAuth();
   const canCreateCourse = hasPermission('lms.course.create.all') || hasPermission('lms.course.create.own_department');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const { school, setSchool, info, style } = useSchool();
 
   const { data: coursesData, isLoading } = useQuery({
-    queryKey: ['courses'],
-    queryFn: () => apiClient.getRaw('/courses', { page: 1, limit: 100 }),
+    queryKey: ['courses', school],
+    queryFn: () => apiClient.getRaw('/courses', { school, page: 1, limit: 100 }),
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['courses', 'stats'],
-    queryFn: () => apiClient.get<{ total: number; totalEnrollments: number; ongoing: number; completed: number }>('/courses/stats/overview'),
+    queryKey: ['courses', 'stats', school],
+    queryFn: () => apiClient.get<{ total: number; totalEnrollments: number; ongoing: number; completed: number }>('/courses/stats/overview', { school }),
   });
 
   const courses: any[] = (coursesData as any)?.data ?? [];
@@ -65,17 +68,18 @@ export function CourseList() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={style}>
+      <SchoolBar school={school} setSchool={setSchool} />
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Courses</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Kurios SAT — Learning Management System</p>
+          <p className="text-sm text-gray-500 mt-0.5">{info.name} — courses</p>
         </div>
         {canCreateCourse && (
           <Link
-            to="/lms/courses/create"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
+            to={`/lms/courses/create?school=${school}`}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl brand-bg text-sm font-medium transition"
           >
             <Plus className="w-4 h-4" /> New Course
           </Link>

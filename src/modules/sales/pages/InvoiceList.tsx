@@ -209,9 +209,9 @@ function InvoiceDetailModal({ invoice, onClose }: { invoice: Invoice; onClose: (
   const brand = getInvoiceBranding(invoice.department?.code);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Invoice header */}
         <div className={`${brand.bg} text-white p-6`}>
           <div className="flex justify-between items-start">
@@ -637,7 +637,7 @@ function SchoolFeeReceiptsTab() {
       <AnimatePresence>
         {showGenerate && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowGenerate(false)}>
+            className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowGenerate(false)}>
             <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95 }}
               className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800 z-10">
@@ -962,7 +962,7 @@ export default function InvoiceList() {
             <AnimatePresence>
               {showCreate && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
+                  className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
                   <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95 }}
                     className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                     <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
@@ -1109,9 +1109,9 @@ export default function InvoiceList() {
             <AnimatePresence>
               {payingInvoice && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closePaymentModal}>
+                  className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4" onClick={closePaymentModal}>
                   <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95 }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                    className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
                     <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                       <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                         {recordedPayment ? 'Payment Recorded' : `Record Payment — ${payingInvoice.invoiceCode}`}

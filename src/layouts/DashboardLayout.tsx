@@ -13,6 +13,7 @@ import { useAuthStore } from '@store/authStore';
 import { useThemeStore } from '@store/themeStore';
 import { CallProvider } from '@components/calls/CallProvider';
 import { toast } from '@components/ui/toaster';
+import { pushSupported, registerServiceWorker, enablePush, chime } from '@services/pushService';
 import { cn } from '@utils/cn';
 import { getPrimaryRole } from '@utils/role';
 import { getNavForRole, ALL_SIDEBAR_ITEMS } from '@config/sidebarConfig';
@@ -225,36 +226,68 @@ export function DashboardLayout() {
       qc.invalidateQueries({ queryKey: ['notification-unread-count'] });
       qc.invalidateQueries({ queryKey: ['notifications'] });
       // Live pop-up so nobody misses an approval, assignment or alert.
-      if (n?.title) {
+      if (n?.title && document.visibilityState === 'visible') {
         const url: string | undefined = n.actionUrl;
+        chime();
         toast.info(n.title, n.message, url ? { label: 'Open', onClick: () => navigate(url) } : undefined);
+      } else if (n?.title && 'Notification' in window && Notification.permission === 'granted') {
+        const pop = new Notification(n.title, { body: n.message, icon: '/images/maxhublogo.jpeg', tag: `notif-${n.id}` });
+        pop.onclick = () => { window.focus(); if (n.actionUrl) navigate(n.actionUrl); pop.close(); };
       }
     };
     chatSocket.on('notification:new', onNewNotification);
 
-    const onNewMessage = (msg: any) => {
-      qc.invalidateQueries({ queryKey: ['conversations'] });
-      if (String(msg?.senderUserId) === String(user?.id)) return;
-      // MessagingPage tracks the open conversation in plain component state,
-      // not the URL, so there's no way to tell which thread is open from
-      // here — suppress the toast for the whole page rather than risk it
-      // firing on top of the thread you're already reading.
-      if (location.pathname === '/messages') return;
-      const sender = msg?.sender ? `${msg.sender.firstName} ${msg.sender.lastName}` : 'New message';
-      setMessageToast({ id: msg.id, conversationId: msg.conversationId, sender, preview: msg.messageText || 'Sent an attachment' });
-      window.setTimeout(() => setMessageToast((cur) => (cur?.id === msg.id ? null : cur)), 5000);
-    };
+    // Keep the unread counts fresh on every message in rooms we're in.
+    const onNewMessage = () => qc.invalidateQueries({ queryKey: ['conversations'] });
     chatSocket.on('chat:message', onNewMessage);
+
+    // Personal alert for a message to me (sent by the server to every
+    // participant, even for chats started while I was elsewhere).
+    const onChatNotify = (n: { conversationId: number; messageId: number; title: string; preview: string }) => {
+      qc.invalidateQueries({ queryKey: ['conversations'] });
+      const openConv = new URLSearchParams(window.location.search).get('c');
+      if (window.location.pathname === '/messages' && document.visibilityState === 'visible' && openConv === String(n.conversationId)) return;
+      if (document.visibilityState === 'visible') {
+        chime();
+        setMessageToast({ id: n.messageId, conversationId: n.conversationId, sender: n.title, preview: n.preview });
+        window.setTimeout(() => setMessageToast((cur) => (cur?.id === n.messageId ? null : cur)), 6000);
+      } else if ('Notification' in window && Notification.permission === 'granted') {
+        // Same tag as the web-push one, so it never shows twice.
+        const pop = new Notification(n.title, { body: n.preview, icon: '/images/maxhublogo.jpeg', tag: `chat-${n.conversationId}` });
+        pop.onclick = () => { window.focus(); navigate(`/messages?c=${n.conversationId}`); pop.close(); };
+      }
+    };
+    chatSocket.on('chat:notify', onChatNotify);
 
     return () => {
       chatSocket.off('notification:new', onNewNotification);
       chatSocket.off('chat:message', onNewMessage);
+      chatSocket.off('chat:notify', onChatNotify);
     };
-  }, [tokens?.accessToken, qc, user?.id, location.pathname, navigate]);
+  }, [tokens?.accessToken, qc, user?.id, navigate]);
 
   useEffect(() => {
     if (!tokens?.accessToken) chatSocket.disconnect();
   }, [tokens?.accessToken]);
+
+  // Pop-up notifications: register the service worker, re-subscribe silently
+  // if already allowed, and let clicks on a pop-up navigate this tab.
+  const [pushState, setPushState] = useState<string>(() => (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'));
+  const [pushDismissed, setPushDismissed] = useState(() => { try { return localStorage.getItem('maxhub-push-dismissed') === '1'; } catch { return false; } });
+  useEffect(() => {
+    if (!tokens?.accessToken || !pushSupported()) return;
+    registerServiceWorker();
+    if (Notification.permission === 'granted') enablePush(false).catch(() => undefined);
+    const onSwMessage = (e: MessageEvent) => { if (e.data?.type === 'navigate' && e.data.url) navigate(e.data.url); };
+    navigator.serviceWorker.addEventListener('message', onSwMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onSwMessage);
+  }, [tokens?.accessToken, navigate]);
+
+  // Unread count in the browser tab title, so you can see it from another tab.
+  useEffect(() => {
+    const n = unreadCount + unreadMessageCount;
+    document.title = n > 0 ? `(${n > 99 ? '99+' : n}) MaxHub ERP` : 'MaxHub ERP';
+  }, [unreadCount, unreadMessageCount]);
 
   // Global search — Cmd/Ctrl+K opens it from anywhere, same as the ⌘K hint
   // already shown in the header button (which previously had no handler at all).
@@ -379,6 +412,19 @@ export function DashboardLayout() {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
+          {pushSupported() && pushState === 'default' && !pushDismissed && (
+            <div className="mx-6 mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-950/40 px-4 py-3 text-sm">
+              <Bell className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <span className="flex-1 min-w-[200px] text-gray-700 dark:text-gray-300">Turn on pop-up notifications so you see new messages, calls and approvals even when MaxHub is in the background.</span>
+              <button className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700" onClick={async () => {
+                const r = await enablePush(true).catch(() => 'denied');
+                setPushState(r);
+                if (r === 'granted') toast.success('Pop-up notifications are on');
+                else if (r === 'denied') toast.error('Notifications are blocked', 'Allow them for this site in your browser settings.');
+              }}>Turn on</button>
+              <button className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200" onClick={() => { setPushDismissed(true); try { localStorage.setItem('maxhub-push-dismissed', '1'); } catch { /* */ } }}>Not now</button>
+            </div>
+          )}
           <div className="p-6 max-w-7xl mx-auto">
             <Outlet />
           </div>
@@ -393,7 +439,7 @@ export function DashboardLayout() {
             initial={{ opacity: 0, y: 20, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: 20, x: '-50%' }}
-            onClick={() => { navigate('/messages'); setMessageToast(null); }}
+            onClick={() => { navigate(`/messages?c=${messageToast.conversationId}`); setMessageToast(null); }}
             className="fixed bottom-6 left-1/2 z-[110] flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-2xl px-4 py-3 max-w-sm text-left hover:shadow-xl transition"
           >
             <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0">

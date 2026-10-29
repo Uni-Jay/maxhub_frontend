@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Receipt, Plus, Download, Eye, Loader2, X, Trash2 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import { useSchool, SchoolBar } from '@components/erp/School';
 import { apiClient } from '@services/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -38,7 +39,7 @@ const SCHOOL_BRANDS: Record<'KS' | 'BM', SchoolBrand> = {
 
 function schoolBrandFor(receipt: any): SchoolBrand {
   const course = receipt.enrollment?.course;
-  const code = String(course?.department?.code || course?.departmentCode || course?.businessUnit || '').toUpperCase();
+  const code = String(receipt.school || course?.department?.code || course?.departmentCode || course?.businessUnit || '').toUpperCase();
   const text = `${course?.title || ''} ${course?.category || ''}`.toLowerCase();
   return code.startsWith('BM') || /bead/.test(text) ? SCHOOL_BRANDS.BM : SCHOOL_BRANDS.KS;
 }
@@ -215,7 +216,7 @@ async function downloadReceipt(receipt: any) {
 }
 
 export function FeeReceipts() {
-  const { user, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [recording, setRecording] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
@@ -237,16 +238,17 @@ export function FeeReceipts() {
     session: generateSessionLabel(), balanceRemaining: '', status: 'Paid', notes: '',
   });
 
+  const { school, setSchool, info, style } = useSchool();
   const { data: receipts, isLoading } = useQuery({
-    queryKey: ['fee-receipts'],
-    queryFn: () => apiClient.get<any[]>('/fee-receipts'),
+    queryKey: ['fee-receipts', school],
+    queryFn: () => apiClient.get<any[]>('/fee-receipts', { school }),
   });
 
   // Build the "students in my department" picker from my department's courses' enrollments.
   const { data: courses } = useQuery({
-    queryKey: ['courses', 'own-department', user?.departmentId],
-    queryFn: () => apiClient.getRaw('/courses', { departmentId: user?.departmentId, limit: 100 }),
-    enabled: recording && !!user?.departmentId,
+    queryKey: ['courses', 'school', school],
+    queryFn: () => apiClient.getRaw('/courses', { school, limit: 100 }),
+    enabled: recording,
   });
   const courseList: any[] = (courses as any)?.data ?? [];
 
@@ -293,11 +295,12 @@ export function FeeReceipts() {
   const seenEnrollments = new Set<number>();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={style}>
+      <SchoolBar school={school} setSchool={setSchool} />
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Fee Receipts</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Kurios SAT — Student Fee Payments</p>
+          <p className="text-sm text-gray-500 mt-0.5">{info.name} — student fee payments</p>
         </div>
         {canCreate && (
           <button

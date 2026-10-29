@@ -40,9 +40,9 @@ function LogDetailModal({ log, onClose }: { log: any; onClose: () => void }) {
   const Icon = ACTION_ICONS[log.action] || Eye;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold', ACTION_COLORS[log.action] || 'bg-gray-100')}>

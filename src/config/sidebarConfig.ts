@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, Calendar, Briefcase, CheckSquare, Settings,
   FileText, MessageSquare, BarChart3, HelpCircle, Send,
-  GraduationCap, Video, DollarSign, Package, UserCheck, ShoppingCart,
+  GraduationCap, DollarSign, Package, UserCheck, ShoppingCart,
   FolderOpen, Receipt, BarChart2, Bot, Building2, Globe,
   Award, ArrowUpCircle, Wallet, ClipboardList,
 } from 'lucide-react';
@@ -82,14 +82,13 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
   { label: 'AI Assistant', path: '/ai-assistant', icon: Bot },
   { label: 'Calendar', path: '/calendar', icon: Calendar },
   { label: 'Files', path: '/files', icon: FolderOpen },
-  { label: 'Messages', path: '/messages', icon: MessageSquare },
+  { label: 'Messages & Meetings', path: '/messages', icon: MessageSquare },
   { label: 'Communication', path: '/communication', icon: Send, children: [
     { label: 'Send Message', path: '/communication/send' },
     { label: 'Templates', path: '/communication/templates' },
     { label: 'History', path: '/communication/history' },
     { label: 'Broadcasts', path: '/communication/broadcasts' },
   ]},
-  { label: 'Meetings & Calls', path: '/calls', icon: Video },
   { label: 'System Settings', path: '/settings', icon: Settings, children: [
     { label: 'System Settings', path: '/settings/system' },
     { label: 'Profile', path: '/settings/profile' },
@@ -104,8 +103,7 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
 // a personal Settings group with Profile/Security/Notification Prefs. Super
 // Admin keeps its own richer System Settings group instead of this one.)
 const COMMON_TAIL: SidebarItem[] = [
-  { label: 'Messages', path: '/messages', icon: MessageSquare },
-  { label: 'Meetings & Calls', path: '/calls', icon: Video },
+  { label: 'Messages & Meetings', path: '/messages', icon: MessageSquare },
   { label: 'Calendar', path: '/calendar', icon: Calendar },
   { label: 'Files', path: '/files', icon: FolderOpen },
   { label: 'AI Assistant', path: '/ai-assistant', icon: Bot },

@@ -4,8 +4,8 @@ import {
   GraduationCap, Plus, Search, X, Eye, Loader2, UserCheck, UserX, Mail, Phone, Pencil, Trash2,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
-import { departmentService } from '@services/departmentService';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchool, SchoolBar } from '@components/erp/School';
 
 type StudentStatus = 'Active' | 'Inactive' | 'Graduated' | 'Suspended' | 'Withdrawn';
 
@@ -56,14 +56,13 @@ export function StudentList() {
   const canDelete = hasPermission('stm.student.delete.all');
   const canSuspend = canUpdate || hasPermission('stm.student.suspend.all') || hasPermission('stm.student.suspend.own_department');
 
+  const { school, setSchool, info, style } = useSchool();
   const { data, isLoading } = useQuery({
-    queryKey: ['students', search, status],
-    queryFn: () => apiClient.getRaw('/students', { page: 1, limit: 100, ...(search && { search }), ...(status !== 'All' && { status }) }),
+    queryKey: ['students', school, search, status],
+    queryFn: () => apiClient.getRaw('/students', { school, page: 1, limit: 100, ...(search && { search }), ...(status !== 'All' && { status }) }),
   });
   const students: Student[] = (data as any)?.data?.students ?? [];
 
-  const { data: deptData } = useQuery({ queryKey: ['departments'], queryFn: () => departmentService.getAll() });
-  const departments = (deptData as any[]) ?? [];
 
   const closeModal = () => { setShowCreate(false); setEditingId(null); setForm(INIT_FORM); setFormError(''); };
 
@@ -84,7 +83,8 @@ export function StudentList() {
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      const payload = { ...form, departmentId: form.departmentId || undefined };
+      const { companyId: _c, departmentId: _d, ...rest } = form; void _c; void _d;
+      const payload = { ...rest, school };
       return editingId ? apiClient.patch(`/students/${editingId}`, payload) : apiClient.post('/students', payload);
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['students'] }); closeModal(); },
@@ -108,15 +108,16 @@ export function StudentList() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={style}>
+      <SchoolBar school={school} setSchool={setSchool} />
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Students</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Kurios SAT — Student Roster</p>
+          <p className="text-sm text-gray-500 mt-0.5">{info.name} — student roster (only this school's students)</p>
         </div>
         {canCreate && (
           <button onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">
+            className="flex items-center gap-2 px-4 py-2 rounded-xl brand-bg text-sm font-medium transition">
             <Plus className="w-4 h-4" /> Add Student
           </button>
         )}
@@ -184,7 +185,7 @@ export function StudentList() {
       </div>
 
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeModal}>
+        <div className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeModal}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">{editingId ? 'Edit Student' : 'Add Student'}</h2>
@@ -217,25 +218,7 @@ export function StudentList() {
                     className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">School *</label>
-                  <select value={form.companyId} onChange={e => setForm(f => ({ ...f, companyId: e.target.value }))}
-                    disabled={!!editingId}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 disabled:opacity-50">
-                    {COMPANIES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                  {editingId && <p className="text-[11px] text-gray-400 mt-1">School can't be changed after registration</p>}
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
-                  <select value={form.departmentId} onChange={e => setForm(f => ({ ...f, departmentId: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900">
-                    <option value="">Select department</option>
-                    {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                  </select>
-                </div>
-              </div>
+              <p className="text-xs text-gray-500">School: <strong className="brand-text">{info.name}</strong></p>
 
               <p className="text-xs font-medium text-gray-500 pt-2">Guardian (optional)</p>
               <div className="grid grid-cols-2 gap-3">
@@ -274,8 +257,8 @@ export function StudentList() {
       )}
 
       {viewing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setViewing(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setViewing(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">{viewing.user?.firstName} {viewing.user?.lastName}</h2>
               <button onClick={() => setViewing(null)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X className="h-4 w-4" /></button>

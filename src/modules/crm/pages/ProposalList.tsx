@@ -198,7 +198,7 @@ export function ProposalList() {
 
       {/* Create modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
+        <div className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">New Proposal</h2>
@@ -297,7 +297,7 @@ export function ProposalList() {
 
       {/* View modal */}
       {viewing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setViewing(null)}>
+        <div className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setViewing(null)}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">{viewing.title}</h2>

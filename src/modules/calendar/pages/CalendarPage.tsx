@@ -315,7 +315,7 @@ export default function CalendarPage() {
       {/* Add Event Modal */}
       <AnimatePresence>
         {showAddModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -389,12 +389,12 @@ export default function CalendarPage() {
       {/* Event Detail Modal */}
       <AnimatePresence>
         {selectedEvent && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-xl"
+              className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm max-h-[92vh] overflow-y-auto shadow-xl"
             >
               <div className="p-5">
                 <div className="flex items-start justify-between mb-4">
