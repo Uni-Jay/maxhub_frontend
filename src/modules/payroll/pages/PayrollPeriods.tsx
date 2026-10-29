@@ -11,6 +11,7 @@ const STATUS_STYLES: Record<string, string> = {
   Draft:      'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
   Processing: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   Processed:  'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+  Approved:   'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400',
   Paid:       'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
   Cancelled:  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
@@ -86,7 +87,7 @@ export default function PayrollPeriods() {
         <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
           className={cn(inputCls, 'w-auto')}>
           <option value="">All Statuses</option>
-          {['Draft','Processing','Processed','Paid','Cancelled'].map(s => <option key={s}>{s}</option>)}
+          {['Draft','Processing','Processed','Approved','Paid','Cancelled'].map(s => <option key={s}>{s}</option>)}
         </select>
       </div>
 
@@ -144,7 +145,7 @@ export default function PayrollPeriods() {
                       Cancel
                     </button>
                   )}
-                  {p.status === 'Processed' && (
+                  {(p.status === 'Processed' || p.status === 'Approved') && (
                     <button onClick={() => statusMutation.mutate({ id: p.id, status: 'Paid' })}
                       className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg transition font-medium">
                       <CheckCircle2 className="h-3 w-3" /> Mark Paid
