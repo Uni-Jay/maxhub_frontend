@@ -8,13 +8,14 @@ import { cn } from '@utils/cn';
 interface Line { name: string; amount: number | string }
 interface PayRow {
   id: number; employeeId?: string; firstName: string; lastName: string; email: string; position?: string; jobTitle?: string;
-  departmentName?: string; brand?: string; bankName?: string; accountNumber?: string; status?: string;
+  departmentName?: string; brand?: string; bankName?: string; accountName?: string; accountNumber?: string; accountType?: string; status?: string;
   pay: null | { currency: string; basicSalary: number; allowances: Line[]; deductions: Line[]; gross: number; totalDeductions: number; net: number; paymentMethod?: string; effectiveFrom?: string; notes?: string };
 }
 
 const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR'];
 const money = (n: any, c = 'NGN') => `${({ NGN: '₦', USD: '$', GBP: '£', EUR: '€' } as any)[c] || ''}${Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const ALLOWANCE_SUGGESTIONS = ['Housing', 'Transport', 'Feeding', 'Data & airtime', 'Responsibility'];
+const NG_BANKS = ['Access Bank', 'Citibank', 'Ecobank', 'Fidelity Bank', 'First Bank', 'FCMB', 'Globus Bank', 'GTBank', 'Jaiz Bank', 'Keystone Bank', 'Kuda', 'Moniepoint', 'OPay', 'PalmPay', 'Parallex Bank', 'Polaris Bank', 'Providus Bank', 'Stanbic IBTC', 'Standard Chartered', 'Sterling Bank', 'SunTrust Bank', 'Titan Trust Bank', 'Union Bank', 'UBA', 'Unity Bank', 'Wema Bank', 'Zenith Bank'];
 const DEDUCTION_SUGGESTIONS = ['PAYE tax', 'Pension (8%)', 'HMO', 'Loan repayment', 'Cooperative'];
 
 /** Pay is set per staff member — MaxHub does not use salary structures. */
@@ -65,6 +66,7 @@ export default function StaffPay() {
                 <tr>
                   <th className="text-left px-4 py-3">Staff</th>
                   <th className="text-left px-4 py-3">Employed by</th>
+                  <th className="text-left px-4 py-3">Bank account</th>
                   <th className="text-right px-4 py-3">Basic</th>
                   <th className="text-right px-4 py-3">Allowances</th>
                   <th className="text-right px-4 py-3">Deductions</th>
@@ -83,6 +85,9 @@ export default function StaffPay() {
                         <p className="text-xs text-gray-500">{r.position || r.jobTitle || '—'}{r.employeeId ? ` · ${r.employeeId}` : ''}{r.status && r.status !== 'Active' ? ` · ${r.status}` : ''}</p>
                       </td>
                       <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{r.brand || '—'}</td>
+                      <td className="px-4 py-3">{r.accountNumber
+                        ? <><p className="text-gray-800 dark:text-gray-200 tabular-nums">{r.accountNumber}</p><p className="text-xs text-gray-500">{r.bankName || '—'}{r.accountName ? ` · ${r.accountName}` : ''}</p></>
+                        : <span className="text-amber-600 text-xs font-medium">Not added</span>}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{p ? money(p.basicSalary, p.currency) : <span className="text-amber-600 text-xs font-medium">Not set</span>}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-gray-600 dark:text-gray-400">{p ? money(allow, p.currency) : '—'}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-red-600">{p ? money(p.totalDeductions, p.currency) : '—'}</td>
@@ -95,7 +100,7 @@ export default function StaffPay() {
                     </tr>
                   );
                 })}
-                {!rows.length && <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">No staff match your search</td></tr>}
+                {!rows.length && <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-400">No staff match your search</td></tr>}
               </tbody>
             </table>
           </div>
@@ -123,11 +128,13 @@ function PayEditor({ row, onClose, onSaved }: { row: PayRow; onClose: () => void
     allowances: (p?.allowances?.length ? p.allowances : []) as Line[], deductions: (p?.deductions?.length ? p.deductions : []) as Line[],
     paymentMethod: p?.paymentMethod || 'Bank transfer', effectiveFrom: p?.effectiveFrom || '', notes: p?.notes || '',
   });
+  const [bank, setBank] = useState({ bankName: row.bankName || '', accountName: row.accountName || `${row.firstName} ${row.lastName}`, accountNumber: row.accountNumber || '', accountType: row.accountType || 'Savings' });
+  const acctOk = !bank.accountNumber || /^\d{10}$/.test(bank.accountNumber);
   const sum = (l: Line[]) => l.reduce((t, x) => t + (Number(x.amount) || 0), 0);
   const gross = (Number(f.basicSalary) || 0) + sum(f.allowances);
   const net = gross - sum(f.deductions);
   const save = useMutation({
-    mutationFn: () => apiClient.put(`/erp/staff-pay/${row.id}`, { ...f, basicSalary: Number(f.basicSalary) || 0 }),
+    mutationFn: () => apiClient.put(`/erp/staff-pay/${row.id}`, { ...f, basicSalary: Number(f.basicSalary) || 0, bank }),
     onSuccess: () => { toast.success('Pay saved', `${row.firstName} ${row.lastName}: ${money(net, f.currency)} take-home`); onSaved(); },
     onError: (e: any) => toast.fromError(e, 'Could not save pay'),
   });
@@ -180,6 +187,25 @@ function PayEditor({ row, onClose, onSaved }: { row: PayRow; onClose: () => void
               <input type="date" value={f.effectiveFrom || ''} onChange={(e) => setF({ ...f, effectiveFrom: e.target.value })} className={cn(inp, 'mt-1')} />
             </label>
           </div>
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">Bank account (salary is paid into this)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-xs text-gray-600 dark:text-gray-400">Bank
+                <input value={bank.bankName} onChange={(e) => setBank({ ...bank, bankName: e.target.value })} list="ng-banks" placeholder="e.g. GTBank" className={cn(inp, 'mt-1')} />
+              </label>
+              <label className="text-xs text-gray-600 dark:text-gray-400">Account number
+                <input value={bank.accountNumber} onChange={(e) => setBank({ ...bank, accountNumber: e.target.value.replace(/\D/g, '').slice(0, 10) })} inputMode="numeric" placeholder="10 digits" className={cn(inp, 'mt-1 tabular-nums', !acctOk && 'border-red-400 focus:ring-red-400')} />
+              </label>
+              <label className="text-xs text-gray-600 dark:text-gray-400">Account name
+                <input value={bank.accountName} onChange={(e) => setBank({ ...bank, accountName: e.target.value })} placeholder="Name on the account" className={cn(inp, 'mt-1')} />
+              </label>
+              <label className="text-xs text-gray-600 dark:text-gray-400">Account type
+                <select value={bank.accountType} onChange={(e) => setBank({ ...bank, accountType: e.target.value })} className={cn(inp, 'mt-1')}>{['Savings', 'Current'].map((c) => <option key={c}>{c}</option>)}</select>
+              </label>
+            </div>
+            {!acctOk && <p className="text-xs text-red-600">Account number must be 10 digits.</p>}
+            <datalist id="ng-banks">{NG_BANKS.map((b) => <option key={b} value={b} />)}</datalist>
+          </div>
           <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Notes
             <textarea rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} className={cn(inp, 'mt-1')} placeholder="e.g. Increment approved by CEO in October" />
           </label>
@@ -191,8 +217,8 @@ function PayEditor({ row, onClose, onSaved }: { row: PayRow; onClose: () => void
         </div>
         <div className="sticky bottom-0 bg-white dark:bg-gray-900 flex justify-end gap-2 px-5 py-4 border-t border-gray-100 dark:border-gray-800">
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
-          <button onClick={() => save.mutate()} disabled={save.isPending || !(Number(f.basicSalary) > 0) || net < 0} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50">
-            {save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Save pay
+          <button onClick={() => save.mutate()} disabled={save.isPending || !(Number(f.basicSalary) > 0) || net < 0 || !acctOk} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50">
+            {save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Save
           </button>
         </div>
       </div>
