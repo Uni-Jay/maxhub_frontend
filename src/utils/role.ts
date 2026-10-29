@@ -2,7 +2,9 @@ import { jwtDecode } from 'jwt-decode';
 import { useMemo } from 'react';
 import { useAuthStore } from '@store/authStore';
 
-export type CanonicalRole = 'superadmin' | 'admin' | 'hr' | 'hod' | 'staff' | 'student';
+export type CanonicalRole = 'superadmin' | 'admin' | 'hr' | 'hod' | 'accountant' | 'staff' | 'student';
+
+const ROLE_RANK: CanonicalRole[] = ['superadmin', 'admin', 'hr', 'hod', 'accountant', 'staff', 'student'];
 
 interface JwtPayload {
   roles: string[];
@@ -17,13 +19,13 @@ interface JwtPayload {
 const NORMALISE_ROLE: Record<string, CanonicalRole> = {
   SUPER_ADMIN: 'superadmin', HEAD_OF_ADMIN: 'admin',
   HR: 'hr', HOD: 'hod', STAFF: 'staff',
-  ACCOUNTANT: 'staff', RECEPTIONIST: 'staff',
+  ACCOUNTANT: 'accountant', RECEPTIONIST: 'staff',
   INSTRUCTOR: 'staff', INTERN: 'staff', STUDENT: 'student',
   super_admin: 'superadmin', head_of_admin: 'admin',
-  accountant: 'staff', receptionist: 'staff', instructor: 'staff', intern: 'staff',
+  accountant: 'accountant', receptionist: 'staff', instructor: 'staff', intern: 'staff',
   'Super Administrator': 'superadmin', 'Head of Administration': 'admin',
   'Human Resources': 'hr', 'Head of Department': 'hod', Staff: 'staff',
-  Instructor: 'staff', Accountant: 'staff', Receptionist: 'staff',
+  Instructor: 'staff', Accountant: 'accountant', Receptionist: 'staff',
   Intern: 'staff', Student: 'student',
 };
 
@@ -31,7 +33,7 @@ const NORMALISE_ROLE: Record<string, CanonicalRole> = {
 const CANONICAL_ROLE: Record<string, CanonicalRole> = {
   superadmin: 'superadmin', headofadmin: 'admin', admin: 'admin',
   hr: 'hr', hod: 'hod', staff: 'staff',
-  accountant: 'staff', receptionist: 'staff', instructor: 'staff', intern: 'staff',
+  accountant: 'accountant', receptionist: 'staff', instructor: 'staff', intern: 'staff',
   student: 'student',
 };
 
@@ -55,7 +57,9 @@ export function getPrimaryRole(user: { roles?: string[] } | null, accessToken?: 
     } catch { /* fall through to stored user */ }
   }
   if (!roles.length) roles = user?.roles ?? [];
-  return normaliseRole(roles[0] ?? 'staff');
+  // Highest role wins (someone who is staff and accountant gets the accountant view).
+  const set = normaliseRoles(roles.filter(Boolean));
+  return ROLE_RANK.find((r) => set.has(r)) ?? normaliseRole(roles[0] ?? 'staff');
 }
 
 /** Reads the full set of normalised roles from the JWT (live) falling back to the stored user object. */
@@ -119,6 +123,7 @@ export function resolveRolePath(roles: Set<CanonicalRole>): string {
   if (roles.has('admin')) return '/dashboard/admin';
   if (roles.has('hr')) return '/dashboard/hr';
   if (roles.has('hod')) return '/dashboard/hod';
+  if (roles.has('accountant')) return '/dashboard/accountant';
   if (roles.has('student')) return '/student/dashboard';
   return '/dashboard/staff';
 }

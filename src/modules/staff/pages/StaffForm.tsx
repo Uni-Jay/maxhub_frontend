@@ -63,7 +63,7 @@ const INIT_DATA = {
   guarantor1Name: '', guarantor1Phone: '', guarantor1Email: '', guarantor1Address: '', guarantor1Relationship: '', guarantor1Occupation: '',
   guarantor2Name: '', guarantor2Phone: '', guarantor2Email: '', guarantor2Address: '', guarantor2Relationship: '', guarantor2Occupation: '',
   // H: Employment
-  employeeId: '', businessUnit: '', departmentId: '', designationId: '', jobTitle: '', joiningDate: '', employmentStatus: 'Full-Time', supervisorName: '', workLocation: '',
+  employeeId: '', businessUnit: '', departmentId: '', designationId: '', jobTitle: '', joiningDate: '', basicSalary: '', employmentStatus: 'Full-Time', supervisorName: '', workLocation: '',
   // I: Bank Details
   bankName: '', accountName: '', accountNumber: '', accountType: 'Savings', sortCode: '', pensionId: '', taxId: '',
   // J: Health
@@ -330,6 +330,7 @@ export default function StaffForm() {
       designationId: useCustomPosition ? undefined : (data.designationId ? Number(data.designationId) : undefined),
       joiningDate: data.joiningDate,
       employmentStatus: data.employmentStatus,
+      basicSalary: !isEdit && Number((data as any).basicSalary) > 0 ? Number((data as any).basicSalary) : undefined,
       customPosition: useCustomPosition ? customPosition : undefined,
       additionalUnits,
       avatar: passportFile?.url,
@@ -822,15 +823,15 @@ export default function StaffForm() {
               </Grid3>
               {data.departmentId && (
                 <div>
-                  <p className={lCls}>Additional Departments (optional, up to 2 more)</p>
+                  <p className={lCls}>Other divisions they cover (optional)</p>
                   <p className="text-[11px] text-gray-400 mb-2">
-                    For staff covering more than one department while short-staffed. {data.departmentId && departments.find((d: any) => String(d.id) === data.departmentId)?.name} stays the primary department.
+                    Everyone automatically works for all four brands. {data.departmentId && departments.find((d: any) => String(d.id) === data.departmentId)?.name} is the brand that employs them (their payslip carries its logo). Tick any divisions they also cover, e.g. the Training Center.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {departments.filter((d: any) => String(d.id) !== data.departmentId).map((d: any) => {
                       const idStr = String(d.id);
                       const checked = additionalDepartmentIds.includes(idStr);
-                      const atLimit = additionalDepartmentIds.length >= 2 && !checked;
+                      const atLimit = false;
                       return (
                         <label key={d.id} className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs cursor-pointer transition',
                           checked ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 text-indigo-700 dark:text-indigo-300' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300',
@@ -886,6 +887,14 @@ export default function StaffForm() {
                   <Input value={data.supervisorName} onChange={e => set('supervisorName', e.target.value)} placeholder="e.g. Mrs. Chinwe Obi" />
                 </Field>
               </Grid3>
+              {!isEdit && (
+                <Grid3>
+                  <Field label="Monthly basic salary (₦)">
+                    <Input value={(data as any).basicSalary} onChange={e => set('basicSalary' as any, e.target.value.replace(/[^\d.]/g, ''))} placeholder="e.g. 150000" inputMode="decimal" />
+                    <p className="text-[11px] text-gray-400 mt-1">Shown in their welcome email. Add allowances later in Payroll › Staff Pay.</p>
+                  </Field>
+                </Grid3>
+              )}
             </div>
           )}
 

@@ -6,6 +6,7 @@ import RecordBoard, { type RecordBoardConfig, btnGhost, inputCls, labelCls, card
 import { ERP_PATHS, erpService, money } from '@services/erpService';
 import { cn } from '@utils/cn';
 import { BrandTheme } from '@components/erp/BrandTheme';
+import { StockPanel, InventorySummaryBar } from './Inventory';
 
 function Tabs({ tabs }: { tabs: { key: string; label: string; node: ReactNode }[] }) {
   const [params, setParams] = useSearchParams();
@@ -179,7 +180,7 @@ const customOrders: RecordBoardConfig = {
 };
 
 export function BeadMaxCustomOrders() {
-  return <BrandTheme code="BM" header><RecordBoard cfg={{ ...customOrders, headerExtras: <NavLink to="/bead-max/sales" className={btnGhost}><ShoppingBag className="h-4 w-4" /> Shop sales & stock</NavLink> }} /></BrandTheme>;
+  return <BrandTheme code="BM" header><RecordBoard cfg={{ ...customOrders, headerExtras: <div className="flex gap-2"><NavLink to="/beadmax/shop" className={btnGhost}><ShoppingBag className="h-4 w-4" /> Online shop orders</NavLink><NavLink to="/beadmax/inventory" className={btnGhost}><ShoppingBag className="h-4 w-4" /> Inventory & products</NavLink></div> }} /></BrandTheme>;
 }
 
 export function BeadMaxSchool() {
@@ -271,28 +272,39 @@ const exportOrders: RecordBoardConfig = {
 
 const foodProducts: RecordBoardConfig = {
   base: ERP_PATHS.foodProducts, entity: 'food_product', title: 'Products & stock', singular: 'Product', brandCode: 'MF', allowMessage: false, allowBoard: false,
-  subtitle: 'Catalogue of export foodstuff with cost, export price and stock levels.',
-  titleOf: (r) => r.name, subtitleOf: (r) => `${r.category} · ${r.unit}`,
+  subtitle: 'Export foodstuff by weight — batch, origin, harvest and expiry dates, cost and export price. Stock changes are recorded with a reason.',
+  titleOf: (r) => r.name, subtitleOf: (r) => `${r.category} · ${r.packSize || r.unit}${r.batchNo ? ` · batch ${r.batchNo}` : ''}`,
   fields: [
-    { name: 'name', label: 'Product name', required: true, placeholder: 'Ofada rice' },
+    { name: 'name', label: 'Product name', required: true, placeholder: 'Egusi (ground)' },
     { name: 'category', label: 'Category', type: 'select', options: ['Grains', 'Tubers & Flour (garri, elubo, poundo)', 'Spices & Seasoning', 'Palm Oil & Oils', 'Dried Fish & Seafood', 'Soup Ingredients (egusi, ogbono…)', 'Snacks', 'Vegetables & Leaves', 'Beverages', 'Other'], default: 'Grains' },
-    { name: 'unit', label: 'Unit', placeholder: 'bag (5kg), litre, pack' },
+    { name: 'unit', label: 'Sold per', placeholder: 'bag, litre, pack', default: 'bag' },
+    { name: 'packSize', label: 'Pack size', placeholder: '1 kg pouch, 25 kg bag' },
     { name: 'unitWeightKg', label: 'Weight per unit (kg)', type: 'number', default: 1 },
+    { name: 'stockQty', label: 'Opening stock', type: 'number', createOnly: true },
+    { name: 'reorderLevel', label: 'Alert me when stock falls to', type: 'number' },
     { name: 'costPrice', label: 'Cost price', type: 'money', currencyField: 'costCurrency' },
     { name: 'costCurrency', label: 'Cost currency', type: 'currency', default: 'NGN' },
     { name: 'sellingPrice', label: 'Export price', type: 'money' },
     { name: 'currency', label: 'Export currency', type: 'currency', default: 'USD' },
-    { name: 'stockQty', label: 'In stock', type: 'number' },
-    { name: 'reorderLevel', label: 'Reorder level', type: 'number' },
+    { name: 'originState', label: 'Sourced from', placeholder: 'Ogun State farm, Kano market…' },
+    { name: 'batchNo', label: 'Batch number' },
+    { name: 'harvestDate', label: 'Harvest / processing date', type: 'date' },
+    { name: 'expiryDate', label: 'Best before', type: 'date' },
+    { name: 'storageCondition', label: 'Storage', type: 'select', options: ['Dry', 'Cool & dry', 'Chilled', 'Frozen'], default: 'Cool & dry' },
+    { name: 'warehouse', label: 'Where it is kept' },
     { name: 'nafdacNo', label: 'NAFDAC number' },
     { name: 'shelfLifeDays', label: 'Shelf life (days)', type: 'number' },
     { name: 'isActive', label: 'Available for sale', type: 'checkbox', default: true },
     { name: 'description', label: 'Description', type: 'textarea' },
   ],
+  detailExtras: (r, refresh) => <StockPanel brand="maxfood" product={r} refresh={refresh} />,
+  summary: <InventorySummaryBar brand="maxfood" />,
   columns: [
-    { key: 'name', label: 'Product' }, { key: 'category', label: 'Category' }, { key: 'unit', label: 'Unit' },
+    { key: 'name', label: 'Product' }, { key: 'category', label: 'Category' }, { key: 'packSize', label: 'Pack', render: (r) => r.packSize || r.unit },
+    { key: 'batchNo', label: 'Batch', render: (r) => r.batchNo || '—' },
+    { key: 'expiryDate', label: 'Best before', render: (r) => (r.expiryDate ? <span className={cn(new Date(r.expiryDate) < new Date(Date.now() + 30 * 864e5) && 'text-red-600 font-medium')}>{new Date(r.expiryDate).toLocaleDateString('en-GB')}</span> : '—') },
     { key: 'sellingPrice', label: 'Price', render: (r) => money(r.sellingPrice, r.currency) },
-    { key: 'stockQty', label: 'Stock', render: (r) => <span className={cn(Number(r.stockQty) <= Number(r.reorderLevel) && 'text-red-600 font-medium')}>{Number(r.stockQty)}</span> },
+    { key: 'stockQty', label: 'Stock', render: (r) => <span className={cn(Number(r.reorderLevel) > 0 && Number(r.stockQty) <= Number(r.reorderLevel) && 'text-amber-600 font-semibold')}>{Number(r.stockQty)} {r.unit}</span> },
   ],
 };
 

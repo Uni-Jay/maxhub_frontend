@@ -1,13 +1,12 @@
 import {
   LayoutDashboard, Users, Calendar, Briefcase, CheckSquare, Settings,
-  FileText, MessageSquare, BarChart3, HelpCircle, Send,
+  FileText, MessageSquare, BarChart2, HelpCircle, Send,
   GraduationCap, DollarSign, Package, UserCheck, ShoppingCart,
-  FolderOpen, Receipt, BarChart2, Bot, Building2, Globe,
-  Award, ArrowUpCircle, Wallet, ClipboardList,
+  FolderOpen, Receipt, Bot, Building2, Award, Wallet, Route, ShieldCheck,
+  FileSignature, ClipboardList, Network,
 } from 'lucide-react';
 import type { CanonicalRole } from '@utils/role';
 import { DEPARTMENT_MODULES, BRAND_CODES } from './departmentModules';
-import { FileSignature } from 'lucide-react';
 
 export interface SidebarChild {
   label: string;
@@ -21,235 +20,180 @@ export interface SidebarItem {
   children?: SidebarChild[];
   /** Optional accent colour for the icon (brand menus). */
   color?: string;
+  /** Heading the item is grouped under in the sidebar. */
+  section?: string;
 }
 
-// ─── SUPER ADMIN — full company control ──────────────────────────────────────
+/**
+ * The sidebar is grouped into the same sections, in the same order, for
+ * every role — only what is inside each section changes. Every page appears
+ * once; Settings is always last.
+ */
+export const SECTION_ORDER = ['', 'Brands', 'Work', 'People', 'Finance', 'Sales', 'Communication', 'Administration'] as const;
+
+const s = (section: string, items: SidebarItem[]): SidebarItem[] => items.map((i) => ({ ...i, section }));
+
+// ── Building blocks ──────────────────────────────────────────────────────────
+const DASHBOARD: SidebarItem = { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard };
+const BRANDS_HUB: SidebarItem = { label: 'Brands Overview', path: '/brands', icon: Building2 };
+const TRACKING: SidebarItem = { label: 'Tracking', path: '/tracking', icon: Route };
+const ANALYTICS: SidebarItem = { label: 'Analytics', path: '/analytics', icon: BarChart2 };
+
+const PROJECTS_FULL: SidebarItem = { label: 'Projects & Tasks', path: '/projects', icon: Briefcase, children: [
+  { label: 'Projects', path: '/projects' },
+  { label: 'Tasks', path: '/tasks' },
+  { label: 'Project Reports', path: '/reports/projects' },
+]};
+const MY_WORK: SidebarItem = { label: 'My Tasks', path: '/tasks', icon: CheckSquare };
+const MY_PROJECTS: SidebarItem = { label: 'My Projects', path: '/projects', icon: Briefcase };
+const CALENDAR: SidebarItem = { label: 'Calendar', path: '/calendar', icon: Calendar };
+const FILES: SidebarItem = { label: 'Files', path: '/files', icon: FolderOpen };
+const DOCUMENTS: SidebarItem = { label: 'Documents & Agreements', path: '/documents', icon: FileSignature };
+const WEEKLY: SidebarItem = { label: 'Weekly Reports', path: '/hr/weekly-report', icon: ClipboardList };
+
+const HR_FULL: SidebarItem = { label: 'HR', path: '/hr', icon: UserCheck, children: [
+  { label: 'Recruitment', path: '/hr/jobs' },
+  { label: 'Careers on Websites', path: '/hr/careers' },
+  { label: 'Attendance', path: '/attendance' },
+  { label: 'Leave', path: '/leave/requests' },
+  { label: 'Appraisals', path: '/hr/appraisals' },
+  { label: 'Promotions', path: '/hr/promotions' },
+  { label: 'Training', path: '/hr/training' },
+]};
+const STAFF_DIR: SidebarItem = { label: 'Staff', path: '/staff', icon: Users };
+const QUERIES: SidebarItem = { label: 'Staff Queries', path: '/queries', icon: HelpCircle };
+const MY_ATTENDANCE: SidebarItem = { label: 'Attendance', path: '/attendance/check-in', icon: Calendar };
+const MY_LEAVE: SidebarItem = { label: 'Leave', path: '/leave', icon: FileText, children: [
+  { label: 'Apply for Leave', path: '/leave/apply' },
+  { label: 'My Requests', path: '/leave/requests' },
+  { label: 'Balance', path: '/leave/balance' },
+]};
+const TRAINING: SidebarItem = { label: 'Training', path: '/hr/training', icon: GraduationCap };
+
+const PAYROLL_FULL: SidebarItem = { label: 'Payroll', path: '/payroll', icon: DollarSign, children: [
+  { label: 'Overview', path: '/payroll' },
+  { label: 'Staff Pay', path: '/payroll/staff-pay' },
+  { label: 'Pay Periods', path: '/payroll/periods' },
+  { label: 'Payslips', path: '/payroll/slips' },
+  { label: 'My Payslip', path: '/payroll/my-slips' },
+]};
+const MY_PAYSLIP: SidebarItem = { label: 'My Payslip', path: '/payroll/my-slips', icon: Wallet };
+const FINANCE_FULL: SidebarItem = { label: 'Accounts', path: '/finance', icon: Receipt, children: [
+  { label: 'Payments & Receipts', path: '/receipts' },
+  { label: 'Invoices', path: '/invoices' },
+  { label: 'School Fee Receipts', path: '/lms/fee-receipts' },
+  { label: 'Currencies & Rates', path: '/finance/currency' },
+]};
+const RECEIPTS: SidebarItem = { label: 'Payments & Receipts', path: '/receipts', icon: Receipt };
+const INVENTORY: SidebarItem = { label: 'Inventory', path: '/inventory', icon: Package, children: [
+  { label: 'Overview', path: '/inventory/dashboard' },
+  { label: 'Items', path: '/inventory/items' },
+  { label: 'Warehouses', path: '/inventory/warehouses' },
+]};
+
+const CRM: SidebarItem = { label: 'CRM', path: '/crm', icon: ShoppingCart, children: [
+  { label: 'Clients', path: '/clients' },
+  { label: 'Contacts & Leads', path: '/crm/contacts' },
+  { label: 'Pipeline', path: '/crm/pipeline' },
+  { label: 'Forecast', path: '/crm/forecast' },
+  { label: 'Proposals', path: '/crm/proposals' },
+  { label: 'Customer Reports', path: '/customer-reports' },
+]};
+
+const MESSAGES: SidebarItem = { label: 'Messages & Meetings', path: '/messages', icon: MessageSquare };
+const BROADCAST_FULL: SidebarItem = { label: 'Bulk Messaging', path: '/communication', icon: Send, children: [
+  { label: 'Send Message', path: '/communication/send' },
+  { label: 'Broadcasts', path: '/communication/broadcasts' },
+  { label: 'Templates', path: '/communication/templates' },
+  { label: 'History', path: '/communication/history' },
+]};
+const BROADCASTS: SidebarItem = { label: 'Broadcasts', path: '/communication/broadcasts', icon: Send };
+const AI: SidebarItem = { label: 'AI Assistant', path: '/ai-assistant', icon: Bot };
+
+const ORGANIZATION: SidebarItem = { label: 'Organization', path: '/organization', icon: Network, children: [
+  { label: 'Branches', path: '/organization/branches' },
+  { label: 'Units', path: '/organization/units' },
+  { label: 'Departments', path: '/organization/departments' },
+  { label: 'Designations', path: '/organization/designations' },
+  { label: 'Roles & Permissions', path: '/settings/roles' },
+]};
+const AUDIT: SidebarItem = { label: 'Audit Logs', path: '/audit-logs', icon: ShieldCheck };
+const SYSTEM_SETTINGS: SidebarItem = { label: 'Settings', path: '/settings', icon: Settings, children: [
+  { label: 'System Settings', path: '/settings/system' },
+  { label: 'My Profile', path: '/settings/profile' },
+  { label: 'Security', path: '/settings/security' },
+  { label: 'Notifications', path: '/settings/notifications' },
+]};
+const MY_SETTINGS: SidebarItem = { label: 'Settings', path: '/settings', icon: Settings, children: [
+  { label: 'My Profile', path: '/settings/profile' },
+  { label: 'Security', path: '/settings/security' },
+  { label: 'Notifications', path: '/settings/notifications' },
+]};
+
+// ── Per role ─────────────────────────────────────────────────────────────────
 const SUPER_ADMIN_NAV: SidebarItem[] = [
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Organization', path: '/organization', icon: Building2, children: [
-    { label: 'Branches', path: '/organization/branches' },
-    { label: 'Units', path: '/organization/units' },
-    { label: 'Departments', path: '/organization/departments' },
-    { label: 'Designations', path: '/organization/designations' },
-  ]},
-  { label: 'People', path: '/people', icon: Users, children: [
-    { label: 'Staff Directory', path: '/staff' },
-    { label: 'Roles & Permissions', path: '/settings/roles' },
-  ]},
-  { label: 'HR', path: '/hr', icon: UserCheck, children: [
-    { label: 'Recruitment', path: '/hr/jobs' },
-    { label: 'Careers on Websites', path: '/hr/careers' },
-    { label: 'Attendance', path: '/attendance' },
-    { label: 'Leave', path: '/leave/requests' },
-    { label: 'Appraisals', path: '/hr/appraisals' },
-    { label: 'Promotions', path: '/hr/promotions' },
-    { label: 'Training', path: '/hr/training' },
-    { label: 'Weekly Reports', path: '/hr/weekly-report' },
-  ]},
-  { label: 'Payroll', path: '/payroll', icon: DollarSign, children: [
-    { label: 'Dashboard', path: '/payroll' },
-    { label: 'Periods', path: '/payroll/periods' },
-    { label: 'Pay Slips', path: '/payroll/slips' },
-    { label: 'Salary Structures', path: '/payroll/structures' },
-    { label: 'My Payslip', path: '/payroll/my-slips' },
-  ]},
-  { label: 'Projects', path: '/projects', icon: Briefcase, children: [
-    { label: 'Projects', path: '/projects' },
-    { label: 'Tasks', path: '/tasks' },
-    { label: 'Reports', path: '/reports/projects' },
-  ]},
-  { label: 'Staff Queries', path: '/queries', icon: HelpCircle },
-  { label: 'CRM', path: '/crm', icon: ShoppingCart, children: [
-    { label: 'Clients', path: '/clients' },
-    { label: 'Contacts & Leads', path: '/crm/contacts' },
-    { label: 'Pipeline', path: '/crm/pipeline' },
-    { label: 'Forecast', path: '/crm/forecast' },
-    { label: 'Proposals', path: '/crm/proposals' },
-    { label: 'Customer Reports', path: '/customer-reports' },
-  ]},
-  { label: 'Inventory', path: '/inventory', icon: Package, children: [
-    { label: 'Dashboard', path: '/inventory/dashboard' },
-    { label: 'Items', path: '/inventory/items' },
-    { label: 'Warehouses', path: '/inventory/warehouses' },
-  ]},
-  { label: 'Finance', path: '/finance', icon: Receipt, children: [
-    { label: 'Payments & Receipts', path: '/receipts' },
-    { label: 'Invoices', path: '/invoices' },
-    { label: 'Student Fee Receipts', path: '/lms/fee-receipts' },
-    { label: 'Audit Logs', path: '/audit-logs' },
-  ]},
-  { label: 'Analytics', path: '/analytics', icon: BarChart2 },
-  { label: 'AI Assistant', path: '/ai-assistant', icon: Bot },
-  { label: 'Calendar', path: '/calendar', icon: Calendar },
-  { label: 'Files', path: '/files', icon: FolderOpen },
-  { label: 'Messages & Meetings', path: '/messages', icon: MessageSquare },
-  { label: 'Communication', path: '/communication', icon: Send, children: [
-    { label: 'Send Message', path: '/communication/send' },
-    { label: 'Templates', path: '/communication/templates' },
-    { label: 'History', path: '/communication/history' },
-    { label: 'Broadcasts', path: '/communication/broadcasts' },
-  ]},
-  { label: 'System Settings', path: '/settings', icon: Settings, children: [
-    { label: 'System Settings', path: '/settings/system' },
-    { label: 'Profile', path: '/settings/profile' },
-    { label: 'Security', path: '/settings/security' },
-    { label: 'Notification Prefs', path: '/settings/notifications' },
-    { label: 'Login History', path: '/login-history' },
-  ]},
+  ...s('', [DASHBOARD, BRANDS_HUB, TRACKING, ANALYTICS]),
+  ...s('Work', [PROJECTS_FULL, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
+  ...s('People', [STAFF_DIR, HR_FULL, QUERIES]),
+  ...s('Finance', [FINANCE_FULL, PAYROLL_FULL, INVENTORY]),
+  ...s('Sales', [CRM]),
+  ...s('Communication', [MESSAGES, BROADCAST_FULL, AI]),
+  ...s('Administration', [ORGANIZATION, AUDIT, SYSTEM_SETTINGS]),
 ];
 
-// ─── Common items available on every dashboard, regardless of role ───────────
-// (Messages/Calendar/Files/AI Assistant/Meetings/My Payslip/Customer Reports +
-// a personal Settings group with Profile/Security/Notification Prefs. Super
-// Admin keeps its own richer System Settings group instead of this one.)
-const COMMON_TAIL: SidebarItem[] = [
-  { label: 'Messages & Meetings', path: '/messages', icon: MessageSquare },
-  { label: 'Calendar', path: '/calendar', icon: Calendar },
-  { label: 'Files', path: '/files', icon: FolderOpen },
-  { label: 'AI Assistant', path: '/ai-assistant', icon: Bot },
-  { label: 'My Payslip', path: '/payroll/my-slips', icon: DollarSign },
-  { label: 'Settings', path: '/settings', icon: Settings, children: [
-    { label: 'Profile', path: '/settings/profile' },
-    { label: 'Security', path: '/settings/security' },
-    { label: 'Notification Prefs', path: '/settings/notifications' },
-  ]},
-];
-
-// ─── Full CRM group — available to every role (Contacts/Pipeline/Forecast/Proposals) ───
-const CRM_NAV: SidebarItem[] = [
-  { label: 'CRM', path: '/crm', icon: ShoppingCart, children: [
-    { label: 'Clients', path: '/clients' },
-    { label: 'Contacts & Leads', path: '/crm/contacts' },
-    { label: 'Pipeline', path: '/crm/pipeline' },
-    { label: 'Forecast', path: '/crm/forecast' },
-    { label: 'Proposals', path: '/crm/proposals' },
-    { label: 'Customer Reports', path: '/customer-reports' },
-  ]},
-];
-
-// ─── ADMIN — daily operations management (branch/business scoped) ────────────
 const ADMIN_NAV: SidebarItem[] = [
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Staff', path: '/staff', icon: Users },
-  { label: 'Attendance', path: '/attendance', icon: Calendar, children: [
-    { label: 'Attendance Records', path: '/attendance' },
-    { label: 'GPS Attendance', path: '/attendance/check-in' },
-  ]},
-  { label: 'Leave', path: '/leave', icon: FileText, children: [
-    { label: 'Leave Requests', path: '/leave/requests' },
-    { label: 'Leave Balance', path: '/leave/balance' },
-  ]},
-  { label: 'Projects', path: '/projects', icon: Briefcase, children: [
-    { label: 'Projects', path: '/projects' },
-    { label: 'Tasks', path: '/tasks' },
-  ]},
-  { label: 'Reports', path: '/reports', icon: BarChart3, children: [
-    { label: 'Attendance', path: '/reports/attendance' },
-    { label: 'Projects', path: '/reports/projects' },
-  ]},
-  { label: 'Weekly Reports', path: '/hr/weekly-report', icon: FileText },
-  { label: 'HR', path: '/hr', icon: UserCheck, children: [
-    { label: 'Recruitment', path: '/hr/jobs' },
-    { label: 'Careers on Websites', path: '/hr/careers' },
-    { label: 'Appraisals', path: '/hr/appraisals' },
-    { label: 'Promotions', path: '/hr/promotions' },
-    { label: 'Training', path: '/hr/training' },
-  ]},
-  { label: 'Payroll', path: '/payroll', icon: DollarSign, children: [
-    { label: 'Dashboard', path: '/payroll' },
-    { label: 'Periods', path: '/payroll/periods' },
-    { label: 'Pay Slips', path: '/payroll/slips' },
-    { label: 'My Payslip', path: '/payroll/my-slips' },
-  ]},
-  { label: 'Communication', path: '/communication', icon: Send, children: [
-    { label: 'Send Message', path: '/communication/send' },
-    { label: 'Templates', path: '/communication/templates' },
-    { label: 'History', path: '/communication/history' },
-    { label: 'Broadcasts', path: '/communication/broadcasts' },
-  ]},
-  { label: 'Staff Queries', path: '/queries', icon: HelpCircle },
-  { label: 'Inventory', path: '/inventory', icon: Package, children: [
-    { label: 'Dashboard', path: '/inventory/dashboard' },
-    { label: 'Items', path: '/inventory/items' },
-    { label: 'Warehouses', path: '/inventory/warehouses' },
-  ]},
-  { label: 'Finance', path: '/finance', icon: Receipt, children: [
-    { label: 'Payments & Receipts', path: '/receipts' },
-    { label: 'Invoices', path: '/invoices' },
-    { label: 'Student Fee Receipts', path: '/lms/fee-receipts' },
-  ]},
-  ...CRM_NAV,
-  ...COMMON_TAIL,
+  ...s('', [DASHBOARD, BRANDS_HUB, TRACKING, ANALYTICS]),
+  ...s('Work', [PROJECTS_FULL, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
+  ...s('People', [STAFF_DIR, HR_FULL, QUERIES]),
+  ...s('Finance', [FINANCE_FULL, PAYROLL_FULL, INVENTORY]),
+  ...s('Sales', [CRM]),
+  ...s('Communication', [MESSAGES, BROADCAST_FULL, AI]),
+  ...s('Administration', [AUDIT, MY_SETTINGS]),
 ];
 
-// ─── HR ────────────────────────────────────────────────────────────────────
 const HR_NAV: SidebarItem[] = [
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Employees', path: '/staff', icon: Users },
-  { label: 'Recruitment', path: '/hr/jobs', icon: Briefcase },
-  { label: 'Careers on Websites', path: '/hr/careers', icon: Globe },
-  { label: 'Attendance', path: '/attendance', icon: Calendar },
-  { label: 'Leave', path: '/leave/requests', icon: FileText },
-  { label: 'Appraisals', path: '/hr/appraisals', icon: Award },
-  { label: 'Promotions', path: '/hr/promotions', icon: ArrowUpCircle },
-  { label: 'Training', path: '/hr/training', icon: GraduationCap },
-  { label: 'Weekly Reports', path: '/hr/weekly-report', icon: FileText },
-  { label: 'Reports', path: '/reports', icon: BarChart3, children: [
-    { label: 'Attendance', path: '/reports/attendance' },
-    { label: 'Projects', path: '/reports/projects' },
-  ]},
-  { label: 'Communication', path: '/communication', icon: Send, children: [
-    { label: 'Send Message', path: '/communication/send' },
-    { label: 'Templates', path: '/communication/templates' },
-    { label: 'History', path: '/communication/history' },
-    { label: 'Broadcasts', path: '/communication/broadcasts' },
-  ]},
-  ...CRM_NAV,
-  ...COMMON_TAIL,
+  ...s('', [DASHBOARD, BRANDS_HUB, TRACKING]),
+  ...s('Work', [PROJECTS_FULL, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
+  ...s('People', [STAFF_DIR, HR_FULL, QUERIES]),
+  ...s('Finance', [PAYROLL_FULL, RECEIPTS]),
+  ...s('Sales', [CRM]),
+  ...s('Communication', [MESSAGES, BROADCAST_FULL, AI]),
+  ...s('Administration', [AUDIT, MY_SETTINGS]),
 ];
 
-// ─── HOD — department only ────────────────────────────────────────────────
 const HOD_NAV: SidebarItem[] = [
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'My Team', path: '/my-team', icon: Users },
-  { label: 'Projects', path: '/projects', icon: Briefcase },
-  { label: 'Tasks', path: '/tasks', icon: CheckSquare },
-  { label: 'Weekly Reports', path: '/hr/weekly-report', icon: FileText },
-  { label: 'Attendance', path: '/attendance', icon: Calendar },
-  // HOD already holds LEAVE_REQUEST_CREATE_OWN/READ_OWN/APPROVE_OWN_DEPARTMENT
-  // in RolesConfig.ts, but had no sidebar path into Leave at all.
-  { label: 'Leave', path: '/leave', icon: FileText, children: [
-    { label: 'Apply Leave', path: '/leave/apply' },
-    { label: 'Leave Requests', path: '/leave/requests' },
-    { label: 'Balance', path: '/leave/balance' },
-  ]},
-  { label: 'Performance', path: '/hr/appraisals', icon: Award },
-  // HOD already holds BROADCAST_CREATE_OWN_DEPARTMENT/READ_OWN_DEPARTMENT in
-  // RolesConfig.ts, but had no sidebar path into it either.
-  { label: 'Broadcasts', path: '/communication/broadcasts', icon: Send },
-  // Student Management — HOD's read access was STM_STUDENT_READ_ALL (every
-  // department, not just her own) until this same change scoped it down to
-  // STM_STUDENT_READ_OWN_DEPARTMENT, matching the create/update/suspend
-  // grants she already had. No sidebar path into it at all before now.
-  { label: 'Students', path: '/lms/students', icon: GraduationCap },
-  ...CRM_NAV,
-  ...COMMON_TAIL,
+  ...s('', [DASHBOARD, BRANDS_HUB, TRACKING]),
+  ...s('Work', [PROJECTS_FULL, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
+  ...s('People', [
+    { label: 'My Team', path: '/my-team', icon: Users },
+    { label: 'Students', path: '/lms/students', icon: GraduationCap },
+    MY_ATTENDANCE, MY_LEAVE,
+    { label: 'Appraisals', path: '/hr/appraisals', icon: Award },
+  ]),
+  ...s('Finance', [RECEIPTS, MY_PAYSLIP]),
+  ...s('Sales', [CRM]),
+  ...s('Communication', [MESSAGES, BROADCASTS, AI]),
+  ...s('Administration', [MY_SETTINGS]),
 ];
 
-// ─── STAFF — self-service only ────────────────────────────────────────────
+const ACCOUNTANT_NAV: SidebarItem[] = [
+  ...s('', [DASHBOARD, BRANDS_HUB, TRACKING]),
+  ...s('Work', [MY_WORK, MY_PROJECTS, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
+  ...s('People', [MY_ATTENDANCE, MY_LEAVE, TRAINING]),
+  ...s('Finance', [FINANCE_FULL, PAYROLL_FULL, INVENTORY]),
+  ...s('Sales', [CRM]),
+  ...s('Communication', [MESSAGES, AI]),
+  ...s('Administration', [MY_SETTINGS]),
+];
+
 const STAFF_NAV: SidebarItem[] = [
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Attendance', path: '/attendance/check-in', icon: Calendar },
-  { label: 'Leave', path: '/leave', icon: FileText, children: [
-    { label: 'Apply Leave', path: '/leave/apply' },
-    { label: 'Balance', path: '/leave/balance' },
-  ]},
-  { label: 'My Tasks', path: '/tasks', icon: CheckSquare },
-  { label: 'My Projects', path: '/projects', icon: Briefcase },
-  { label: 'Weekly Report', path: '/hr/weekly-report', icon: FileText },
-  { label: 'Training', path: '/hr/training', icon: GraduationCap },
-  ...CRM_NAV,
-  ...COMMON_TAIL,
+  ...s('', [DASHBOARD, BRANDS_HUB, { ...TRACKING, label: 'My Tracking' }]),
+  ...s('Work', [MY_WORK, MY_PROJECTS, CALENDAR, FILES, DOCUMENTS, WEEKLY]),
+  ...s('People', [MY_ATTENDANCE, MY_LEAVE, TRAINING]),
+  ...s('Finance', [RECEIPTS, MY_PAYSLIP]),
+  ...s('Sales', [CRM]),
+  ...s('Communication', [MESSAGES, AI]),
+  ...s('Administration', [MY_SETTINGS]),
 ];
 
 export const SIDEBAR_CONFIG: Record<CanonicalRole, SidebarItem[]> = {
@@ -257,86 +201,48 @@ export const SIDEBAR_CONFIG: Record<CanonicalRole, SidebarItem[]> = {
   admin: ADMIN_NAV,
   hr: HR_NAV,
   hod: HOD_NAV,
+  accountant: ACCOUNTANT_NAV,
   staff: STAFF_NAV,
   // Student uses its own dedicated StudentPortalLayout, not this sidebar at all.
   student: [],
 };
 
-// ─── Position-specific extras (Staff.position, not an RBAC role) — spliced
-// into STAFF_NAV since the generic staff sidebar has no path to these pages today.
-const ACCOUNTANT_EXTRA_NAV: SidebarItem[] = [
-  { label: 'Finance', path: '/payroll', icon: Wallet, children: [
-    { label: 'Payroll Dashboard', path: '/payroll' },
-    { label: 'Pay Periods', path: '/payroll/periods' },
-    { label: 'Salary Structures', path: '/payroll/structures' },
-    { label: 'Invoices', path: '/invoices' },
-    { label: 'All Payslips', path: '/payroll/slips' },
-  ]},
-];
+/** Receptionists (a position, not a role) also handle staff queries. */
+const RECEPTIONIST_EXTRA_NAV: SidebarItem[] = s('People', [QUERIES]);
 
-const RECEPTIONIST_EXTRA_NAV: SidebarItem[] = [
-  { label: 'Staff Queries', path: '/queries', icon: ClipboardList },
-];
-
-/**
- * Department-specific module nav (LMS for Kurios Sat, VisaMax, BeadMax) —
- * spliced in for anyone linked to that department (primary or secondary
- * coverage), regardless of role. Most relevant to HOD, since the generic
- * role-based nav has no way to know which department she heads.
- */
-function getDepartmentExtraNav(departmentCodes?: string[] | null): SidebarItem[] {
-  if (!departmentCodes?.length) return [];
+/** Brand menus (VisaMax, Kurios SAT, BeadMax, Maxfood Farm). */
+function brandMenus(): SidebarItem[] {
   const seen = new Set<string>();
-  const extra: SidebarItem[] = [];
-  for (const code of departmentCodes) {
-    const mod = DEPARTMENT_MODULES[code.toUpperCase()];
+  const out: SidebarItem[] = [];
+  for (const code of BRAND_CODES) {
+    const mod = DEPARTMENT_MODULES[code];
     if (!mod || seen.has(mod.label)) continue;
     seen.add(mod.label);
-    extra.push(
-      mod.links.length > 1
-        ? { label: mod.label, path: mod.links[0].path, icon: mod.icon, color: mod.color, children: mod.links.map(l => ({ label: l.label, path: l.path })) }
-        : { label: mod.label, path: mod.links[0].path, icon: mod.icon, color: mod.color }
-    );
+    out.push(mod.links.length > 1
+      ? { label: mod.label, path: mod.links[0].path, icon: mod.icon, color: mod.color, section: 'Brands', children: mod.links.map((l) => ({ label: l.label, path: l.path })) }
+      : { label: mod.label, path: mod.links[0].path, icon: mod.icon, color: mod.color, section: 'Brands' });
   }
-  return extra;
-}
-
-/** Cross-brand ERP pages, shown after the brand menus. */
-function sharedErpNav(role: CanonicalRole): SidebarItem[] {
-  const items: SidebarItem[] = [
-    { label: 'Documents & Agreements', path: '/documents', icon: FileSignature },
-  ];
-  // Super Admin / Admin find Payments & Receipts inside their Finance menu.
-  if (role !== 'superadmin' && role !== 'admin') items.push({ label: 'Payments & Receipts', path: '/receipts', icon: Receipt });
-  items.unshift({ label: 'Brands', path: '/brands', icon: Building2 });
-  return items;
+  return out;
 }
 
 export function getNavForRole(role: CanonicalRole, position?: string | null, departmentCodes?: string[] | null): SidebarItem[] {
+  void departmentCodes; // every staff member works across all brands
   const base = SIDEBAR_CONFIG[role] ?? STAFF_NAV;
-  // Every staff member currently works across all brands, so every role gets
-  // every brand's menu (what they can see inside is enforced by the backend).
-  // Clean order: Dashboard → brands → the role's own menu → shared pages,
-  // with each page appearing exactly once.
-  void departmentCodes;
-  const brandMenus = getDepartmentExtraNav(BRAND_CODES);
-  const pos = (position || '').toLowerCase();
-  const extra = role === 'staff' && pos === 'accountant' ? ACCOUNTANT_EXTRA_NAV : role === 'staff' && pos === 'receptionist' ? RECEPTIONIST_EXTRA_NAV : [];
-  const [dash, ...rest] = base;
-  const shared = sharedErpNav(role);
-  const brandsHub = shared.filter((i) => i.path === '/brands');
-  const tail = shared.filter((i) => i.path !== '/brands');
+  const extra = role === 'staff' && (position || '').toLowerCase() === 'receptionist' ? RECEPTIONIST_EXTRA_NAV : [];
+  const all = [...base, ...brandMenus(), ...extra];
+  const order = (sec?: string) => SECTION_ORDER.indexOf((sec || '') as any);
   const seen = new Set<string>();
-  const settings = rest.filter((i) => i.path === '/settings' || i.path.startsWith('/settings/'));
-  const body = rest.filter((i) => !settings.includes(i));
-  return [dash, ...brandsHub, ...brandMenus, ...body, ...extra, ...tail, ...settings].filter((i) => (seen.has(i.path) ? false : (seen.add(i.path), true)));
+  return all
+    .map((item, i) => ({ item, i }))
+    .sort((a, b) => order(a.item.section) - order(b.item.section) || a.i - b.i)
+    .map(({ item }) => item)
+    .filter((i) => (seen.has(i.path) ? false : (seen.add(i.path), true)));
 }
 
 /** Every item across every role's config, deduped by path — used only for page-title/breadcrumb lookups. */
 export const ALL_SIDEBAR_ITEMS: SidebarItem[] = (() => {
   const seen = new Map<string, SidebarItem>();
-  // Brand + shared ERP items first so their (more specific) titles win.
-  for (const item of [...getDepartmentExtraNav(BRAND_CODES), ...sharedErpNav('superadmin')]) if (!seen.has(item.path)) seen.set(item.path, item);
+  for (const item of brandMenus()) if (!seen.has(item.path)) seen.set(item.path, item);
   for (const nav of Object.values(SIDEBAR_CONFIG)) {
     for (const item of nav) if (!seen.has(item.path)) seen.set(item.path, item);
   }

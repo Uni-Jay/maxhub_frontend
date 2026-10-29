@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ClipboardList, AlertTriangle, CheckCircle2, Clock,
   ChevronDown, ChevronUp, Send, FileWarning,
-  CheckSquare, AlertCircle, Ban, Loader2, ArrowRight, Eye,
+  CheckSquare, AlertCircle, Ban, Loader2, ArrowRight, Eye, Trash2,
 } from 'lucide-react';
 import CloudinaryUpload from '@components/ui/CloudinaryUpload';
 import type { CloudinaryUploadResult } from '@services/cloudinaryService';
@@ -162,6 +162,12 @@ export default function WeeklyReportPage() {
     mutationFn: ({ id, rejectionReason }: { id: string; rejectionReason: string }) =>
       apiClient.patch(`/hr/weekly-reports/${id}/reject`, { rejectionReason }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['weekly-reports-past'] }),
+    onError: (error) => window.alert(errMsg(error)),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/hr/weekly-reports/${id}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['weekly-reports-past'] }); qc.invalidateQueries({ queryKey: ['weekly-report-current'] }); },
     onError: (error) => window.alert(errMsg(error)),
   });
 
@@ -500,6 +506,15 @@ export default function WeeklyReportPage() {
                     )}
                     {r.approvedBy && (
                       <p className="text-xs text-gray-400 dark:text-gray-500">Approved by {r.approvedBy}</p>
+                    )}
+                    {(canReview || r.approvalStatus !== 'Approved') && (
+                      <button
+                        onClick={() => { if (window.confirm('Delete this weekly report? This cannot be undone.')) deleteMutation.mutate(r.id); }}
+                        disabled={deleteMutation.isPending}
+                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 transition disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete report
+                      </button>
                     )}
                     {/* Reviewer feedback — independent of approve/reject, never edits the report itself */}
                     {canReview && (

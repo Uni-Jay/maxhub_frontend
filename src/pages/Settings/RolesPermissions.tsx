@@ -8,7 +8,7 @@ import { userPermissionService } from '@services/userPermissionService';
 import { cn } from '@utils/cn';
 import type { StaffMember } from '@/types';
 
-type Role = 'superadmin' | 'admin' | 'hr' | 'hod' | 'staff';
+type Role = 'superadmin' | 'admin' | 'hr' | 'hod' | 'accountant' | 'staff';
 
 interface RoleConfig { role: Role; label: string; color: string; description: string; note?: string; }
 
@@ -17,7 +17,8 @@ const ROLE_CONFIGS: RoleConfig[] = [
   { role:'admin',      label:'Admin (Head of Admin)',    color:'bg-rose-600',   description:'Administrative oversight — staff, HR, operations, payroll, reports' },
   { role:'hr',         label:'HR',                      color:'bg-violet-600', description:'Human resources — recruitment, onboarding, appraisals, leave, training' },
   { role:'hod',        label:'Head of Department',      color:'bg-indigo-600', description:'Departmental head — team tasks, projects, attendance, weekly reports' },
-  { role:'staff',      label:'Staff',                   color:'bg-cyan-600',   description:'All staff members — tasks, attendance, payslips, leave, chat', note: 'Positions such as Accountant, Instructor, Receptionist are assigned here with extra user-level permissions.' },
+  { role:'accountant', label:'Accountant',              color:'bg-emerald-600', description:'Accounts — staff pay, payroll, payslips, invoices, payments & receipts, school fees, expenses, currencies and financial reports', note: 'Staff whose position is Accountant get this role automatically. They also keep everything a staff member has.' },
+  { role:'staff',      label:'Staff',                   color:'bg-cyan-600',   description:'All staff members — tasks, attendance, payslips, leave, chat', note: 'Positions such as Instructor and Receptionist are assigned here with extra user-level permissions.' },
 ];
 
 const MODULES = ['Dashboard','Staff','HR','Attendance','Leave','Payroll','Projects','Tasks','CRM','Clients','Inventory','LMS','Messages','Video Calls','Calendar','Files','Invoices','Analytics','AI Assistant','Audit Logs','Reports','Settings'];
@@ -27,6 +28,7 @@ const BASE_PERMISSIONS: Record<Role, string[]> = {
   admin:      ['Dashboard','Staff','HR','Attendance','Leave','Payroll','Projects','Tasks','CRM','Clients','Calendar','Files','Invoices','Analytics','Reports','Settings'],
   hr:         ['Dashboard','Staff','HR','Attendance','Leave','Payroll','Messages','Calendar','Files','Reports'],
   hod:        ['Dashboard','Staff','Attendance','Projects','Tasks','LMS','Messages','Calendar','Files','Analytics'],
+  accountant: ['Dashboard','Attendance','Leave','Payroll','Tasks','Inventory','Messages','Video Calls','Calendar','Files','Invoices','Reports','AI Assistant'],
   staff:      ['Dashboard','Attendance','Leave','Tasks','Messages','Video Calls','Calendar','Files','AI Assistant'],
 };
 

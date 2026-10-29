@@ -106,7 +106,9 @@ const StudentProfilePage      = React.lazy(() => import('@modules/student/pages/
 const PayrollDashboard = React.lazy(() => import('@modules/payroll/pages/PayrollDashboard'));
 const PayrollPeriods = React.lazy(() => import('@modules/payroll/pages/PayrollPeriods'));
 const PayrollSlips = React.lazy(() => import('@modules/payroll/pages/PayrollSlips'));
-const SalaryStructures = React.lazy(() => import('@modules/payroll/pages/SalaryStructures'));
+const StaffPay = React.lazy(() => import('@modules/payroll/pages/StaffPay'));
+const TrackingPage = React.lazy(() => import('@modules/tracking/pages/TrackingPage'));
+const CurrencyPage = React.lazy(() => import('@modules/erp/pages/CurrencyPage'));
 const MyPayslips = React.lazy(() => import('@modules/payroll/pages/MyPayslips'));
 
 // ─── CRM ───
@@ -159,7 +161,8 @@ const AIAssistantPage = React.lazy(() => import('@modules/ai/pages/AIAssistantPa
 
 
 // ─── Bead Max Sales ───
-const BeadMaxSales = React.lazy(() => import('@modules/sales/pages/BeadMaxSales'));
+const BeadMaxShop = React.lazy(() => import('@modules/erp/pages/Inventory').then((m) => ({ default: m.BeadMaxShop })));
+const BeadMaxInventory = React.lazy(() => import('@modules/erp/pages/Inventory').then((m) => ({ default: m.BeadMaxInventory })));
 
 // ─── Inventory Dashboard ───
 const InventoryDashboard = React.lazy(() => import('@modules/inventory/pages/InventoryDashboard'));
@@ -339,7 +342,10 @@ function App() {
               <Route path="/payroll" element={<PayrollDashboard />} />
               <Route path="/payroll/periods" element={<PayrollPeriods />} />
               <Route path="/payroll/slips" element={<PayrollSlips />} />
-              <Route path="/payroll/structures" element={<SalaryStructures />} />
+              <Route path="/payroll/staff-pay" element={<StaffPay />} />
+              <Route path="/tracking" element={<TrackingPage />} />
+              <Route path="/finance/currency" element={<CurrencyPage />} />
+              <Route path="/payroll/structures" element={<Navigate to="/payroll/staff-pay" replace />} />
               <Route path="/payroll/my-slips" element={<MyPayslips />} />
 
               {/* CRM */}
@@ -393,7 +399,9 @@ function App() {
               <Route path="/crm/hub" element={<Navigate to="/brands" replace />} />
 
               {/* Bead Max Sales */}
-              <Route path="/bead-max/sales" element={<BeadMaxSales />} />
+              <Route path="/bead-max/sales" element={<Navigate to="/beadmax/shop" replace />} />
+              <Route path="/beadmax/shop" element={<BeadMaxShop />} />
+              <Route path="/beadmax/inventory" element={<BeadMaxInventory />} />
 
               {/* Inventory Dashboard */}
               <Route path="/inventory/dashboard" element={<InventoryDashboard />} />

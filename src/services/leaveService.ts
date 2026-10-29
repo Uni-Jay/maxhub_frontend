@@ -30,6 +30,7 @@ export const leaveService = {
   createRequest: (payload: CreateLeavePayload) =>
     apiClient.post<LeaveRequestItem>('/leave/requests', payload),
 
+  remove: (id: number | string) => apiClient.delete<null>(`/leave/requests/${id}`),
   approve: (id: number | string, comments?: string) =>
     apiClient.patch<LeaveRequestItem>(`/leave/requests/${id}/approve`, { comments }),
 

@@ -1,3 +1,4 @@
+import { Timeline } from '@components/tracking/Timeline';
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -143,6 +144,11 @@ export default function ProjectDetail() {
           </div>
         </div>
       )}
+
+      <div className="p-4 border rounded-lg space-y-3 dark:border-gray-700">
+        <h3 className="font-semibold text-lg">Progress & history</h3>
+        <Timeline entityType="project" entityId={id!} progress={project.progress ?? 0} />
+      </div>
 
       <ProjectReports projectId={id!} />
     </div>

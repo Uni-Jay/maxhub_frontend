@@ -1,274 +1,176 @@
 import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Shield, Search, Download, RefreshCw, X,
-  Plus, Edit, Trash2, LogIn, LogOut, Eye, ChevronLeft, ChevronRight,
-} from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
+import { Download, LogIn, ShieldAlert, Users, Activity, Search, RefreshCw, X, ChevronLeft, ChevronRight, Loader2, Monitor, Globe } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
 import { cn } from '@utils/cn';
-import { format } from 'date-fns';
 
-type Action = 'all' | 'create' | 'update' | 'delete' | 'login' | 'logout' | 'export';
+const ACTIONS = ['All', 'Login', 'Login failed', 'Logout', 'Create', 'Update', 'Delete', 'Approve', 'Reject', 'Send', 'Password reset'];
+const MODULES = ['All', 'Auth', 'Staff', 'HR', 'Leave', 'Payroll', 'Brands', 'Customer reports', 'Tasks', 'Projects', 'School', 'Files', 'Calendar', 'Settings'];
 
-const ACTION_COLORS: Record<string, string> = {
-  create: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  update: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  delete: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  login: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  logout: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-  export: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+const TONE: Record<string, string> = {
+  Login: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+  'Login code sent': 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300',
+  'Login failed': 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
+  Logout: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  Create: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300',
+  Update: 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300',
+  Delete: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',
+  Approve: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+  Reject: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
 };
-
-const ACTION_ICONS: Record<string, React.ElementType> = {
-  create: Plus, update: Edit, delete: Trash2,
-  login: LogIn, logout: LogOut, export: Download, view: Eye,
-};
-
-
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
-
-function LogDetailModal({ log, onClose }: { log: any; onClose: () => void }) {
-  const Icon = ACTION_ICONS[log.action] || Eye;
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold', ACTION_COLORS[log.action] || 'bg-gray-100')}>
-              <Icon className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 dark:text-white capitalize">{log.action} — {log.resource}</p>
-              <p className="text-xs text-gray-500">{format(new Date(log.createdAt), 'PPpp')}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400"><X className="h-4 w-4" /></button>
-        </div>
-
-        <div className="space-y-3 text-sm">
-          {[
-            { label: 'User', value: `${log.userName} (${log.userEmail})` },
-            { label: 'Module', value: log.module },
-            { label: 'Resource', value: log.resource },
-            { label: 'IP Address', value: log.ipAddress },
-            { label: 'Timestamp', value: format(new Date(log.createdAt), 'PPpp') },
-          ].map(r => (
-            <div key={r.label} className="flex gap-3">
-              <span className="text-gray-500 w-24 flex-shrink-0">{r.label}</span>
-              <span className="text-gray-900 dark:text-white font-medium">{r.value}</span>
-            </div>
-          ))}
-          <div>
-            <p className="text-gray-500 mb-2">Details</p>
-            <pre className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-xs text-gray-700 dark:text-gray-300 overflow-auto max-h-40">
-              {JSON.stringify(log.details, null, 2)}
-            </pre>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
 
 export default function AuditLogsPage() {
   const [page, setPage] = useState(1);
-  const [action, setAction] = useState<Action>('all');
+  const [action, setAction] = useState('All');
+  const [mod, setMod] = useState('All');
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [selectedLog, setSelectedLog] = useState<any>(null);
-  const LIMIT = 15;
+  const [selected, setSelected] = useState<any>(null);
+  const LIMIT = 25;
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['audit-logs', page, action, search, startDate, endDate],
-    queryFn: async () => {
-      try {
-        return await apiClient.getRaw('/audit-logs', {
-          page, limit: LIMIT,
-          ...(action !== 'all' && { action }),
-          ...(search && { search }),
-          ...(startDate && { startDate }),
-          ...(endDate && { endDate }),
-        }) as any;
-      } catch {
-        return { data: [], pagination: { total: 0, page: 1, limit: LIMIT, totalPages: 1 } };
-      }
-    },
+  const { data, isLoading, isFetching, refetch, error } = useQuery({
+    queryKey: ['audit-logs', page, action, mod, search, startDate, endDate],
+    queryFn: () => apiClient.getRaw('/audit-logs', {
+      page, limit: LIMIT,
+      ...(action !== 'All' && { action }), ...(mod !== 'All' && { module: mod }),
+      ...(search && { search }), ...(startDate && { startDate }), ...(endDate && { endDate }),
+    }),
+    placeholderData: (p) => p,
+    refetchInterval: 30_000,
   });
-
   const logs: any[] = (data as any)?.data || [];
-  const pagination = (data as any)?.pagination || { total: logs.length, totalPages: 1 };
+  const pg = (data as any)?.pagination || { total: 0, totalPages: 1 };
+  const last = (data as any)?.last24h || {};
 
   const exportCSV = useCallback(() => {
-    const headers = ['Timestamp', 'User', 'Email', 'Action', 'Module', 'Resource', 'IP Address'];
-    const rows = logs.map(l => [
-      format(new Date(l.createdAt), 'yyyy-MM-dd HH:mm:ss'),
-      l.userName, l.userEmail, l.action, l.module, l.resource, l.ipAddress,
-    ]);
-    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `audit-logs-${Date.now()}.csv`; a.click();
-    URL.revokeObjectURL(url);
+    const head = ['Time', 'Person', 'Email', 'Action', 'Area', 'What happened', 'IP address', 'Device', 'Result'];
+    const cell = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = logs.map((l) => [format(new Date(l.createdAt), 'yyyy-MM-dd HH:mm:ss'), l.userName, l.userEmail, l.action, l.module, l.description, l.ipAddress, l.device, l.status].map(cell).join(','));
+    const blob = new Blob([[head.map(cell).join(','), ...rows].join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `maxhub-audit-${format(new Date(), 'yyyy-MM-dd')}.csv`; a.click();
   }, [logs]);
 
-  const ACTIONS: { key: Action; label: string }[] = [
-    { key: 'all', label: 'All' }, { key: 'create', label: 'Create' }, { key: 'update', label: 'Update' },
-    { key: 'delete', label: 'Delete' }, { key: 'login', label: 'Login' }, { key: 'logout', label: 'Logout' },
-    { key: 'export', label: 'Export' },
-  ];
+  const reset = () => { setAction('All'); setMod('All'); setSearch(''); setStartDate(''); setEndDate(''); setPage(1); };
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
-            <Shield className="h-5 w-5 text-indigo-600" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Audit Logs</h1>
-            <p className="text-xs text-gray-500">User activity and security monitoring</p>
-          </div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Audit Logs</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Who signed in, from where, and every change made in MaxHub.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => refetch()} className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            <RefreshCw className="h-4 w-4" />
+        <div className="flex gap-2">
+          <button onClick={() => refetch()} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">
+            <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />Refresh
           </button>
-          <button onClick={exportCSV} className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors">
-            <Download className="h-4 w-4" /> Export CSV
+          <button onClick={exportCSV} disabled={!logs.length} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-50">
+            <Download className="h-4 w-4" />Export
           </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 space-y-3">
-        <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by user name or email..."
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </div>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          {(search || startDate || endDate) && (
-            <button onClick={() => { setSearch(''); setStartDate(''); setEndDate(''); }} className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700">
-              <X className="h-3.5 w-3.5" /> Clear
-            </button>
-          )}
-        </div>
-
-        {/* Action filter tabs */}
-        <div className="flex gap-1 flex-wrap">
-          {ACTIONS.map(a => (
-            <button key={a.key} onClick={() => { setAction(a.key); setPage(1); }}
-              className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize', action === a.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600')}>
-              {a.label}
-            </button>
-          ))}
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Stat icon={LogIn} label="Sign-ins (24h)" value={last.logins} tone="text-emerald-600" onClick={() => { reset(); setAction('Login'); }} />
+        <Stat icon={Users} label="People signed in (24h)" value={last.people} tone="text-indigo-600" />
+        <Stat icon={ShieldAlert} label="Failed sign-ins (24h)" value={last.failed} tone={last.failed ? 'text-red-600' : 'text-gray-500'} onClick={() => { reset(); setAction('Login failed'); }} />
+        <Stat icon={Activity} label="Changes (24h)" value={last.changes} tone="text-amber-600" />
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-700">
-                {['Timestamp', 'User', 'Action', 'Module', 'Resource', 'IP Address', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <div className="flex flex-wrap gap-3 p-4 border-b border-gray-100 dark:border-gray-800">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search person, email, IP or activity" className={cn(inp, 'pl-9 w-full')} />
+          </div>
+          <select value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} className={inp}>{ACTIONS.map((a) => <option key={a}>{a}</option>)}</select>
+          <select value={mod} onChange={(e) => { setMod(e.target.value); setPage(1); }} className={inp}>{MODULES.map((a) => <option key={a} value={a}>{a === 'All' ? 'All areas' : a}</option>)}</select>
+          <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} className={inp} title="From" />
+          <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} className={inp} title="To" />
+          {(action !== 'All' || mod !== 'All' || search || startDate || endDate) && <button onClick={reset} className="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white px-2">Clear</button>}
+        </div>
+
+        {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-indigo-500 mx-auto my-14" /> : error ? (
+          <p className="p-10 text-center text-sm text-red-600">{(error as any)?.response?.data?.message || 'Could not load the audit log'}</p>
+        ) : !logs.length ? (
+          <p className="p-10 text-center text-sm text-gray-400">No activity matches these filters.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-800/60 text-[11px] uppercase tracking-wider text-gray-500">
+                <tr><th className="text-left px-4 py-3">When</th><th className="text-left px-4 py-3">Person</th><th className="text-left px-4 py-3">Action</th><th className="text-left px-4 py-3">What happened</th><th className="text-left px-4 py-3">Where from</th></tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {logs.map((l) => (
+                  <tr key={l.id} onClick={() => setSelected(l)} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 cursor-pointer align-top">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <p className="text-gray-900 dark:text-white">{format(new Date(l.createdAt), 'd MMM, HH:mm')}</p>
+                      <p className="text-[11px] text-gray-400">{formatDistanceToNow(new Date(l.createdAt), { addSuffix: true })}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900 dark:text-white">{l.userName}</p>
+                      <p className="text-[11px] text-gray-500">{l.userEmail || ''}</p>
+                    </td>
+                    <td className="px-4 py-3"><span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap', TONE[l.action] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300')}>{l.action}</span><p className="text-[11px] text-gray-400 mt-1">{l.module}</p></td>
+                    <td className="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-md"><p className="line-clamp-2">{l.description}</p></td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
+                      <p className="flex items-center gap-1"><Globe className="h-3 w-3" />{l.ipAddress || '—'}</p>
+                      {l.device && <p className="flex items-center gap-1 mt-0.5"><Monitor className="h-3 w-3" />{l.device}</p>}
+                    </td>
+                  </tr>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-              {isLoading ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
-                      <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 dark:bg-gray-700 rounded animate-pulse" /></td>
-                    ))}
-                  </tr>
-                ))
-              ) : logs.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-16 text-center text-gray-400">
-                  <Shield className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                  <p>No audit logs found</p>
-                </td></tr>
-              ) : logs.map((log, i) => {
-                const Icon = ACTION_ICONS[log.action] || Eye;
-                return (
-                  <tr key={log.id || i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer transition-colors" onClick={() => setSelectedLog(log)}>
-                    <td className="px-4 py-3">
-                      <span className="text-gray-900 dark:text-white text-xs">{timeAgo(log.createdAt)}</span>
-                      <p className="text-gray-400 text-[10px]">{format(new Date(log.createdAt), 'MMM d, HH:mm')}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-xs font-bold text-indigo-600">
-                          {(log.userName || '?')[0]?.toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white text-xs">{log.userName}</p>
-                          <p className="text-gray-400 text-[10px]">{log.userEmail}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold capitalize', ACTION_COLORS[log.action] || 'bg-gray-100 text-gray-600')}>
-                        <Icon className="h-2.5 w-2.5" /> {log.action}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{log.module}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{log.resource}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs font-mono">{log.ipAddress}</td>
-                    <td className="px-4 py-3">
-                      <button className="p-1 text-gray-400 hover:text-indigo-600 rounded transition-colors" onClick={e => { e.stopPropagation(); setSelectedLog(log); }}>
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-700">
-            <p className="text-xs text-gray-500">Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, pagination.total)} of {pagination.total}</p>
-            <div className="flex items-center gap-1">
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 transition-colors">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="text-xs font-medium px-2">{page} / {pagination.totalPages}</span>
-              <button onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))} disabled={page === pagination.totalPages}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 transition-colors">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+              </tbody>
+            </table>
           </div>
         )}
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-800 text-sm text-gray-500">
+          <span>{pg.total.toLocaleString()} entries</span>
+          <div className="flex items-center gap-2">
+            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></button>
+            <span>Page {page} of {pg.totalPages}</span>
+            <button disabled={page >= pg.totalPages} onClick={() => setPage((p) => p + 1)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40"><ChevronRight className="h-4 w-4" /></button>
+          </div>
+        </div>
       </div>
 
-      {/* Detail modal */}
-      <AnimatePresence>
-        {selectedLog && <LogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />}
-      </AnimatePresence>
+      {selected && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex justify-end" onClick={() => setSelected(null)}>
+          <div className="w-full max-w-md h-full overflow-y-auto bg-white dark:bg-gray-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+              <h2 className="font-semibold text-gray-900 dark:text-white">Activity details</h2>
+              <button onClick={() => setSelected(null)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"><X className="h-4 w-4 text-gray-500" /></button>
+            </div>
+            <dl className="p-5 space-y-3 text-sm">
+              {[
+                ['When', format(new Date(selected.createdAt), 'EEEE d MMMM yyyy, HH:mm:ss')],
+                ['Person', `${selected.userName}${selected.userEmail ? ` (${selected.userEmail})` : ''}`],
+                ['Action', selected.action], ['Area', selected.module], ['Record', selected.resource],
+                ['What happened', selected.description], ['Result', selected.status],
+                ['IP address', selected.ipAddress], ['Device', selected.device], ['Browser details', selected.userAgent],
+              ].filter(([, v]) => v).map(([k, v]) => (
+                <div key={k as string}><dt className="text-[11px] uppercase tracking-wide text-gray-400">{k}</dt><dd className="text-gray-900 dark:text-white break-words">{v as string}</dd></div>
+              ))}
+              {selected.details && (
+                <div><dt className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Changes</dt>
+                  <dd><pre className="text-xs bg-gray-50 dark:bg-gray-800 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap text-gray-700 dark:text-gray-300">{typeof selected.details === 'string' ? selected.details : JSON.stringify(selected.details, null, 2)}</pre></dd></div>
+              )}
+            </dl>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+const inp = 'px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-white';
+
+function Stat({ icon: Icon, label, value, tone, onClick }: { icon: any; label: string; value?: number; tone: string; onClick?: () => void }) {
+  return (
+    <button onClick={onClick} disabled={!onClick} className="text-left bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 enabled:hover:border-gray-300">
+      <Icon className={cn('h-5 w-5 mb-2', tone)} />
+      <p className={cn('text-2xl font-bold tabular-nums', tone)}>{value ?? 0}</p>
+      <p className="text-xs text-gray-500">{label}</p>
+    </button>
   );
 }

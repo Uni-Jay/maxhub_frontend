@@ -6,7 +6,7 @@ export const BRAND_COLORS: Record<string, { primary: string; secondary: string }
   VM: { primary: '#1d3a8f', secondary: '#c8102e' }, // VisaMax blue & red
   KS: { primary: '#4c9a2a', secondary: '#1f2a30' }, // Kurios SAT green & charcoal
   BM: { primary: '#7a1f33', secondary: '#c9a27a' }, // BeadMax wine & rose gold
-  MF: { primary: '#2f7d32', secondary: '#f2a900' }, // Maxfood green & gold
+  MF: { primary: '#1b5e20', secondary: '#e09200' }, // Maxfood green & gold
 };
 
 function luminance(hex: string): number {

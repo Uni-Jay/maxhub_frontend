@@ -19,7 +19,8 @@ import {
 } from '@services/messagingService';
 import { chatSocket } from '@services/chatSocket';
 import { useAuthStore } from '@store/authStore';
-import { uploadToCloudinaryWithProgress, withForcedDownload } from '@services/cloudinaryService';
+import { uploadToCloudinaryWithProgress } from '@services/cloudinaryService';
+import { openSaveToFolder } from '@components/files/SaveToFolder';
 import { cn } from '@utils/cn';
 import { useCalls } from '@components/calls/CallProvider';
 import { Phone as PhoneIcon, Video as VideoIcon } from 'lucide-react';
@@ -235,8 +236,9 @@ function MessageBubble({
 
           {/* File */}
           {isFile && !isDeleted && (
-            <a href={msg.attachmentUrl ? withForcedDownload(msg.attachmentUrl) : '#'} download target="_blank" rel="noopener noreferrer"
-              className={cn('flex items-center gap-2.5 text-sm mb-1 rounded-xl p-2 -m-0.5 transition',
+            <button type="button" title="Download or save to a folder"
+              onClick={() => msg.attachmentUrl && openSaveToFolder({ url: msg.attachmentUrl, name: msg.attachmentName || msg.messageText, mimeType: msg.attachmentType, size: msg.attachmentSize })}
+              className={cn('flex items-center gap-2.5 text-sm mb-1 rounded-xl p-2 -m-0.5 transition text-left',
                 isOwn ? 'hover:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/5')}>
               <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0', isOwn ? 'bg-white/15' : 'bg-indigo-50 dark:bg-indigo-900/30')}>
                 <FileText className={cn('h-4 w-4', isOwn ? 'text-white' : 'text-indigo-600 dark:text-indigo-400')} />
@@ -249,7 +251,8 @@ function MessageBubble({
                   <p className={cn('text-[11px]', isOwn ? 'text-indigo-100/80' : 'text-gray-400')}>{formatBytes(msg.attachmentSize)}</p>
                 )}
               </div>
-            </a>
+              <Download className={cn('h-4 w-4 flex-shrink-0 ml-1', isOwn ? 'text-white/70' : 'text-gray-400')} />
+            </button>
           )}
 
           {/* Text */}
@@ -335,6 +338,9 @@ function MessageBubble({
                   <MenuBtn icon={Reply} label="Reply" onClick={() => { onReply(msg); setShowMenu(false); }} />
                   <MenuBtn icon={Forward} label="Forward" onClick={() => { onForward(msg); setShowMenu(false); }} />
                   <MenuBtn icon={Copy} label="Copy" onClick={() => { onCopy(msg.messageText); setShowMenu(false); }} />
+                  {msg.attachmentUrl && !isDeleted && (
+                    <MenuBtn icon={Download} label="Save to folder" onClick={() => { openSaveToFolder({ url: msg.attachmentUrl!, name: msg.attachmentName || undefined, mimeType: msg.attachmentType || undefined, size: msg.attachmentSize || undefined }); setShowMenu(false); }} />
+                  )}
                   <MenuBtn icon={Pin} label={msg.isPinned ? 'Unpin' : 'Pin'} onClick={() => { onPin(msg.id); setShowMenu(false); }} />
                   <MenuBtn icon={Star} label={isStarred ? 'Unstar' : 'Star'} onClick={() => { onStar(msg.id); setShowMenu(false); }} />
                   {isOwn && (
@@ -434,14 +440,7 @@ function MediaViewer({ msg, onClose, onDeleteForEveryone }: {
 
   const handleDownload = () => {
     if (!msg.attachmentUrl) return;
-    const a = document.createElement('a');
-    a.href = withForcedDownload(msg.attachmentUrl);
-    a.download = msg.attachmentName || 'download';
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    openSaveToFolder({ url: msg.attachmentUrl, name: msg.attachmentName || undefined, mimeType: msg.attachmentType || undefined, size: msg.attachmentSize || undefined });
   };
 
   return createPortal(

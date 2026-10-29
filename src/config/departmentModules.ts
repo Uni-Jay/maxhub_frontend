@@ -49,18 +49,19 @@ const BEADMAX: DepartmentModuleGroup = {
   icon: ShoppingBag,
   links: [
     { label: 'Custom Orders', path: '/beadmax/custom-orders', icon: ShoppingBag },
-    { label: 'Shop Sales & Stock', path: '/bead-max/sales', icon: ShoppingBag },
+    { label: 'Online Shop Orders', path: '/beadmax/shop', icon: ShoppingBag },
+    { label: 'Inventory & Products', path: '/beadmax/inventory', icon: ShoppingBag },
     { label: 'Vocational School', path: '/beadmax/school', icon: ShoppingBag },
   ],
 };
 
 const MAXFOOD: DepartmentModuleGroup = {
-  color: '#2f7d32',
+  color: '#1b5e20',
   label: 'Maxfood Farm',
   icon: Wheat,
   links: [
     { label: 'Export Orders', path: '/maxfood', icon: Wheat },
-    { label: 'Products & Stock', path: '/maxfood?tab=products', icon: Wheat },
+    { label: 'Inventory & Products', path: '/maxfood?tab=products', icon: Wheat },
     { label: 'Customer Issues', path: '/maxfood?tab=tickets', icon: Wheat },
   ],
 };

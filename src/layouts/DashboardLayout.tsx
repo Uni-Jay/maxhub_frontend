@@ -7,17 +7,26 @@ import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, Bell, Search, LogOut, Home, ChevronRight,
-  Settings, MessageSquare, Sun, Moon,
+  MessageSquare, Sun, Moon,
 } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
 import { useThemeStore } from '@store/themeStore';
 import { CallProvider } from '@components/calls/CallProvider';
+import { SaveToFolderHost } from '@components/files/SaveToFolder';
 import { toast } from '@components/ui/toaster';
 import { pushSupported, registerServiceWorker, enablePush, chime } from '@services/pushService';
 import { cn } from '@utils/cn';
 import { getPrimaryRole } from '@utils/role';
 import { getNavForRole, ALL_SIDEBAR_ITEMS } from '@config/sidebarConfig';
 import { GlobalSearch } from '@components/GlobalSearch';
+
+const ROLE_LABEL: Record<string, string> = {
+  superadmin: 'Super Admin', admin: 'Management', hr: 'Human Resources', hod: 'Head of Department',
+  accountant: 'Accountant', staff: 'Staff', student: 'Student',
+};
+const BRAND_LOGO_BY_LABEL: Record<string, string> = {
+  VisaMax: '/brands/visamax.jpeg', 'Kurios SAT': '/brands/kuriossat.jpeg', BeadMax: '/brands/beadmax.jpeg', 'Maxfood Farm': '/brands/maxfood.jpeg',
+};
 
 function SidebarNav({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
@@ -28,113 +37,88 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
     return getNavForRole(role, user?.position, user?.departmentCodes);
   }, [user?.roles, user?.position, user?.departmentCodes, tokens?.accessToken]);
 
-  const [expanded, setExpanded] = useState<string | null>(() => {
-    const match = NAV.find(n => n.children && location.pathname.startsWith(n.path));
-    return match?.path ?? null;
-  });
+  const here = location.pathname + location.search;
+  const childActive = (path: string) => (path.includes('?') ? here === path : location.pathname === path || (path !== '/payroll' && path !== '/projects' && location.pathname.startsWith(`${path}/`)));
+  const [expanded, setExpanded] = useState<string | null>(() => NAV.find((n) => n.children?.some((c) => childActive(c.path)))?.path ?? null);
+  useEffect(() => {
+    const m = NAV.find((n) => n.children?.some((c) => childActive(c.path)));
+    if (m) setExpanded(m.path);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search]);
 
   const primaryRole = getPrimaryRole(user, tokens?.accessToken);
+  const name = [(user as any)?.firstName, (user as any)?.lastName].filter(Boolean).join(' ') || user?.email || 'User';
 
+  const itemCls = (active: boolean) => cn(
+    'group relative w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors',
+    active ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100/70 dark:hover:bg-gray-800/70 hover:text-gray-900 dark:hover:text-white',
+  );
+  const iconFor = (item: (typeof NAV)[number], active: boolean) => {
+    const logo = item.section === 'Brands' ? BRAND_LOGO_BY_LABEL[item.label] : undefined;
+    if (logo) return <img src={logo} alt="" className="h-5 w-5 rounded-md object-contain bg-white ring-1 ring-gray-200 dark:ring-gray-700 flex-shrink-0" />;
+    const Icon = item.icon;
+    return <Icon className={cn('h-[18px] w-[18px] flex-shrink-0', active ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300')} />;
+  };
+
+  let lastSection: string | undefined = '__start';
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800">
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-br from-indigo-50/60 via-white to-white dark:from-indigo-950/30 dark:via-gray-900 dark:to-gray-900">
-        <img
-          src="/images/maxhublogo.jpeg"
-          alt="MaxHub"
-          className="h-8 w-auto object-contain flex-shrink-0 rounded-lg shadow-sm"
-        />
-        <div>
-          <p className="font-bold text-gray-900 dark:text-white text-sm tracking-tight">MaxHub ERP</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">Four Brands. One Vision.</p>
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200/80 dark:border-gray-800">
+      <div className="flex items-center gap-3 px-5 h-16 border-b border-gray-200/80 dark:border-gray-800 flex-shrink-0">
+        <img src="/images/maxhublogo.jpeg" alt="MaxHub" className="h-9 w-9 object-contain rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 bg-white flex-shrink-0" />
+        <div className="min-w-0">
+          <p className="font-bold text-gray-900 dark:text-white text-[15px] leading-tight tracking-tight">MaxHub</p>
+          <p className="text-[11px] text-gray-400 leading-tight">Four brands · one workspace</p>
         </div>
-        {onClose && (
-          <button onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-gray-600 lg:hidden">
-            <X className="h-4 w-4" />
-          </button>
-        )}
+        {onClose && <button onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-gray-600 lg:hidden"><X className="h-4 w-4" /></button>}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto px-3 py-3 [scrollbar-width:thin]">
         {NAV.map((item) => {
-          const Icon = item.icon;
+          const header = item.section !== lastSection && item.section ? (
+            <p key={`h-${item.section}`} className="px-3 pt-5 pb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-gray-500">{item.section}</p>
+          ) : null;
+          lastSection = item.section;
           const isExpanded = expanded === item.path;
-          const isActive = location.pathname === item.path ||
-            (item.children && item.children.some(c => location.pathname.startsWith(c.path)));
 
           if (!item.children) {
+            const active = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(`${item.path}/`)) || (item.path === '/dashboard' && location.pathname.startsWith('/dashboard'));
             return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={onClose}
-                className={({ isActive: a }) =>
-                  cn(
-                    'relative flex items-center gap-3 pl-3 pr-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                    a
-                      ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-semibold'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-                  )
-                }
-              >
-                {({ isActive: a }) => (
-                  <>
-                    {a && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-indigo-600 dark:bg-indigo-400" />}
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    {item.label}
-                  </>
-                )}
-              </NavLink>
+              <div key={item.path}>
+                {header}
+                <NavLink to={item.path} onClick={onClose} className={itemCls(active)}>
+                  {active && <span className="absolute -left-3 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-indigo-600 dark:bg-indigo-400" />}
+                  {iconFor(item, active)}
+                  <span className="truncate">{item.label}</span>
+                </NavLink>
+              </div>
             );
           }
 
+          const active = item.children.some((c) => childActive(c.path));
           return (
             <div key={item.path}>
-              <button
-                onClick={() => setExpanded(isExpanded ? null : item.path)}
-                className={cn(
-                  'relative w-full flex items-center gap-3 pl-3 pr-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                  isActive
-                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 font-semibold'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-                )}
-              >
-                {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-indigo-600 dark:bg-indigo-400" style={item.color ? { background: item.color } : undefined} />}
-                <span className={cn('flex', item.color && 'brand-text')} style={item.color ? ({ ['--brand' as any]: item.color }) : undefined}><Icon className="h-4 w-4 flex-shrink-0" /></span>
-                <span className="flex-1 text-left">{item.label}</span>
-                <ChevronRight
-                  className={cn('h-3.5 w-3.5 transition-transform flex-shrink-0', isExpanded && 'rotate-90')}
-                />
+              {header}
+              <button onClick={() => setExpanded(isExpanded ? null : item.path)} className={itemCls(active && !isExpanded)} aria-expanded={isExpanded}>
+                {active && <span className="absolute -left-3 top-1.5 bottom-1.5 w-[3px] rounded-r-full" style={{ background: item.color || '#4f46e5' }} />}
+                {iconFor(item, active)}
+                <span className="flex-1 text-left truncate">{item.label}</span>
+                <ChevronRight className={cn('h-3.5 w-3.5 text-gray-400 transition-transform flex-shrink-0', isExpanded && 'rotate-90')} />
               </button>
-              <AnimatePresence>
+              <AnimatePresence initial={false}>
                 {isExpanded && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="ml-4 pl-3 border-l border-gray-100 dark:border-gray-800 mt-0.5 space-y-0.5 py-1">
-                      {item.children.map((child) => (
-                        <NavLink
-                          key={child.path}
-                          to={child.path}
-                          end
-                          onClick={onClose}
-                          className={({ isActive: a }) =>
-                            cn(
-                              'flex items-center px-3 py-2 rounded-md text-xs font-medium transition-all',
-                              a
-                                ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                                : 'text-gray-500 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800'
-                            )
-                          }
-                        >
-                          {child.label}
-                        </NavLink>
-                      ))}
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.15 }} className="overflow-hidden">
+                    <div className="ml-[21px] pl-3 border-l border-gray-200 dark:border-gray-800 my-0.5 space-y-0.5">
+                      {item.children.map((child) => {
+                        const a = childActive(child.path);
+                        return (
+                          <NavLink key={child.path} to={child.path} onClick={onClose}
+                            className={cn('block px-3 py-1.5 rounded-md text-[12.5px] transition-colors',
+                              a ? 'text-indigo-700 dark:text-indigo-300 font-semibold bg-indigo-50/70 dark:bg-indigo-500/10' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/70 dark:hover:bg-gray-800/70')}
+                            style={a && item.color ? { color: item.color } : undefined}>
+                            {child.label}
+                          </NavLink>
+                        );
+                      })}
                     </div>
                   </motion.div>
                 )}
@@ -144,34 +128,25 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
         })}
       </nav>
 
-      {/* User footer */}
-      <div className="border-t border-gray-100 dark:border-gray-800 p-3">
-        <NavLink
-          to="/settings/profile"
-          className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition group mb-1"
-        >
-          {user?.avatar ? (
-            <img src={user.avatar} alt="Profile" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm font-semibold flex-shrink-0">
-              {user?.email?.charAt(0).toUpperCase() ?? 'U'}
+      <div className="border-t border-gray-200/80 dark:border-gray-800 p-3 flex-shrink-0">
+        <div className="flex items-center gap-3 px-2 py-1.5">
+          <NavLink to="/settings/profile" onClick={onClose} className="flex items-center gap-3 min-w-0 flex-1 group">
+            {user?.avatar ? (
+              <img src={user.avatar} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-white dark:ring-gray-900" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                {name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate group-hover:text-indigo-600">{name}</p>
+              <p className="text-[11px] text-gray-400 truncate">{ROLE_LABEL[primaryRole] || primaryRole}</p>
             </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-              {user?.email ?? 'User'}
-            </p>
-            <p className="text-xs text-gray-400 capitalize">{primaryRole}</p>
-          </div>
-          <Settings className="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
-        </NavLink>
-        <button
-          onClick={() => logout()}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition"
-        >
-          <LogOut className="h-4 w-4" />
-          Sign out
-        </button>
+          </NavLink>
+          <button onClick={() => logout()} title="Sign out" className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition">
+            <LogOut className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -303,17 +278,19 @@ export function DashboardLayout() {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  const here = location.pathname + location.search;
   const pageTitle = ALL_SIDEBAR_ITEMS.flatMap(n =>
     n.children
       ? n.children.map(c => ({ path: c.path, label: `${n.label} / ${c.label}` }))
       : [{ path: n.path, label: n.label }]
-  ).find(p => location.pathname.startsWith(p.path))?.label ?? 'Dashboard';
+  ).filter(p => (p.path.includes('?') ? here === p.path : location.pathname === p.path || location.pathname.startsWith(`${p.path}/`)))
+   .sort((a, b) => b.path.length - a.path.length)[0]?.label ?? 'Dashboard';
 
   return (
     <CallProvider>
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex w-64 flex-shrink-0">
+      <div className="hidden lg:flex w-[264px] flex-shrink-0">
         <div className="w-full">
           <SidebarNav />
         </div>
@@ -453,6 +430,7 @@ export function DashboardLayout() {
         )}
       </AnimatePresence>
     </div>
+      <SaveToFolderHost />
     </CallProvider>
   );
 }

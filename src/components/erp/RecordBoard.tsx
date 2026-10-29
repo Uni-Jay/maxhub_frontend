@@ -25,6 +25,8 @@ export interface FieldDef {
   placeholder?: string;
   default?: any;
   hideInForm?: boolean;
+  /** Only shown when creating (e.g. opening stock — later changes go through stock movements). */
+  createOnly?: boolean;
   /** Field holding the currency for a money value (defaults to `currency`). */
   currencyField?: string;
 }
@@ -53,6 +55,8 @@ export interface RecordBoardConfig {
   detailExtras?: (r: any, refresh: () => void) => ReactNode;
   formExtras?: (form: any, set: (patch: any) => void) => ReactNode;
   headerExtras?: ReactNode;
+  /** Full-width block under the title (e.g. stock summary tiles). */
+  summary?: ReactNode;
   emptyHint?: string;
 }
 
@@ -97,7 +101,7 @@ function toInput(v: any, type?: string) {
   return v;
 }
 
-export const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'CAD', 'AED', 'GHS', 'ZAR'];
+export const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'CAD', 'AED', 'GHS', 'ZAR', 'CNY', 'KES'];
 
 // ─── Form modal ─────────────────────────────────────────────────────────────
 function RecordForm({ cfg, initial, onClose, onSaved }: { cfg: RecordBoardConfig; initial: any | null; onClose: () => void; onSaved: (r: any) => void }) {
@@ -132,7 +136,7 @@ function RecordForm({ cfg, initial, onClose, onSaved }: { cfg: RecordBoardConfig
           </div>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {cfg.fields.filter((f) => !f.hideInForm).map((f) => (
+          {cfg.fields.filter((f) => !f.hideInForm && !(f.createOnly && initial)).map((f) => (
             <div key={f.name} className={cn(f.span === 2 || f.type === 'textarea' ? 'sm:col-span-2' : '')}>
               <label className={labelCls}>{f.label}{f.required && <span className="text-red-500"> *</span>}</label>
               {f.type === 'textarea' ? (
@@ -191,6 +195,19 @@ export function Modal({ title, children, onClose, wide }: { title: string; child
   );
 }
 
+/** For foreign-currency payments: shows the naira value at today's rate and lets Accounts use the rate actually received. */
+function FxHint({ f, setF }: { f: any; setF: (v: any) => void }) {
+  const { data } = useQuery({ queryKey: ['fx'], queryFn: () => apiClient.get<any>('/erp/fx'), staleTime: 10 * 60_000 });
+  const rate = Number(data?.rates?.find((r: any) => r.currency === f.currency)?.rate || 0);
+  const used = Number(f.fxRate) > 0 ? Number(f.fxRate) : rate;
+  return (
+    <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 p-3 grid grid-cols-2 gap-3 items-end">
+      <div><label className={labelCls}>Naira per 1 {f.currency}</label><input type="number" step="0.0001" className={inputCls} placeholder={rate ? String(rate) : 'Set in Currencies & Rates'} value={f.fxRate || ''} onChange={(e) => setF({ ...f, fxRate: e.target.value })} /></div>
+      <p className="text-sm text-gray-700 dark:text-gray-300 pb-2">{used && Number(f.amount) ? <>= <b>{money(Number(f.amount) * used, 'NGN')}</b> in our books</> : <span className="text-amber-600 text-xs">No rate yet — leave blank to use the rate saved later</span>}</p>
+    </div>
+  );
+}
+
 // ─── Payment form (shared with Receipts page) ───────────────────────────────
 export function PaymentForm({ defaults, onClose, onSaved }: { defaults: any; onClose: () => void; onSaved?: (p: Payment) => void }) {
   const { brands } = useBrands();
@@ -222,6 +239,7 @@ export function PaymentForm({ defaults, onClose, onSaved }: { defaults: any; onC
           <div className="col-span-2"><label className={labelCls}>Amount *</label><input type="number" step="0.01" min="0" className={inputCls} value={f.amount || ''} onChange={(e) => setF({ ...f, amount: e.target.value })} required /></div>
           <div><label className={labelCls}>Currency</label><select className={inputCls} value={f.currency} onChange={(e) => setF({ ...f, currency: e.target.value })}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</select></div>
         </div>
+        {f.currency !== 'NGN' && <FxHint f={f} setF={setF} />}
         <div className="grid grid-cols-2 gap-3">
           <div><label className={labelCls}>Method</label><select className={inputCls} value={f.method} onChange={(e) => setF({ ...f, method: e.target.value })}>{['Transfer', 'Cash', 'POS', 'Card', 'Online (Paystack/Flutterwave)', 'Cheque', 'Wire Transfer'].map((m) => <option key={m}>{m}</option>)}</select></div>
           <div><label className={labelCls}>Reference</label><input className={inputCls} value={f.reference || ''} onChange={(e) => setF({ ...f, reference: e.target.value })} placeholder="Bank / POS ref" /></div>
@@ -549,6 +567,7 @@ export default function RecordBoard({ cfg }: { cfg: RecordBoardConfig }) {
           <button className={btnPrimary} onClick={() => setEditing(null)}><Plus className="h-4 w-4" /> New {cfg.singular.toLowerCase()}</button>
         </div>
       </div>
+      {cfg.summary}
 
       <div className={cn(card, 'p-3 flex flex-wrap gap-2 items-center')}>
         <div className="relative flex-1 min-w-[200px]">

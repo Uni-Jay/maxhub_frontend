@@ -5,8 +5,8 @@ import {
   Download, FileText, ChevronDown, ChevronRight,
   TrendingUp, Calendar, Wallet, Clock,
 } from 'lucide-react';
+import { openPayslip } from '@components/payroll/payslip';
 import { apiClient } from '@services/apiClient';
-import { useAuthStore } from '@store/authStore';
 import { cn } from '@utils/cn';
 
 const fmt = (n: number) =>
@@ -37,109 +37,13 @@ interface MyPayslip {
 }
 
 
-function generatePayslipHTML(slip: MyPayslip, employeeName: string, employeeId: string) {
-  const today = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>Payslip — ${slip.salaryCode}</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1a1a2e; background: #f9fafb; }
-  .wrapper { max-width: 700px; margin: 30px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
-  .header { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; padding: 28px 32px; display: flex; align-items: center; gap: 18px; }
-  .logo { width: 52px; height: 52px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900; flex-shrink: 0; }
-  .company h1 { font-size: 20px; font-weight: 700; }
-  .company p { font-size: 11px; opacity: 0.75; margin-top: 2px; }
-  .slip-badge { margin-left: auto; text-align: right; }
-  .slip-badge h2 { font-size: 16px; font-weight: 700; background: rgba(255,255,255,0.15); padding: 6px 14px; border-radius: 8px; }
-  .slip-badge p { font-size: 11px; opacity: 0.7; margin-top: 4px; }
-  .body { padding: 28px 32px; }
-  .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8f9ff; border-radius: 10px; padding: 16px; margin-bottom: 24px; border: 1px solid #e5e7eb; }
-  .meta-item p:first-child { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
-  .meta-item p:last-child { font-size: 13px; font-weight: 700; color: #111827; }
-  h3 { font-size: 11px; font-weight: 700; color: #4f46e5; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; margin-top: 20px; padding-bottom: 4px; border-bottom: 2px solid #e5e7eb; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: #f3f4f6; text-align: left; padding: 8px 12px; font-weight: 600; color: #374151; font-size: 11px; text-transform: uppercase; }
-  td { padding: 9px 12px; border-bottom: 1px solid #f9fafb; }
-  .amount { text-align: right; font-variant-numeric: tabular-nums; }
-  .total-row td { font-weight: 700; background: #f3f4f6; }
-  .net-box { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 2px solid #10b981; border-radius: 12px; padding: 20px 28px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center; }
-  .net-box .label { font-size: 15px; font-weight: 700; color: #065f46; }
-  .net-box .value { font-size: 28px; font-weight: 900; color: #047857; }
-  .footer { border-top: 1px solid #e5e7eb; padding: 14px 32px; background: #f9fafb; display: flex; justify-content: space-between; align-items: flex-end; font-size: 11px; color: #9ca3af; }
-  .sig { border-top: 1px solid #9ca3af; width: 160px; padding-top: 4px; font-size: 11px; color: #6b7280; text-align: center; }
-  .print-btn { display: block; margin: 20px auto 24px; padding: 11px 32px; background: #4f46e5; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.02em; }
-  @media print {
-    body { background: white; }
-    .wrapper { box-shadow: none; margin: 0; border-radius: 0; }
-    .print-btn { display: none; }
-    @page { size: A4; margin: 15mm 20mm; }
-  }
-</style>
-</head>
-<body>
-<div class="wrapper">
-  <div class="header">
-    <img src="/images/maxhublogo.jpeg" alt="MaxHub" style="width:56px;height:56px;border-radius:10px;object-fit:contain;background:#fff;padding:4px;flex-shrink:0;" />
-    <div class="company">
-      <h1>MaxHub</h1>
-      <p>Lagos, Nigeria &nbsp;·&nbsp; info@maxhub.com &nbsp;·&nbsp; maxhub.app</p>
-    </div>
-    <div class="slip-badge">
-      <h2>PAY SLIP</h2>
-      <p>${slip.periodName}</p>
-    </div>
-  </div>
-  <div class="body">
-    <div class="meta">
-      <div class="meta-item"><p>Employee Name</p><p>${employeeName}</p></div>
-      <div class="meta-item"><p>Pay Period</p><p>${slip.periodName}</p></div>
-      <div class="meta-item"><p>Employee ID / Code</p><p>${employeeId || slip.salaryCode}</p></div>
-      <div class="meta-item"><p>Payment Date</p><p>${new Date(slip.payDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
-    </div>
-    <h3>Earnings</h3>
-    <table>
-      <thead><tr><th>Description</th><th class="amount">Amount (₦)</th></tr></thead>
-      <tbody>
-        <tr><td>Basic Salary</td><td class="amount">${fmt(slip.baseSalary)}</td></tr>
-        <tr><td>Bonus / Incentive</td><td class="amount">${fmt(slip.bonus)}</td></tr>
-        <tr class="total-row"><td>Gross Salary</td><td class="amount">${fmt(slip.grossSalary)}</td></tr>
-      </tbody>
-    </table>
-    <h3>Deductions</h3>
-    <table>
-      <thead><tr><th>Description</th><th class="amount">Amount (₦)</th></tr></thead>
-      <tbody>
-        <tr><td>Income Tax (PAYE)</td><td class="amount">- ${fmt(slip.incomeTax)}</td></tr>
-        <tr><td>Pension Contribution</td><td class="amount">- ${fmt(slip.providentFund)}</td></tr>
-        <tr><td>Health Insurance (HMO)</td><td class="amount">- ${fmt(slip.healthInsurance)}</td></tr>
-        <tr><td>Other Deductions</td><td class="amount">- ${fmt(slip.otherDeductions)}</td></tr>
-        <tr class="total-row"><td>Total Deductions</td><td class="amount">- ${fmt(slip.totalDeductions)}</td></tr>
-      </tbody>
-    </table>
-    <div class="net-box">
-      <span class="label">💰 Net Pay</span>
-      <span class="value">${fmt(slip.netSalary)}</span>
-    </div>
-  </div>
-  <div class="footer">
-    <p>Generated on ${today} &nbsp;·&nbsp; This is a computer-generated payslip. No signature required.</p>
-    <div class="sig">Authorised Signatory</div>
-  </div>
-</div>
-<button class="print-btn" onclick="window.print()">🖨&nbsp; Print / Save as PDF</button>
-</body>
-</html>`;
-}
-
 export default function MyPayslips() {
-  const user = useAuthStore(s => s.user);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const employeeName = user ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim() : 'Employee';
-  const employeeId = (user as any)?.staffCode || (user as any)?.employeeId || `EMP-${(user as any)?.id || '001'}`;
+
+  const { data: myBrands } = useQuery({ queryKey: ['my-brands'], queryFn: () => apiClient.get<any>('/erp/my-brands').catch(() => null) });
+  const employer = myBrands?.brands?.find((b: any) => b.isPrimary);
+  const others = (myBrands?.brands || []).filter((b: any) => !b.isPrimary);
 
   const { data } = useQuery({
     queryKey: ['my-payslips'],
@@ -169,14 +73,8 @@ export default function MyPayslips() {
     { label: 'Next Pay Date', value: nextPayDate, icon: Calendar, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/20' },
   ];
 
-  const handleDownload = (slip: MyPayslip) => {
-    const html = generatePayslipHTML(slip, employeeName, employeeId);
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank');
-    if (win) win.focus();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  };
+  const handleDownload = (slip: MyPayslip) => { openPayslip(slip.id); };
+
 
   return (
     <div className="space-y-6">
@@ -193,6 +91,25 @@ export default function MyPayslips() {
           </button>
         )}
       </div>
+
+      {employer && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 flex flex-wrap items-center gap-4" style={{ borderTop: `4px solid ${employer.color || '#4f46e5'}` }}>
+          {employer.logoUrl && <img src={employer.logoUrl} alt={employer.name} className="h-12 max-w-[160px] object-contain" />}
+          <div className="flex-1 min-w-[180px]">
+            <p className="text-xs uppercase tracking-wider text-gray-400">Employed by</p>
+            <p className="font-semibold text-gray-900 dark:text-white">{employer.name}</p>
+            <p className="text-xs text-gray-500">Your payslips carry {employer.name}'s letterhead.</p>
+          </div>
+          {others.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-400">Also working for</span>
+              {others.map((b: any) => b.logoUrl
+                ? <img key={b.departmentId} src={b.logoUrl} alt={b.name} title={b.name} className="h-7 max-w-[90px] object-contain opacity-80" />
+                : <span key={b.departmentId} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{b.name}</span>)}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

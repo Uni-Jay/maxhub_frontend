@@ -3,6 +3,7 @@ import { useApiQuery } from '@hooks/useApiQuery';
 import { useApiMutation } from '@hooks/useApiMutation';
 import { staffService } from '@services/staffService';
 import { useCurrentRoles, useCurrentPermissions, hasPermission } from '@utils/role';
+import { StaffBrandsPanel } from '../components/StaffBrandsPanel';
 import {
   ArrowLeft, Pencil, Trash2, Mail, Phone, Building2, Calendar,
   User, Heart, AlertTriangle, Briefcase, MapPin,
@@ -193,6 +194,8 @@ export default function StaffDetail() {
             </div>
           )}
         </div>
+
+        <StaffBrandsPanel staffId={id!} canManage={roles.has('superadmin') || roles.has('admin') || roles.has('hr')} />
 
         {/* Emergency Contact */}
         {(staff.emergencyContactName || staff.emergencyContactPhone) && (

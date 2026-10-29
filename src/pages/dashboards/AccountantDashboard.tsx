@@ -17,7 +17,7 @@ const fmt = (n: number) => `₦${n.toLocaleString('en-NG')}`;
 const QUICK_LINKS = [
   { label: 'Payroll Dashboard', href: '/payroll', icon: Wallet, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' },
   { label: 'Pay Periods', href: '/payroll/periods', icon: BarChart3, color: 'text-violet-600 bg-violet-50 dark:bg-violet-900/20' },
-  { label: 'Salary Structures', href: '/payroll/structures', icon: PieChart, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' },
+  { label: 'Staff Pay', href: '/payroll/staff-pay', icon: PieChart, color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' },
   { label: 'Invoices', href: '/invoices', icon: Receipt, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
   { label: 'All Payslips', href: '/payroll/slips', icon: FileText, color: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20' },
   { label: 'Analytics', href: '/analytics', icon: TrendingUp, color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-900/20' },

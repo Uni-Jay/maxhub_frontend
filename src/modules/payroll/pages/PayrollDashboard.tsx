@@ -103,7 +103,7 @@ export default function PayrollDashboard() {
         {[
           { to: '/payroll/periods', icon: Calendar, label: 'Pay Periods', desc: 'Manage payroll cycles', color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30' },
           { to: '/payroll/slips', icon: FileText, label: 'Salary Slips', desc: 'View & approve salaries', color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30' },
-          { to: '/payroll/structures', icon: Settings, label: 'Salary Structures', desc: 'Configure pay templates', color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30' },
+          { to: '/payroll/staff-pay', icon: Settings, label: 'Staff Pay', desc: 'Set each person\'s monthly pay', color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30' },
         ].map((item, i) => {
           const Icon = item.icon;
           return (

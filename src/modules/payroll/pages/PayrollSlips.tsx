@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, ChevronDown, ChevronRight, Check, Download, User } from 'lucide-react';
+import { openPayslip } from '@components/payroll/payslip';
 import { payrollService, type EmployeeSalary } from '@services/payrollService';
 import { useCurrentRoles, useCurrentPermissions, hasPermission } from '@utils/role';
 
@@ -19,112 +20,7 @@ const STATUS_NEXT: Record<string, string> = {
 const fmt = (n: number) => `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function downloadPayslip(salary: EmployeeSalary) {
-  const employeeName = salary.staff
-    ? `${salary.staff.firstName} ${salary.staff.lastName}`
-    : `Staff #${salary.staffId}`;
-  const period = salary.payrollPeriod?.periodName || salary.salaryCode;
-  const today = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>Payslip — ${salary.salaryCode}</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1a1a2e; background: #f9fafb; }
-  .wrapper { max-width: 700px; margin: 30px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
-  .header { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; padding: 28px 32px; display: flex; align-items: center; gap: 18px; }
-  .logo { width: 52px; height: 52px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900; flex-shrink: 0; }
-  .company h1 { font-size: 20px; font-weight: 700; }
-  .company p { font-size: 12px; opacity: 0.75; margin-top: 2px; }
-  .slip-title { margin-left: auto; text-align: right; }
-  .slip-title h2 { font-size: 18px; font-weight: 700; }
-  .slip-title p { font-size: 11px; opacity: 0.75; margin-top: 2px; }
-  .body { padding: 28px 32px; }
-  .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: #f8f9ff; border-radius: 8px; padding: 16px; margin-bottom: 24px; border: 1px solid #e5e7eb; }
-  .meta-item p:first-child { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
-  .meta-item p:last-child { font-size: 13px; font-weight: 600; color: #111827; }
-  h3 { font-size: 13px; font-weight: 700; color: #4f46e5; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; margin-top: 20px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: #f3f4f6; text-align: left; padding: 9px 12px; font-weight: 600; color: #374151; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
-  td { padding: 9px 12px; border-bottom: 1px solid #f3f4f6; }
-  tr:last-child td { border-bottom: none; }
-  .amount { text-align: right; font-variant-numeric: tabular-nums; }
-  .net-box { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 2px solid #10b981; border-radius: 10px; padding: 18px 24px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center; }
-  .net-box .label { font-size: 14px; font-weight: 700; color: #065f46; }
-  .net-box .value { font-size: 24px; font-weight: 900; color: #047857; }
-  .footer { border-top: 1px solid #e5e7eb; padding: 16px 32px; background: #f9fafb; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #6b7280; }
-  .sig-line { border-top: 1px solid #9ca3af; width: 160px; padding-top: 4px; font-size: 11px; color: #6b7280; text-align: center; }
-  .print-btn { display: block; margin: 20px auto; padding: 10px 28px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
-  .print-btn:hover { background: #4338ca; }
-  @media print {
-    body { background: white; }
-    .wrapper { box-shadow: none; margin: 0; border-radius: 0; }
-    .print-btn { display: none; }
-    @page { size: A4; margin: 15mm 20mm; }
-  }
-</style>
-</head>
-<body>
-<div class="wrapper">
-  <div class="header">
-    <img src="/images/maxhublogo.jpeg" alt="MaxHub" style="width:56px;height:56px;border-radius:10px;object-fit:contain;background:#fff;padding:4px;flex-shrink:0;" />
-    <div class="company">
-      <h1>MaxHub</h1>
-      <p>Lagos, Nigeria · info@maxhub.com · maxhub.app</p>
-    </div>
-    <div class="slip-title">
-      <h2>PAY SLIP</h2>
-      <p>${salary.salaryCode}</p>
-    </div>
-  </div>
-  <div class="body">
-    <div class="meta">
-      <div class="meta-item"><p>Employee Name</p><p>${employeeName}</p></div>
-      <div class="meta-item"><p>Pay Period</p><p>${period}</p></div>
-      <div class="meta-item"><p>Employee ID</p><p>${salary.staff?.employeeId || `Staff #${salary.staffId}`}</p></div>
-      <div class="meta-item"><p>Payment Date</p><p>${today}</p></div>
-    </div>
-    <h3>Earnings</h3>
-    <table>
-      <thead><tr><th>Description</th><th class="amount">Amount</th></tr></thead>
-      <tbody>
-        <tr><td>Basic Salary</td><td class="amount">${fmt(salary.baseSalary)}</td></tr>
-        <tr><td>Bonus / Incentive</td><td class="amount">${fmt(salary.bonus)}</td></tr>
-        <tr><td><strong>Gross Salary</strong></td><td class="amount"><strong>${fmt(salary.grossSalary)}</strong></td></tr>
-      </tbody>
-    </table>
-    <h3>Deductions</h3>
-    <table>
-      <thead><tr><th>Description</th><th class="amount">Amount</th></tr></thead>
-      <tbody>
-        <tr><td>Income Tax (PAYE)</td><td class="amount">- ${fmt(salary.incomeTax)}</td></tr>
-        <tr><td>Provident Fund / Pension</td><td class="amount">- ${fmt(salary.providentFund)}</td></tr>
-        <tr><td>Health Insurance (HMO)</td><td class="amount">- ${fmt(salary.healthInsurance)}</td></tr>
-        <tr><td>Other Deductions</td><td class="amount">- ${fmt(salary.otherDeductions)}</td></tr>
-        <tr><td><strong>Total Deductions</strong></td><td class="amount"><strong>- ${fmt(salary.totalDeductions)}</strong></td></tr>
-      </tbody>
-    </table>
-    <div class="net-box">
-      <span class="label">💰 Net Pay</span>
-      <span class="value">${fmt(salary.netSalary)}</span>
-    </div>
-  </div>
-  <div class="footer">
-    <p>Generated on ${today} · MaxHub ERP Payroll System</p>
-    <div class="sig-line">Authorised Signatory</div>
-  </div>
-</div>
-<button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
-</body>
-</html>`;
-
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url, '_blank');
-  if (win) win.focus();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  openPayslip(salary.id);
 }
 
 export default function PayrollSlips() {

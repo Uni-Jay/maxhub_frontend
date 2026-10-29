@@ -6,6 +6,7 @@ import { useApiMutation } from '@hooks/useApiMutation';
 import { useStatusBadge } from '@hooks/useStatusBadge';
 import { taskService } from '@services/taskService';
 import { Send } from 'lucide-react';
+import { Timeline } from '@components/tracking/Timeline';
 
 const TASK_STATUSES = ['Todo', 'InProgress', 'InReview', 'Blocked', 'Done', 'Cancelled'];
 
@@ -110,6 +111,15 @@ export default function TaskDetail() {
           {task.actualHours != null && <Field label="Actual Hours" value={`${task.actualHours}h`} />}
           {task.createdAt && <Field label="Created" value={new Date(task.createdAt).toLocaleDateString()} />}
         </div>
+      </div>
+
+      <div className="p-4 border rounded-lg space-y-3 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-lg">Progress & history</h3>
+          <span className="text-sm font-semibold text-indigo-600">{(task as any).progress ?? 0}%</span>
+        </div>
+        <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden"><div className="h-2 bg-indigo-500 rounded-full" style={{ width: `${(task as any).progress ?? 0}%` }} /></div>
+        <Timeline entityType="task" entityId={id!} progress={(task as any).progress ?? 0} />
       </div>
 
       <TaskReports taskId={id!} />

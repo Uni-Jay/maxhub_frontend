@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FileText, Plus, Search, ChevronDown, ChevronUp, X, Send,
   CheckCircle2, XCircle, Clock, AlertCircle, Eye, Download,
-  User, Phone, Mail, DollarSign, StickyNote, Loader2,
+  User, Phone, Mail, DollarSign, StickyNote, Loader2, Trash2,
 } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
 import { apiClient } from '@services/apiClient';
@@ -127,6 +127,12 @@ export default function CustomerReportList() {
   const submitMutation = useMutation({
     mutationFn: (id: number) => apiClient.patch(`/customer-reports/${id}/submit`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['customer-reports'] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/customer-reports/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['customer-reports'] }),
+    onError: (e: any) => alert(e?.response?.data?.message || e?.message || 'Could not delete the report'),
   });
 
   const actionMutation = useMutation({
@@ -302,6 +308,13 @@ export default function CustomerReportList() {
                     className="text-xs text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700 rounded-lg px-2.5 py-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
                     <Eye className="h-3.5 w-3.5" />
                   </button>
+                  {(isManager || ((report as any).createdById && String((report as any).createdById) === String(user?.id) && report.approvalStatus !== 'Approved')) && (
+                    <button title="Delete report" disabled={deleteMutation.isPending}
+                      onClick={e => { e.stopPropagation(); if (confirm(`Delete the report for ${report.clientName}? This cannot be undone.`)) deleteMutation.mutate(report.id); }}
+                      className="text-xs text-red-600 border border-red-200 dark:border-red-800 rounded-lg px-2.5 py-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
                 {expandedId === report.id ? <ChevronUp className="h-4 w-4 text-gray-400 flex-shrink-0" /> : <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />}
               </div>

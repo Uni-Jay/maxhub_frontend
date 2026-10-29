@@ -5,7 +5,7 @@ import { useApiMutation } from '@hooks/useApiMutation';
 import { leaveService } from '@services/leaveService';
 import { useCurrentRoles } from '@/utils/role';
 import type { LeaveRequestItem } from '@/types';
-import { Plus, Calendar, CheckCircle2, XCircle, Clock, FileText, ChevronLeft, ChevronRight, User, Search, ShieldAlert } from 'lucide-react';
+import { Plus, Calendar, CheckCircle2, XCircle, Clock, FileText, ChevronLeft, ChevronRight, User, Search, ShieldAlert, Trash2 } from 'lucide-react';
 
 const STATUS_STYLES: Record<string, { badge: string; icon: React.ElementType; iconColor: string }> = {
   Pending:   { badge: 'bg-amber-50 text-amber-700 border-amber-200',  icon: Clock,         iconColor: 'text-amber-500' },
@@ -20,6 +20,7 @@ const STATUSES = ['Pending', 'Approved', 'Rejected', 'Cancelled', 'Withdrawn'];
 export default function LeaveRequests() {
   const { roles } = useCurrentRoles();
   const isSuperAdmin = roles.has('superadmin');
+  const canManage = isSuperAdmin || roles.has('admin') || roles.has('hr');
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -40,6 +41,11 @@ export default function LeaveRequests() {
   );
   const { mutate: reject, isPending: rejecting } = useApiMutation(
     (id: number) => leaveService.reject(id),
+    { invalidateKeys: [['leave', 'requests']] }
+  );
+
+  const { mutate: removeLeave, isPending: removing } = useApiMutation(
+    (id: number) => leaveService.remove(id),
     { invalidateKeys: [['leave', 'requests']] }
   );
 
@@ -189,6 +195,17 @@ export default function LeaveRequests() {
                       </button>
                     </div>
                   )
+                )}
+                {(canManage || r.status === 'Pending') && (
+                  <div className="mt-3 pl-12">
+                    <button
+                      onClick={() => { if (confirm(canManage ? 'Delete this leave request? This cannot be undone.' : 'Withdraw this leave request?')) removeLeave(r.id); }}
+                      disabled={removing}
+                      className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-red-600 transition disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> {canManage ? 'Delete request' : 'Withdraw request'}
+                    </button>
+                  </div>
                 )}
               </div>
             );

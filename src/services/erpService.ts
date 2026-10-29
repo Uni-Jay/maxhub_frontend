@@ -25,6 +25,8 @@ export const ERP_PATHS = {
   customOrders: '/erp/beadmax/custom-orders',
   foodProducts: '/erp/maxfood/products',
   exportOrders: '/erp/maxfood/orders',
+  shopProducts: '/erp/beadmax/products',
+  shopOrders: '/erp/beadmax/shop-orders',
 } as const;
 
 export const erpService = {

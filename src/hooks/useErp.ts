@@ -6,7 +6,7 @@ import { useAuthStore } from '@store/authStore';
 import { getPrimaryRole } from '@utils/role';
 
 export const BRAND_LOGOS: Record<string, string> = {
-  VM: '/brands/visamax.jpeg', KS: '/brands/kuriossat.jpeg', BM: '/brands/beadmax.jpeg', MF: '/brands/maxfood.svg',
+  VM: '/brands/visamax.jpeg', KS: '/brands/kuriossat.jpeg', BM: '/brands/beadmax.jpeg', MF: '/brands/maxfood.jpeg',
 };
 
 export function useBrands() {
