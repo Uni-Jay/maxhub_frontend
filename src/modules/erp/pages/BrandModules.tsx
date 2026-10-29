@@ -5,6 +5,7 @@ import { Plus, Trash2, GraduationCap, ShoppingBag, Users, BookOpen, Receipt, Awa
 import RecordBoard, { type RecordBoardConfig, btnGhost, inputCls, labelCls, card } from '@components/erp/RecordBoard';
 import { ERP_PATHS, erpService, money } from '@services/erpService';
 import { cn } from '@utils/cn';
+import { BrandTheme } from '@components/erp/BrandTheme';
 
 function Tabs({ tabs }: { tabs: { key: string; label: string; node: ReactNode }[] }) {
   const [params, setParams] = useSearchParams();
@@ -15,7 +16,7 @@ function Tabs({ tabs }: { tabs: { key: string; label: string; node: ReactNode }[
       <div className="flex gap-1 border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
         {tabs.map((t) => (
           <button key={t.key} onClick={() => { const p = new URLSearchParams(); p.set('tab', t.key); setParams(p, { replace: true }); }}
-            className={cn('px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px', current.key === t.key ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200')}>
+            className={cn('px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px', current.key === t.key ? 'brand-border brand-text' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200')}>
             {t.label}
           </button>
         ))}
@@ -31,8 +32,8 @@ function QuickLinks({ title, links }: { title: string; links: { to: string; labe
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h1>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {links.map((l) => (
-          <NavLink key={l.to} to={l.to} className={cn(card, 'p-4 hover:border-indigo-300 dark:hover:border-indigo-700 transition flex gap-3')}>
-            <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 flex items-center justify-center flex-shrink-0"><l.icon className="h-5 w-5" /></div>
+          <NavLink key={l.to} to={l.to} className={cn(card, 'p-4 brand-hover-border transition flex gap-3')}>
+            <div className="h-10 w-10 rounded-xl brand-soft flex items-center justify-center flex-shrink-0"><l.icon className="h-5 w-5" /></div>
             <div><p className="font-medium text-gray-900 dark:text-white">{l.label}</p><p className="text-xs text-gray-500">{l.desc}</p></div>
           </NavLink>
         ))}
@@ -72,7 +73,7 @@ const techProjects: RecordBoardConfig = {
   columns: [
     { key: 'title', label: 'Project' }, { key: 'customerName', label: 'Client' }, { key: 'projectType', label: 'Type' },
     { key: 'dueDate', label: 'Due', render: (r) => (r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '—') },
-    { key: 'progress', label: 'Progress', render: (r) => <div className="w-24 h-1.5 bg-gray-100 dark:bg-gray-800 rounded"><div className="h-full bg-indigo-500 rounded" style={{ width: `${r.progress || 0}%` }} /></div> },
+    { key: 'progress', label: 'Progress', render: (r) => <div className="w-24 h-1.5 bg-gray-100 dark:bg-gray-800 rounded"><div className="h-full brand-bg rounded" style={{ width: `${r.progress || 0}%` }} /></div> },
     { key: 'contractValue', label: 'Value', render: (r) => money(r.contractValue, r.currency) },
   ],
 };
@@ -126,23 +127,23 @@ export const ticketsConfig = (brandCode = 'KS-ICT'): RecordBoardConfig => ({
 
 export function KuriosSolutions() {
   return (
-    <Tabs tabs={[
+    <BrandTheme code="KS" header><Tabs tabs={[
       { key: 'projects', label: 'Client projects', node: <RecordBoard cfg={techProjects} /> },
       { key: 'renewals', label: 'Hosting & renewals', node: <RecordBoard cfg={subscriptions} /> },
       { key: 'tickets', label: 'Support tickets', node: <RecordBoard cfg={ticketsConfig()} /> },
-    ]} />
+    ]} /></BrandTheme>
   );
 }
 
 export function KuriosTraining() {
-  return <QuickLinks title="Kurios SAT — ICT Training Center" links={[
+  return <BrandTheme code="KS" header><QuickLinks title="Kurios SAT — ICT Training Center" links={[
     { to: '/lms/courses', label: 'Courses', icon: BookOpen, desc: 'Programmes, modules and lessons' },
     { to: '/lms/students', label: 'Students', icon: Users, desc: 'Enrolled students and progress' },
     { to: '/lms/exams', label: 'Exams (CBT)', icon: ClipboardList, desc: 'Computer-based tests and results' },
     { to: '/lms/certificates', label: 'Certificates', icon: Award, desc: 'Issue and verify certificates' },
     { to: '/lms/fee-receipts', label: 'Fee receipts', icon: Receipt, desc: 'Tuition payments and balances' },
     { to: '/documents?brand=KS', label: 'Student terms & agreements', icon: GraduationCap, desc: 'Send T&Cs for students to sign' },
-  ]} />;
+  ]} /></BrandTheme>;
 }
 
 // ─── BeadMax ────────────────────────────────────────────────────────────────
@@ -178,17 +179,17 @@ const customOrders: RecordBoardConfig = {
 };
 
 export function BeadMaxCustomOrders() {
-  return <RecordBoard cfg={{ ...customOrders, headerExtras: <NavLink to="/bead-max/sales" className={btnGhost}><ShoppingBag className="h-4 w-4" /> Shop sales & stock</NavLink> }} />;
+  return <BrandTheme code="BM" header><RecordBoard cfg={{ ...customOrders, headerExtras: <NavLink to="/bead-max/sales" className={btnGhost}><ShoppingBag className="h-4 w-4" /> Shop sales & stock</NavLink> }} /></BrandTheme>;
 }
 
 export function BeadMaxSchool() {
-  return <QuickLinks title="Beadmax Design Vocational School" links={[
+  return <BrandTheme code="BM" header><QuickLinks title="Beadmax Design Vocational School" links={[
     { to: '/lms/students', label: 'Students', icon: Users, desc: 'Register and manage students' },
     { to: '/lms/courses', label: 'Courses', icon: BookOpen, desc: 'Bag making, jewellery, accessories' },
     { to: '/lms/fee-receipts', label: 'Fee receipts', icon: Receipt, desc: 'Course fees and balances' },
     { to: '/lms/certificates', label: 'Certificates', icon: Award, desc: 'Graduation certificates' },
     { to: '/documents?brand=BM', label: 'Enrolment agreements', icon: GraduationCap, desc: 'Send the enrolment agreement to sign' },
-  ]} />;
+  ]} /></BrandTheme>;
 }
 
 // ─── Maxfood Farm ───────────────────────────────────────────────────────────
@@ -297,10 +298,10 @@ const foodProducts: RecordBoardConfig = {
 
 export function MaxfoodHub() {
   return (
-    <Tabs tabs={[
+    <BrandTheme code="MF" header><Tabs tabs={[
       { key: 'orders', label: 'Export orders', node: <RecordBoard cfg={exportOrders} /> },
       { key: 'products', label: 'Products & stock', node: <RecordBoard cfg={foodProducts} /> },
       { key: 'tickets', label: 'Customer issues', node: <RecordBoard cfg={ticketsConfig('MF')} /> },
-    ]} />
+    ]} /></BrandTheme>
   );
 }

@@ -12,6 +12,7 @@ import { useBrands, useLiveRefresh, useRole } from '@hooks/useErp';
 import { toast } from '@components/ui/toaster';
 import { printReceipt, printRecord, printSignedDocument } from './print';
 import { cn } from '@utils/cn';
+import { useBrandStyle } from './BrandTheme';
 
 export interface FieldDef {
   name: string;
@@ -54,9 +55,9 @@ export interface RecordBoardConfig {
   emptyHint?: string;
 }
 
-export const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-400';
+export const inputCls = 'w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none brand-ring placeholder-gray-400';
 export const labelCls = 'block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1';
-export const btnPrimary = 'inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-50 transition';
+export const btnPrimary = 'inline-flex items-center gap-2 px-4 py-2 rounded-xl brand-bg text-sm font-medium disabled:opacity-50 transition';
 export const btnGhost = 'inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition';
 export const card = 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl';
 
@@ -330,7 +331,7 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
       <motion.aside initial={{ x: 480 }} animate={{ x: 0 }} exit={{ x: 480 }} transition={{ type: 'tween', duration: 0.2 }}
         className="w-full max-w-2xl h-full bg-white dark:bg-gray-900 shadow-2xl flex flex-col">
         {isLoading || !r ? (
-          <div className="flex-1 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div>
+          <div className="flex-1 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin brand-text" /></div>
         ) : (
           <>
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
@@ -357,12 +358,12 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
                     {stages.filter((s) => s !== r[stageField]).map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                   {(() => { const i = stages.indexOf(r[stageField]); const next = stages[i + 1]; return next && !BAD.test(next) ? (
-                    <button className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300" onClick={() => stageM.mutate({ s: next })}>Next: {next} <ChevronRight className="h-3 w-3" /></button>) : null; })()}
+                    <button className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-lg brand-soft" onClick={() => stageM.mutate({ s: next })}>Next: {next} <ChevronRight className="h-3 w-3" /></button>) : null; })()}
                 </div>
               )}
               <div className="mt-3 flex gap-1 overflow-x-auto text-sm">
                 {(['overview', 'timeline', ...(cfg.allowMessage !== false ? ['message'] : []), ...(cfg.allowPayments ? ['payments'] : []), ...(cfg.allowDocuments ? ['documents'] : [])] as const).map((t) => (
-                  <button key={t} onClick={() => setTab(t as any)} className={cn('px-3 py-1.5 rounded-lg capitalize whitespace-nowrap', tab === t ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800')}>{t}{t === 'timeline' ? ` (${r.activities?.length || 0})` : ''}</button>
+                  <button key={t} onClick={() => setTab(t as any)} className={cn('px-3 py-1.5 rounded-lg capitalize whitespace-nowrap', tab === t ? 'brand-bg' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800')}>{t}{t === 'timeline' ? ` (${r.activities?.length || 0})` : ''}</button>
                 ))}
               </div>
             </div>
@@ -383,9 +384,9 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
                       <div key={f.name} className={cn(f.type === 'textarea' || f.span === 2 ? 'sm:col-span-2' : '')}>
                         <dt className="text-[11px] uppercase tracking-wide text-gray-400">{f.label}</dt>
                         <dd className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-line break-words">{
-                          f.type === 'email' && r[f.name] ? <a className="text-indigo-600 hover:underline" href={`mailto:${r[f.name]}`}>{r[f.name]}</a>
-                            : (f.type === 'tel') && r[f.name] ? <a className="text-indigo-600 hover:underline" href={`tel:${r[f.name]}`}>{r[f.name]}</a>
-                              : /url$/i.test(f.name) && r[f.name] ? <a className="text-indigo-600 hover:underline inline-flex items-center gap-1" href={r[f.name]} target="_blank" rel="noreferrer">{r[f.name]} <ExternalLink className="h-3 w-3" /></a>
+                          f.type === 'email' && r[f.name] ? <a className="brand-text hover:underline" href={`mailto:${r[f.name]}`}>{r[f.name]}</a>
+                            : (f.type === 'tel') && r[f.name] ? <a className="brand-text hover:underline" href={`tel:${r[f.name]}`}>{r[f.name]}</a>
+                              : /url$/i.test(f.name) && r[f.name] ? <a className="brand-text hover:underline inline-flex items-center gap-1" href={r[f.name]} target="_blank" rel="noreferrer">{r[f.name]} <ExternalLink className="h-3 w-3" /></a>
                                 : fmt(r[f.name], f, r, people)}</dd>
                       </div>
                     ))}
@@ -405,7 +406,7 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
                   <ol className="relative border-l border-gray-200 dark:border-gray-700 ml-2 space-y-4">
                     {(r.activities || []).map((a: any) => (
                       <li key={a.id} className="ml-4">
-                        <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-indigo-500 ring-4 ring-white dark:ring-gray-900" />
+                        <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full brand-bg ring-4 ring-white dark:ring-gray-900" />
                         <p className="text-[11px] text-gray-400">{new Date(a.createdAt).toLocaleString()} · {a.kind}{a.channel ? ` (${a.channel})` : ''} · {a.createdByName}</p>
                         <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line">{a.content}</p>
                       </li>
@@ -420,7 +421,7 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
                   <p className="text-sm text-gray-500">Send {r.customerName || 'the customer'} a message. WhatsApp opens on your device with the text ready to send (or sends automatically if the WhatsApp Business API is connected). Every message is saved to the timeline.</p>
                   <div className="flex gap-2">
                     {(['WhatsApp', 'Email', 'Both'] as const).map((c) => (
-                      <button key={c} onClick={() => setMsg({ ...msg, channel: c })} className={cn('px-3 py-1.5 rounded-lg text-sm border', msg.channel === c ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300')}>
+                      <button key={c} onClick={() => setMsg({ ...msg, channel: c })} className={cn('px-3 py-1.5 rounded-lg text-sm border', msg.channel === c ? 'brand-bg brand-border' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300')}>
                         {c === 'WhatsApp' ? <MessageCircle className="h-4 w-4 inline mr-1" /> : c === 'Email' ? <Mail className="h-4 w-4 inline mr-1" /> : null}{c}
                       </button>
                     ))}
@@ -440,7 +441,7 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
                   </div>
                   {(r.payments || []).map((p: Payment) => (
                     <div key={p.id} className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-800 p-3">
-                      <Receipt className="h-5 w-5 text-indigo-500" />
+                      <Receipt className="h-5 w-5 brand-text" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white">{money(p.amount, p.currency)} <span className="text-xs text-gray-400">· {p.method}</span></p>
                         <p className="text-xs text-gray-500">{p.receiptNo} · {new Date(p.paidAt).toLocaleString()}{p.status !== 'Completed' ? ` · ${p.status}` : ''}</p>
@@ -459,7 +460,7 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
                   </div>
                   {(docsQ.data || []).map((d: any) => (
                     <div key={d.id} className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-gray-800 p-3">
-                      <FileSignature className="h-5 w-5 text-indigo-500" />
+                      <FileSignature className="h-5 w-5 brand-text" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{d.title}</p>
                         <p className="text-xs text-gray-500">{d.code} · {d.status}{d.signedAt ? ` · ${new Date(d.signedAt).toLocaleString()}` : ''}</p>
@@ -512,9 +513,10 @@ export default function RecordBoard({ cfg }: { cfg: RecordBoardConfig }) {
 
   const open = (id: number | null) => { const p = new URLSearchParams(params); if (id) p.set('open', String(id)); else p.delete('open'); setParams(p, { replace: true }); };
   const boardStages = useMemo(() => (stage ? [stage] : stages), [stage, stages]);
+  const brandStyle = useBrandStyle(brandFilter);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" style={brandStyle}>
       <div className="flex flex-wrap items-end gap-3 justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{cfg.title}</h1>
@@ -539,8 +541,8 @@ export default function RecordBoard({ cfg }: { cfg: RecordBoardConfig }) {
         <label className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300 px-2"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> Assigned to me</label>
         {stages.length > 0 && cfg.allowBoard !== false && (
           <div className="flex rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <button className={cn('px-3 py-2', view === 'board' ? 'bg-indigo-600 text-white' : 'text-gray-500')} onClick={() => setView('board')} title="Board"><LayoutGrid className="h-4 w-4" /></button>
-            <button className={cn('px-3 py-2', view === 'list' ? 'bg-indigo-600 text-white' : 'text-gray-500')} onClick={() => setView('list')} title="List"><List className="h-4 w-4" /></button>
+            <button className={cn('px-3 py-2', view === 'board' ? 'brand-bg' : 'text-gray-500')} onClick={() => setView('board')} title="Board"><LayoutGrid className="h-4 w-4" /></button>
+            <button className={cn('px-3 py-2', view === 'list' ? 'brand-bg' : 'text-gray-500')} onClick={() => setView('list')} title="List"><List className="h-4 w-4" /></button>
           </div>
         )}
         <button className={btnGhost} onClick={() => refetch()} title="Refresh"><RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} /></button>
@@ -550,13 +552,13 @@ export default function RecordBoard({ cfg }: { cfg: RecordBoardConfig }) {
         <div className="flex gap-2 overflow-x-auto pb-1">
           <button onClick={() => setStage('')} className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap border', !stage ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 border-transparent' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300')}>All ({Object.values(counts).reduce((a, b) => a + b, 0)})</button>
           {stages.map((s) => (
-            <button key={s} onClick={() => setStage(stage === s ? '' : s)} className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap border', stage === s ? 'bg-indigo-600 text-white border-transparent' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300')}>{s} ({counts[s] || 0})</button>
+            <button key={s} onClick={() => setStage(stage === s ? '' : s)} className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap border', stage === s ? 'brand-bg border-transparent' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300')}>{s} ({counts[s] || 0})</button>
           ))}
         </div>
       )}
 
       {isLoading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-indigo-500" /></div>
+        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin brand-text" /></div>
       ) : !items.length ? (
         <div className={cn(card, 'p-10 text-center')}>
           <p className="text-gray-500">{search || stage ? 'Nothing matches your filters.' : cfg.emptyHint || `No ${cfg.title.toLowerCase()} yet.`}</p>
@@ -576,7 +578,7 @@ export default function RecordBoard({ cfg }: { cfg: RecordBoardConfig }) {
                 <div className="p-2 space-y-2 overflow-y-auto">
                   {col.map((r: any) => (
                     <button key={r.id} draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', String(r.id))} onClick={() => open(r.id)}
-                      className="w-full text-left bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 hover:border-indigo-300 dark:hover:border-indigo-700 transition">
+                      className="w-full text-left bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-3 brand-hover-border transition">
                       <p className="text-[11px] font-mono text-gray-400">{r.code}</p>
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{cfg.titleOf(r)}</p>
                       {cfg.subtitleOf && <p className="text-xs text-gray-500 truncate">{cfg.subtitleOf(r)}</p>}

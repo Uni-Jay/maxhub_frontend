@@ -8,6 +8,7 @@ import { Modal, PaymentForm, openReceipt, btnGhost, btnPrimary, card, inputCls, 
 import { printTable, printWithLetterhead } from '@components/erp/print';
 import { toast } from '@components/ui/toaster';
 import { cn } from '@utils/cn';
+import { useBrandStyle } from '@components/erp/BrandTheme';
 
 // ─── Receipts ───────────────────────────────────────────────────────────────
 export function PaymentsReceipts() {
@@ -20,8 +21,9 @@ export function PaymentsReceipts() {
   const { data, isLoading } = useQuery({ queryKey: ['erp:payment:list', f], queryFn: () => erpService.payments({ ...f, limit: 300 }) });
   const voidM = useMutation({ mutationFn: ({ id, reason }: { id: number; reason: string }) => erpService.voidPayment(id, reason), onSuccess: () => { toast.success('Receipt voided'); qc.invalidateQueries({ queryKey: ['erp:payment:list'] }); }, onError: (e) => toast.fromError(e) });
   const items = data?.items ?? [];
+  const brandStyle = useBrandStyle(f.brand || null);
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" style={brandStyle}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Payments & Receipts</h1><p className="text-sm text-gray-500">Every payment across all brands, with printable branded receipts.</p></div>
         <div className="flex gap-2">
@@ -37,7 +39,7 @@ export function PaymentsReceipts() {
       </div>
       <div className="flex flex-wrap gap-2">{(data?.totals || []).map((t) => <div key={t.currency} className={cn(card, 'px-4 py-2')}><p className="text-[11px] text-gray-500">Total received ({t.currency})</p><p className="font-semibold text-gray-900 dark:text-white">{money(t.total, t.currency)}</p></div>)}</div>
       <div className={cn(card, 'overflow-x-auto')}>
-        {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-indigo-500 mx-auto my-10" /> : (
+        {isLoading ? <Loader2 className="h-6 w-6 animate-spin brand-text mx-auto my-10" /> : (
           <table className="w-full text-sm">
             <thead><tr className="text-left text-xs text-gray-500 border-b border-gray-100 dark:border-gray-800"><th className="px-4 py-3">Receipt</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Brand</th><th className="px-4 py-3">Customer</th><th className="px-4 py-3">For</th><th className="px-4 py-3 text-right">Amount</th><th className="px-4 py-3"></th></tr></thead>
             <tbody>{items.map((p) => (
@@ -49,7 +51,7 @@ export function PaymentsReceipts() {
                 <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{p.description}{p.relatedCode && <div className="text-[11px] text-gray-400">{p.relatedCode}</div>}</td>
                 <td className="px-4 py-3 text-right font-medium">{money(p.amount, p.currency)}<div className="text-[11px] text-gray-400">{p.method}</div></td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <button className="p-1.5 text-gray-500 hover:text-indigo-600" title="Print receipt" onClick={() => openReceipt(p.id)}><Printer className="h-4 w-4" /></button>
+                  <button className="p-1.5 text-gray-500 hover:brand-text" title="Print receipt" onClick={() => openReceipt(p.id)}><Printer className="h-4 w-4" /></button>
                   {isManagement && p.status === 'Completed' && <button className="p-1.5 text-gray-500 hover:text-red-600" title="Void" onClick={() => { const reason = prompt('Reason for voiding this receipt?'); if (reason) voidM.mutate({ id: p.id, reason }); }}><Ban className="h-4 w-4" /></button>}
                 </td>
               </tr>))}</tbody>
@@ -98,11 +100,11 @@ export function BrandsHub() {
     <div className="space-y-5">
       <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">MaxHub Brands</h1>
         <p className="text-sm text-gray-500">Each brand is a department; brands with several lines of business have divisions. {headOffice ? `Branch: ${headOffice.branchName}.` : ''}</p></div>
-      {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-indigo-500 mx-auto my-10" /> : (
+      {isLoading ? <Loader2 className="h-6 w-6 animate-spin brand-text mx-auto my-10" /> : (
         <div className="grid md:grid-cols-2 gap-4">
           {brands.map((b) => (
             <div key={b.code} className={cn(card, 'overflow-hidden flex flex-col')}>
-              <div className="h-1.5" style={{ background: b.primaryColor || '#4f46e5' }} />
+              <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${b.primaryColor || '#4f46e5'}, ${b.secondaryColor || b.primaryColor || '#4f46e5'})` }} />
               <div className="p-5 flex-1 space-y-3">
                 <div className="flex items-start gap-4">
                   <div className="h-16 w-28 rounded-xl bg-white border border-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">{logo(b) ? <img src={logo(b)} alt={b.displayName} className="max-h-14 max-w-[104px] object-contain" /> : <Building2 className="h-6 w-6 text-gray-300" />}</div>
@@ -156,7 +158,7 @@ export function WeeklySummary() {
           <NavLink to="/hr/weekly-report" className={btnPrimary}>Staff weekly reports</NavLink>
         </div>
       </div>
-      {isLoading || !data ? <Loader2 className="h-6 w-6 animate-spin text-indigo-500 mx-auto my-10" /> : (
+      {isLoading || !data ? <Loader2 className="h-6 w-6 animate-spin brand-text mx-auto my-10" /> : (
         <>
           <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
             {data.brands.map((b: any) => (
@@ -192,8 +194,8 @@ export function CareersWidget() {
       <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Careers on our websites</h1>
         <p className="text-sm text-gray-500">When a job in Recruitment is set to <strong>Open</strong>, it appears automatically on the brand website's careers section, and applications come straight back into Recruitment.</p></div>
       <div className={cn(card, 'p-4 space-y-3')}>
-        <div className="flex flex-wrap gap-2">{brands.map((x) => <button key={x.code} onClick={() => setBrand(x.code)} className={cn('px-3 py-1.5 rounded-lg text-sm border', brand === x.code ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300')}>{x.displayName}</button>)}</div>
-        <p className="text-sm text-gray-600 dark:text-gray-300">Paste this once into the careers page of {b?.website ? <a href={b.website} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">{b.website.replace(/^https?:\/\//, '')}</a> : 'the website'}:</p>
+        <div className="flex flex-wrap gap-2">{brands.map((x) => <button key={x.code} onClick={() => setBrand(x.code)} className={cn('px-3 py-1.5 rounded-lg text-sm border', brand === x.code ? 'brand-bg brand-border' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300')}>{x.displayName}</button>)}</div>
+        <p className="text-sm text-gray-600 dark:text-gray-300">Paste this once into the careers page of {b?.website ? <a href={b.website} target="_blank" rel="noreferrer" className="brand-text hover:underline">{b.website.replace(/^https?:\/\//, '')}</a> : 'the website'}:</p>
         <pre className="text-xs bg-gray-900 text-emerald-300 rounded-xl p-3 overflow-x-auto">{snippet}</pre>
         <div className="flex gap-2">
           <button className={btnGhost} onClick={() => { navigator.clipboard.writeText(snippet); toast.success('Embed code copied'); }}><Copy className="h-4 w-4" /> Copy code</button>

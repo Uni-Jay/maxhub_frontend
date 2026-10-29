@@ -10,6 +10,8 @@ export interface DepartmentModuleLink {
 
 export interface DepartmentModuleGroup {
   label: string;
+  /** Brand colour for the sidebar icon (from the brand logo). */
+  color?: string;
   icon: LucideIcon;
   links: DepartmentModuleLink[];
 }
@@ -21,6 +23,7 @@ export interface DepartmentModuleGroup {
  * sidebar shows every brand to everyone (see getNavForRole).
  */
 const VISAMAX: DepartmentModuleGroup = {
+  color: '#1d3a8f',
   label: 'VisaMax',
   icon: Globe,
   links: [
@@ -31,6 +34,7 @@ const VISAMAX: DepartmentModuleGroup = {
 };
 
 const KURIOS: DepartmentModuleGroup = {
+  color: '#4c9a2a',
   label: 'Kurios SAT',
   icon: GraduationCap,
   links: [
@@ -46,6 +50,7 @@ const KURIOS: DepartmentModuleGroup = {
 };
 
 const BEADMAX: DepartmentModuleGroup = {
+  color: '#7a1f33',
   label: 'BeadMax',
   icon: ShoppingBag,
   links: [
@@ -56,6 +61,7 @@ const BEADMAX: DepartmentModuleGroup = {
 };
 
 const MAXFOOD: DepartmentModuleGroup = {
+  color: '#2f7d32',
   label: 'Maxfood Farm',
   icon: Wheat,
   links: [

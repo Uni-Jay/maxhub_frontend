@@ -7,6 +7,7 @@ import { ERP_PATHS, erpService, money } from '@services/erpService';
 import { toast } from '@components/ui/toaster';
 import { cloudinaryService } from '@services/cloudinaryService';
 import { cn } from '@utils/cn';
+import { BrandTheme } from '@components/erp/BrandTheme';
 
 const SERVICES = ['Visa Processing', 'Overseas Study', 'Work Visa / Job Travel', 'Family Visa', 'Business Travel', 'Tourism Package', 'Holiday Package', 'Flight Booking', 'Hotel Reservation', 'Immigration Consulting', 'Travel Insurance', 'Airport Pickup'];
 const VISA_TYPES = ['Tourist', 'Student', 'Work', 'Business', 'Residence', 'Transit', 'Medical', 'Family Visa'];
@@ -40,7 +41,7 @@ function Checklist({ r, refresh }: { r: any; refresh: () => void }) {
       <div className="rounded-xl border border-gray-100 dark:border-gray-800">
         <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-gray-800">
           <p className="text-sm font-medium text-gray-900 dark:text-white">Document checklist · {received}/{items.length}</p>
-          <button className="text-xs inline-flex items-center gap-1 text-gray-500 hover:text-indigo-600" onClick={() => regen.mutate()}><RotateCcw className="h-3 w-3" /> Refresh for service</button>
+          <button className="text-xs inline-flex items-center gap-1 text-gray-500 hover:brand-text" onClick={() => regen.mutate()}><RotateCcw className="h-3 w-3" /> Refresh for service</button>
         </div>
         <div className="h-1.5 bg-gray-100 dark:bg-gray-800"><div className="h-full bg-emerald-500 transition-all" style={{ width: `${items.length ? (received / items.length) * 100 : 0}%` }} /></div>
         <ul className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -48,8 +49,8 @@ function Checklist({ r, refresh }: { r: any; refresh: () => void }) {
             <li key={c.item} className="flex items-center gap-2 px-3 py-2">
               <button onClick={() => update(i, { received: !c.received })} className={cn(c.received ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600')}>{c.received ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5" />}</button>
               <span className={cn('flex-1 text-sm', c.received ? 'text-gray-500 line-through' : 'text-gray-800 dark:text-gray-200')}>{c.item}</span>
-              {c.fileUrl && <a href={c.fileUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 hover:underline">View</a>}
-              <label className="cursor-pointer text-gray-400 hover:text-indigo-600" title="Upload scan">
+              {c.fileUrl && <a href={c.fileUrl} target="_blank" rel="noreferrer" className="text-xs brand-text hover:underline">View</a>}
+              <label className="cursor-pointer text-gray-400 hover:brand-text" title="Upload scan">
                 {uploading === i ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
                 <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => upload(i, e.target.files?.[0])} />
               </label>
@@ -119,11 +120,12 @@ export const visaCaseConfig: RecordBoardConfig = {
 };
 
 export default function VisaMaxCases() {
-  return <RecordBoard cfg={visaCaseConfig} />;
+  return <BrandTheme code="VM" header><RecordBoard cfg={visaCaseConfig} /></BrandTheme>;
 }
 
 export function VisaMaxBookings() {
   return (
+    <BrandTheme code="VM" header>
     <RecordBoard cfg={{
       base: ERP_PATHS.bookings, entity: 'travel_booking', title: 'VisaMax — Bookings', singular: 'Booking', brandCode: 'VM', stageField: 'status',
       subtitle: 'Flights, hotels, insurance, tour packages and airport pickups — with cost, selling price and margin.',
@@ -156,5 +158,6 @@ export function VisaMaxBookings() {
       ],
       headerExtras: <NavLink to="/visamax/cases" className={btnGhost}>Customer cases</NavLink>,
     }} />
+    </BrandTheme>
   );
 }

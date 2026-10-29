@@ -115,3 +115,17 @@ body {
   background-color: rgb(199 210 254 / 0.6); /* indigo-200 */
   color: rgb(30 27 75); /* indigo-950 */
 }
+
+/* ── Brand theming ─────────────────────────────────────────────────────────
+   A wrapper sets --brand (and optionally --brand-2) to the brand's colour;
+   everything inside uses these helpers. Falls back to MaxHub indigo. */
+.brand-bg { background-color: var(--brand, #4f46e5); color: #fff; }
+.brand-bg:hover { filter: brightness(1.1); }
+.brand-text { color: var(--brand, #4f46e5); }
+.dark .brand-text { color: color-mix(in srgb, var(--brand, #4f46e5) 55%, white); }
+.brand-soft { background-color: color-mix(in srgb, var(--brand, #4f46e5) 10%, transparent); color: var(--brand, #4f46e5); }
+.dark .brand-soft { background-color: color-mix(in srgb, var(--brand, #4f46e5) 25%, transparent); color: color-mix(in srgb, var(--brand, #4f46e5) 55%, white); }
+.brand-border { border-color: var(--brand, #4f46e5) !important; }
+.brand-hover-border:hover { border-color: color-mix(in srgb, var(--brand, #4f46e5) 50%, transparent); }
+.brand-ring:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand, #4f46e5) 70%, transparent); }
+.brand-accent-bar { background: linear-gradient(90deg, var(--brand, #4f46e5), var(--brand-2, var(--brand, #4f46e5))); }

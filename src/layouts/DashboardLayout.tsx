@@ -99,8 +99,8 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
                 )}
               >
-                {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-indigo-600 dark:bg-indigo-400" />}
-                <Icon className="h-4 w-4 flex-shrink-0" />
+                {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-indigo-600 dark:bg-indigo-400" style={item.color ? { background: item.color } : undefined} />}
+                <span className={cn('flex', item.color && 'brand-text')} style={item.color ? ({ ['--brand' as any]: item.color }) : undefined}><Icon className="h-4 w-4 flex-shrink-0" /></span>
                 <span className="flex-1 text-left">{item.label}</span>
                 <ChevronRight
                   className={cn('h-3.5 w-3.5 transition-transform flex-shrink-0', isExpanded && 'rotate-90')}

@@ -19,6 +19,8 @@ export interface SidebarItem {
   path: string;
   icon: React.ElementType;
   children?: SidebarChild[];
+  /** Optional accent colour for the icon (brand menus). */
+  color?: string;
 }
 
 // ─── SUPER ADMIN — full company control ──────────────────────────────────────
@@ -292,8 +294,8 @@ function getDepartmentExtraNav(departmentCodes?: string[] | null): SidebarItem[]
     seen.add(mod.label);
     extra.push(
       mod.links.length > 1
-        ? { label: mod.label, path: mod.links[0].path, icon: mod.icon, children: mod.links.map(l => ({ label: l.label, path: l.path })) }
-        : { label: mod.label, path: mod.links[0].path, icon: mod.icon }
+        ? { label: mod.label, path: mod.links[0].path, icon: mod.icon, color: mod.color, children: mod.links.map(l => ({ label: l.label, path: l.path })) }
+        : { label: mod.label, path: mod.links[0].path, icon: mod.icon, color: mod.color }
     );
   }
   return extra;
