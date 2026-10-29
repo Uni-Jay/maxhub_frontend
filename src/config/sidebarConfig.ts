@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import type { CanonicalRole } from '@utils/role';
 import { DEPARTMENT_MODULES, BRAND_CODES } from './departmentModules';
-import { FileSignature, CalendarCheck } from 'lucide-react';
+import { FileSignature } from 'lucide-react';
 
 export interface SidebarChild {
   label: string;
@@ -60,7 +60,6 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
   ]},
   { label: 'Staff Queries', path: '/queries', icon: HelpCircle },
   { label: 'CRM', path: '/crm', icon: ShoppingCart, children: [
-    { label: 'Business Hub', path: '/crm/hub' },
     { label: 'Contacts', path: '/crm/contacts' },
     { label: 'Pipeline', path: '/crm/pipeline' },
     { label: 'Forecast', path: '/crm/forecast' },
@@ -73,7 +72,9 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
     { label: 'Warehouses', path: '/inventory/warehouses' },
   ]},
   { label: 'Finance', path: '/finance', icon: Receipt, children: [
+    { label: 'Payments & Receipts', path: '/receipts' },
     { label: 'Invoices', path: '/invoices' },
+    { label: 'Student Fee Receipts', path: '/lms/fee-receipts' },
     { label: 'Audit Logs', path: '/audit-logs' },
   ]},
   { label: 'Customer Reports', path: '/customer-reports', icon: BarChart2 },
@@ -88,7 +89,7 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
     { label: 'History', path: '/communication/history' },
     { label: 'Broadcasts', path: '/communication/broadcasts' },
   ]},
-  { label: 'Meetings', path: '/calls', icon: Video },
+  { label: 'Meetings & Calls', path: '/calls', icon: Video },
   { label: 'System Settings', path: '/settings', icon: Settings, children: [
     { label: 'System Settings', path: '/settings/system' },
     { label: 'Profile', path: '/settings/profile' },
@@ -104,7 +105,7 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
 // Admin keeps its own richer System Settings group instead of this one.)
 const COMMON_TAIL: SidebarItem[] = [
   { label: 'Messages', path: '/messages', icon: MessageSquare },
-  { label: 'Meetings', path: '/calls', icon: Video },
+  { label: 'Meetings & Calls', path: '/calls', icon: Video },
   { label: 'Calendar', path: '/calendar', icon: Calendar },
   { label: 'Files', path: '/files', icon: FolderOpen },
   { label: 'AI Assistant', path: '/ai-assistant', icon: Bot },
@@ -117,10 +118,9 @@ const COMMON_TAIL: SidebarItem[] = [
   ]},
 ];
 
-// ─── Full CRM group — available to every role (Business Hub/Contacts/Pipeline/Forecast) ───
+// ─── Full CRM group — available to every role (Contacts/Pipeline/Forecast/Proposals) ───
 const CRM_NAV: SidebarItem[] = [
   { label: 'CRM', path: '/crm', icon: ShoppingCart, children: [
-    { label: 'Business Hub', path: '/crm/hub' },
     { label: 'Contacts', path: '/crm/contacts' },
     { label: 'Pipeline', path: '/crm/pipeline' },
     { label: 'Forecast', path: '/crm/forecast' },
@@ -175,7 +175,9 @@ const ADMIN_NAV: SidebarItem[] = [
     { label: 'Warehouses', path: '/inventory/warehouses' },
   ]},
   { label: 'Finance', path: '/finance', icon: Receipt, children: [
+    { label: 'Payments & Receipts', path: '/receipts' },
     { label: 'Invoices', path: '/invoices' },
+    { label: 'Student Fee Receipts', path: '/lms/fee-receipts' },
   ]},
   ...CRM_NAV,
   ...COMMON_TAIL,
@@ -305,11 +307,9 @@ function getDepartmentExtraNav(departmentCodes?: string[] | null): SidebarItem[]
 function sharedErpNav(role: CanonicalRole): SidebarItem[] {
   const items: SidebarItem[] = [
     { label: 'Documents & Agreements', path: '/documents', icon: FileSignature },
-    { label: 'Payments & Receipts', path: '/receipts', icon: Receipt },
   ];
-  if (role === 'superadmin' || role === 'admin' || role === 'hr' || role === 'hod') {
-    items.push({ label: 'Monday Report', path: '/reports/weekly', icon: CalendarCheck });
-  }
+  // Super Admin / Admin find Payments & Receipts inside their Finance menu.
+  if (role !== 'superadmin' && role !== 'admin') items.push({ label: 'Payments & Receipts', path: '/receipts', icon: Receipt });
   items.unshift({ label: 'Brands', path: '/brands', icon: Building2 });
   return items;
 }

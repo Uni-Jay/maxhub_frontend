@@ -103,14 +103,14 @@ const QUICK_ACTIONS = [
   { label: 'Projects', path: '/projects', icon: Briefcase, color: 'text-indigo-600' },
   { label: 'Tasks', path: '/tasks', icon: CheckSquare, color: 'text-violet-600' },
   { label: 'Staff Queries', path: '/queries', icon: HelpCircle, color: 'text-pink-600' },
-  { label: 'CRM Hub', path: '/crm/hub', icon: Target, color: 'text-fuchsia-600' },
+  { label: 'Brands', path: '/brands', icon: Target, color: 'text-fuchsia-600' },
   { label: 'Clients', path: '/clients', icon: UserCheck, color: 'text-lime-600' },
   { label: 'Inventory', path: '/inventory/dashboard', icon: Boxes, color: 'text-orange-600' },
-  { label: 'BeadMax Sales', path: '/bead-max/sales', icon: ShoppingBag, color: 'text-red-600' },
+  { label: 'BeadMax', path: '/beadmax/custom-orders', icon: ShoppingBag, color: 'text-red-600' },
   { label: 'Broadcast', path: '/communication/broadcasts', icon: Megaphone, color: 'text-rose-600' },
   { label: 'Customer Reports', path: '/customer-reports', icon: FileText, color: 'text-orange-600' },
-  { label: 'VisaMax Hub', path: '/visamax', icon: Link, color: 'text-sky-600' },
-  { label: 'Departments', path: '/staff', icon: Building2, color: 'text-yellow-600' },
+  { label: 'VisaMax', path: '/visamax/cases', icon: Link, color: 'text-sky-600' },
+  { label: 'Departments', path: '/organization/departments', icon: Building2, color: 'text-yellow-600' },
   { label: 'Analytics', path: '/analytics', icon: BarChart2, color: 'text-indigo-600' },
 ] as const;
 

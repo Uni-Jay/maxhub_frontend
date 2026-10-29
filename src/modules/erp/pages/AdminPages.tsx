@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Printer, Ban, Loader2, Globe, Mail, Phone, MapPin, Pencil, Copy, ExternalLink, Briefcase, Building2, Users, Search } from 'lucide-react';
@@ -26,7 +27,9 @@ export function PaymentsReceipts() {
     <div className="space-y-4" style={brandStyle}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Payments & Receipts</h1><p className="text-sm text-gray-500">Every payment across all brands, with printable branded receipts.</p></div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <NavLink to="/invoices" className={btnGhost}>Invoices</NavLink>
+          <NavLink to="/lms/fee-receipts" className={btnGhost}>Student fee receipts</NavLink>
           <button className={btnGhost} onClick={() => printTable('Payments report', ['Receipt', 'Date', 'Customer', 'Description', 'Method', 'Amount', 'Status'], items.map((p) => [p.receiptNo, new Date(p.paidAt).toLocaleDateString(), p.customerName, p.description, p.method, money(p.amount, p.currency), p.status]), f.brand ? brands.find((b) => b.code === f.brand) : null, `<p class="muted">${f.from || '…'} to ${f.to || 'today'} · Totals: ${(data?.totals || []).map((t) => money(t.total, t.currency)).join(', ') || '—'}</p>`)}><Printer className="h-4 w-4" /> Print list</button>
           <button className={btnPrimary} onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Record payment</button>
         </div>
@@ -66,7 +69,7 @@ export function PaymentsReceipts() {
 
 // ─── Brands hub ─────────────────────────────────────────────────────────────
 const BRAND_LINKS: Record<string, { to: string; label: string }[]> = {
-  VM: [{ to: '/visamax/cases', label: 'Customers & applications' }, { to: '/visamax/bookings', label: 'Bookings' }, { to: '/visamax', label: 'Service catalogue' }],
+  VM: [{ to: '/visamax/cases', label: 'Customers & applications' }, { to: '/visamax/bookings', label: 'Bookings' }],
   KS: [{ to: '/kurios/solutions', label: 'ICT Solutions' }, { to: '/kurios/training', label: 'ICT Training Center' }, { to: '/kurios/solutions?tab=tickets', label: 'Support tickets' }],
   BM: [{ to: '/beadmax/custom-orders', label: 'Custom orders' }, { to: '/bead-max/sales', label: 'Shop sales & stock' }, { to: '/beadmax/school', label: 'Vocational School' }],
   MF: [{ to: '/maxfood', label: 'Export orders' }, { to: '/maxfood?tab=products', label: 'Products & stock' }],
@@ -151,11 +154,10 @@ export function WeeklySummary() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Monday Weekly Report</h1><p className="text-sm text-gray-500">Sent to Super Admin & Admin every Monday at 8:00 AM. Staff weekly reports are due Monday morning (reminder 7:30, escalation at noon).</p></div>
+        <div><h2 className="text-lg font-semibold text-gray-900 dark:text-white">Business summary — all brands</h2><p className="text-sm text-gray-500">Emailed to Super Admin & Admin every Monday at 8:00 AM, alongside the staff weekly reports (due Monday morning; reminder 7:30, escalation at noon).</p></div>
         <div className="flex gap-2 items-end">
           <div><label className={labelCls}>Week starting</label><input type="date" className={inputCls} value={week} onChange={(e) => setWeek(e.target.value)} /></div>
           <button className={btnGhost} onClick={print} disabled={!data}><Printer className="h-4 w-4" /> Print</button>
-          <NavLink to="/hr/weekly-report" className={btnPrimary}>Staff weekly reports</NavLink>
         </div>
       </div>
       {isLoading || !data ? <Loader2 className="h-6 w-6 animate-spin brand-text mx-auto my-10" /> : (
@@ -208,6 +210,31 @@ export function CareersWidget() {
         <ul className="divide-y divide-gray-100 dark:divide-gray-800">{jobs.map((j: any) => <li key={j.code} className="py-2 text-sm"><span className="font-medium text-gray-900 dark:text-white">{j.title}</span> <span className="text-gray-500">· {j.jobType} · closes {new Date(j.closingDate).toLocaleDateString()}</span></li>)}</ul>
         {!jobs.length && <p className="text-sm text-gray-500">No open jobs for this brand. Set a job's business unit to this brand and its status to Open.</p>}
       </div>
+    </div>
+  );
+}
+
+// ─── Weekly reports: staff reports + business summary in one place ──────────
+const StaffWeeklyReports = lazy(() => import('@modules/hr/pages/WeeklyReportPage'));
+
+export function WeeklyReportsHub() {
+  const { role } = useRole();
+  const [params, setParams] = useSearchParams();
+  const canSeeSummary = role === 'superadmin' || role === 'admin' || role === 'hr' || role === 'hod';
+  const tab = canSeeSummary && params.get('tab') === 'summary' ? 'summary' : 'staff';
+  return (
+    <div className="space-y-4">
+      {canSeeSummary && (
+        <div className="flex gap-1 border-b border-gray-200 dark:border-gray-800">
+          {([['staff', 'Staff weekly reports'], ['summary', 'Business summary']] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setParams(k === 'summary' ? { tab: 'summary' } : {}, { replace: true })}
+              className={cn('px-4 py-2 text-sm font-medium border-b-2 -mb-px', tab === k ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200')}>{l}</button>
+          ))}
+        </div>
+      )}
+      <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-indigo-500 mx-auto my-10" />}>
+        {tab === 'summary' ? <WeeklySummary /> : <StaffWeeklyReports />}
+      </Suspense>
     </div>
   );
 }

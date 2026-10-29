@@ -29,7 +29,6 @@ const VISAMAX: DepartmentModuleGroup = {
   links: [
     { label: 'Customers & Applications', path: '/visamax/cases', icon: Globe },
     { label: 'Bookings', path: '/visamax/bookings', icon: Globe },
-    { label: 'Service Catalogue', path: '/visamax', icon: Globe },
   ],
 };
 
@@ -41,11 +40,6 @@ const KURIOS: DepartmentModuleGroup = {
     { label: 'ICT Solutions', path: '/kurios/solutions', icon: GraduationCap },
     { label: 'Support Tickets', path: '/kurios/solutions?tab=tickets', icon: GraduationCap },
     { label: 'ICT Training Center', path: '/kurios/training', icon: GraduationCap },
-    { label: 'Courses', path: '/lms/courses', icon: GraduationCap },
-    { label: 'Students', path: '/lms/students', icon: GraduationCap },
-    { label: 'Exams', path: '/lms/exams', icon: GraduationCap },
-    { label: 'Certificates', path: '/lms/certificates', icon: GraduationCap },
-    { label: 'Fee Receipts', path: '/lms/fee-receipts', icon: GraduationCap },
   ],
 };
 

@@ -4,8 +4,9 @@ import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Plus, Search, X, LayoutGrid, List, Loader2, Pencil, Trash2, Printer, MessageCircle, Mail, Send,
-  StickyNote, Phone, Receipt, FileSignature, ChevronRight, RefreshCw, ExternalLink,
+  StickyNote, Phone, Receipt, FileSignature, ChevronRight, RefreshCw, ExternalLink, ClipboardList,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { erpService, money, type Payment } from '@services/erpService';
 import { apiClient } from '@services/apiClient';
 import { useBrands, useLiveRefresh, useRole } from '@hooks/useErp';
@@ -322,6 +323,26 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
     onError: (e) => toast.fromError(e),
   });
   const delM = useMutation({ mutationFn: () => erpService.remove(cfg.base, id), onSuccess: () => { toast.success('Deleted'); refresh(); onClose(); }, onError: (e) => toast.fromError(e) });
+  const navigate = useNavigate();
+  // One customer status report per record, pre-filled from the pipeline (Customer Reports keeps its own approval flow).
+  const reportM = useMutation({
+    mutationFn: () => {
+      const total = cfg.amountOf ? cfg.amountOf(r) : 0;
+      const missing = Array.isArray(r.checklist) ? r.checklist.filter((c: any) => !c.received).map((c: any) => c.item) : [];
+      const done = (r.activities || []).filter((a: any) => a.kind === 'StageChange').map((a: any) => a.content).reverse();
+      return apiClient.post('/customer-reports', {
+        clientName: r.customerName || cfg.titleOf(r), clientPhone: r.customerPhone || r.customerWhatsapp, clientEmail: r.customerEmail,
+        servicePurchased: `${cfg.titleOf(r)}${cfg.subtitleOf ? ` — ${cfg.subtitleOf(r)}` : ''} (${r.code})`,
+        businessUnit: brand?.displayName || cfg.brandCode, department: brand?.displayName,
+        assignedStaff: people.find((p) => String(p.id) === String(r.assignedToUserId))?.name,
+        currentStatus: r[stageField] || '', pendingActions: missing.join('\n'), completedActions: done.join('\n'),
+        totalAmount: total, amountPaid: r.amountPaid || 0, outstandingBalance: Math.max(total - (r.amountPaid || 0), 0),
+        noteText: `Created from ${r.code}`,
+      });
+    },
+    onSuccess: () => { toast.success('Customer report created as a draft', undefined, { label: 'Open', onClick: () => navigate('/customer-reports') }); },
+    onError: (e) => toast.fromError(e),
+  });
 
   const due = r && cfg.amountOf ? cfg.amountOf(r) : 0;
   const currency = r ? (cfg.currencyOf?.(r) || r.currency || 'NGN') : 'NGN';
@@ -342,6 +363,7 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
                   {cfg.subtitleOf && <p className="text-sm text-gray-500">{cfg.subtitleOf(r)}</p>}
                 </div>
                 <button title="Print" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => printRecord(`${cfg.singular} ${r.code}`, [['Stage / status', r[stageField]], ...cfg.fields.map((f) => [f.label, fmt(r[f.name], f, r, people)] as [string, any]), ...(due ? [['Amount due', money(due, currency)], ['Paid', money(r.amountPaid, currency)], ['Balance', money(due - r.amountPaid, currency)]] as [string, any][] : [])], brand, r.activities)}><Printer className="h-4 w-4" /></button>
+                {r.customerName && <button title="Create customer report" disabled={reportM.isPending} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => reportM.mutate()}><ClipboardList className="h-4 w-4" /></button>}
                 <button title="Edit" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => onEdit(r)}><Pencil className="h-4 w-4" /></button>
                 {(isManagement || role === 'hod') && <button title="Delete" className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => confirm(`Delete ${r.code}? This cannot be undone.`) && delM.mutate()}><Trash2 className="h-4 w-4" /></button>}
                 <button className="p-2 rounded-lg text-gray-400 hover:text-gray-700" onClick={onClose}><X className="h-5 w-5" /></button>

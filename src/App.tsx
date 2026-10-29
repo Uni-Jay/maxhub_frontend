@@ -159,8 +159,6 @@ const SystemSettings = React.lazy(() => import('@pages/Settings/SystemSettings')
 // ─── AI Assistant ───
 const AIAssistantPage = React.lazy(() => import('@modules/ai/pages/AIAssistantPage'));
 
-// ─── CRM Hub (multi-business) ───
-const CRMHub = React.lazy(() => import('@modules/crm/pages/CRMHub'));
 
 // ─── Bead Max Sales ───
 const BeadMaxSales = React.lazy(() => import('@modules/sales/pages/BeadMaxSales'));
@@ -182,10 +180,8 @@ const RolesPermissions = React.lazy(() => import('@pages/Settings/RolesPermissio
 const LoginHistory = React.lazy(() => import('@pages/LoginHistory'));
 
 // ─── Weekly Report ───
-const WeeklyReportPage = React.lazy(() => import('@modules/hr/pages/WeeklyReportPage'));
+const WeeklyReportsHub = React.lazy(() => import('@modules/erp/pages/AdminPages').then((m) => ({ default: m.WeeklyReportsHub })));
 
-// ─── VisaMax ───
-const VisaMaxHub = React.lazy(() => import('@modules/visamax/pages/VisaMaxHub'));
 
 // ─── Customer Reports ───
 const CustomerReportList = React.lazy(() => import('@modules/customerreports/pages/CustomerReportList'));
@@ -193,7 +189,6 @@ const CustomerReportList = React.lazy(() => import('@modules/customerreports/pag
 // ─── ERP v2: brands, documents, receipts ───
 const BrandsHub = React.lazy(() => import('@modules/erp/pages/AdminPages').then((m) => ({ default: m.BrandsHub })));
 const PaymentsReceipts = React.lazy(() => import('@modules/erp/pages/AdminPages').then((m) => ({ default: m.PaymentsReceipts })));
-const WeeklySummary = React.lazy(() => import('@modules/erp/pages/AdminPages').then((m) => ({ default: m.WeeklySummary })));
 const CareersWidget = React.lazy(() => import('@modules/erp/pages/AdminPages').then((m) => ({ default: m.CareersWidget })));
 const DocumentsCenter = React.lazy(() => import('@modules/erp/pages/DocumentsCenter'));
 const VisaMaxCases = React.lazy(() => import('@modules/erp/pages/VisaMaxCases'));
@@ -397,7 +392,7 @@ function App() {
               <Route path="/ai-assistant" element={<AIAssistantPage />} />
 
               {/* CRM Hub */}
-              <Route path="/crm/hub" element={<CRMHub />} />
+              <Route path="/crm/hub" element={<Navigate to="/brands" replace />} />
 
               {/* Bead Max Sales */}
               <Route path="/bead-max/sales" element={<BeadMaxSales />} />
@@ -421,10 +416,10 @@ function App() {
               <Route path="/login-history" element={<LoginHistory />} />
 
               {/* Weekly Report */}
-              <Route path="/hr/weekly-report" element={<WeeklyReportPage />} />
+              <Route path="/hr/weekly-report" element={<WeeklyReportsHub />} />
 
               {/* VisaMax */}
-              <Route path="/visamax" element={<VisaMaxHub />} />
+              <Route path="/visamax" element={<Navigate to="/visamax/cases" replace />} />
 
               {/* ERP v2 — brands */}
               <Route path="/brands" element={<BrandsHub />} />
@@ -437,7 +432,7 @@ function App() {
               <Route path="/maxfood" element={<MaxfoodHub />} />
               <Route path="/documents" element={<DocumentsCenter />} />
               <Route path="/receipts" element={<PaymentsReceipts />} />
-              <Route path="/reports/weekly" element={<WeeklySummary />} />
+              <Route path="/reports/weekly" element={<Navigate to="/hr/weekly-report?tab=summary" replace />} />
               <Route path="/hr/careers" element={<CareersWidget />} />
               {/* Customer Reports */}
               <Route path="/customer-reports" element={<CustomerReportList />} />

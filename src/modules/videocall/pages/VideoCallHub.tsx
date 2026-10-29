@@ -1,3 +1,4 @@
+import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -67,8 +68,8 @@ export default function VideoCallHub() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Meetings</h1>
-          <p className="text-sm text-gray-500">Scheduled via Google Meet — join links are emailed and shown below</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Meetings & Calls</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Schedule meetings (Google Meet links are emailed and shown below), or call colleagues instantly inside MaxHub.</p>
         </div>
         {canSchedule && (
           <button
@@ -80,8 +81,15 @@ export default function VideoCallHub() {
         )}
       </div>
 
+      {/* Instant in-app calls live in Messages — one place for chat + voice/video */}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/60 dark:bg-indigo-900/10 px-4 py-3">
+        <Video className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+        <p className="flex-1 min-w-[200px] text-sm text-gray-700 dark:text-gray-300">Need to talk now? Open any chat, department or branch channel in Messages and tap the phone or camera icon — it rings everyone instantly, with screen sharing.</p>
+        <NavLink to="/messages" className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Start a call</NavLink>
+      </div>
+
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
         {TABS.map(tab => {
           const Icon = tab.icon;
           return (
