@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from '@components/ui/toaster';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Folder, FileText, Image, Archive, File, Video,
@@ -360,7 +361,7 @@ function UploadZone({ folderId, onClose, onUploaded }: UploadZoneProps) {
 export default function FileManagerPage() {
   const qc = useQueryClient();
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [selectedFolderName, setSelectedFolderName] = useState<string>('All Files');
+  const [, setSelectedFolderName] = useState<string>('All Files');
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [showUpload, setShowUpload] = useState(false);
@@ -369,6 +370,28 @@ export default function FileManagerPage() {
   const [renameName, setRenameName] = useState('');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: FileItem } | null>(null);
   const [breadcrumbs] = useState([{ id: null, name: 'My Files' }]);
+  // Path inside the selected top-level folder (sub-folders inherit its privacy).
+  const [trail, setTrail] = useState<{ uuid: string; name: string }[]>([]);
+  const openFolder = (f: { uuid: string; name: string }, reset = false) => {
+    const next = reset ? [f] : [...trail, f];
+    setTrail(next); setSelectedFolderId(f.uuid); setSelectedFolderName(f.name);
+  };
+  const { data: subFoldersRaw } = useQuery({
+    queryKey: ['file-subfolders', selectedFolderId],
+    queryFn: () => apiClient.get('/files/folders', { parentId: selectedFolderId }),
+    enabled: !!selectedFolderId,
+  });
+  const subFolders: FileFolder[] = (subFoldersRaw as any)?.data || (subFoldersRaw as any) || [];
+  const createFolder = useMutation({
+    mutationFn: (name: string) => apiClient.post('/files/folders', { name, parentId: selectedFolderId }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['file-subfolders'] }); toast.success('Folder created'); },
+    onError: (e) => toast.fromError(e, 'Could not create folder'),
+  });
+  const deleteFolder = useMutation({
+    mutationFn: (uuid: string) => apiClient.delete(`/files/folders/${uuid}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['file-subfolders'] }); toast.success('Folder deleted'); },
+    onError: (e) => toast.fromError(e, 'Could not delete folder'),
+  });
   const [previewFile, setPreviewFile] = useState<FilePreviewTarget | null>(null);
 
   // Fetch folders
@@ -439,7 +462,7 @@ export default function FileManagerPage() {
         </div>
 
         <button
-          onClick={() => { setSelectedFolderId(null); setSelectedFolderName('All Files'); }}
+          onClick={() => { setSelectedFolderId(null); setSelectedFolderName('All Files'); setTrail([]); }}
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
             selectedFolderId === null ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
           }`}
@@ -454,7 +477,7 @@ export default function FileManagerPage() {
             return (
               <button
                 key={folder.id}
-                onClick={() => { setSelectedFolderId(folder.uuid); setSelectedFolderName(folder.name); }}
+                onClick={() => openFolder({ uuid: folder.uuid, name: folder.name }, true)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition ${
                   selectedFolderId === folder.uuid
                     ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 font-medium'
@@ -465,7 +488,7 @@ export default function FileManagerPage() {
                   ? <Lock className="w-4 h-4 flex-shrink-0 text-amber-500" />
                   : <Folder className="w-4 h-4 flex-shrink-0 text-blue-500" />}
                 <span className="truncate">{folder.name}</span>
-                {isPersonal && <span className="ml-auto text-[10px] text-gray-400">Private</span>}
+                <span className="ml-auto text-[10px] text-gray-400">{isPersonal ? 'Private' : 'Public'}</span>
               </button>
             );
           })}
@@ -486,12 +509,13 @@ export default function FileManagerPage() {
                 </span>
               </span>
             ))}
-            {selectedFolderId && (
-              <>
+            {trail.map((t, i) => (
+              <span key={t.uuid} className="flex items-center gap-1">
                 <ChevronRight className="w-3.5 h-3.5" />
-                <span className="text-gray-800 dark:text-white font-medium">{selectedFolderName}</span>
-              </>
-            )}
+                <button onClick={() => { const next = trail.slice(0, i + 1); setTrail(next); setSelectedFolderId(t.uuid); setSelectedFolderName(t.name); }}
+                  className={i === trail.length - 1 ? 'text-gray-800 dark:text-white font-medium' : 'hover:text-indigo-600'}>{t.name}</button>
+              </span>
+            ))}
           </div>
 
           {/* Search */}
@@ -518,6 +542,14 @@ export default function FileManagerPage() {
             ))}
           </div>
 
+          {selectedFolderId && (
+            <button
+              onClick={() => { const name = prompt('Folder name'); if (name?.trim()) createFolder.mutate(name.trim()); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              <Folder className="w-3.5 h-3.5" /> New folder
+            </button>
+          )}
           <button
             onClick={() => setShowUpload(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
@@ -528,6 +560,22 @@ export default function FileManagerPage() {
 
         {/* File area */}
         <div className="flex-1 overflow-y-auto p-6">
+          {selectedFolderId && subFolders.length > 0 && (
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Folders</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {subFolders.map(sf => (
+                  <div key={sf.uuid} className="group relative flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl px-3 py-2.5 hover:shadow-sm cursor-pointer"
+                    onClick={() => openFolder({ uuid: sf.uuid, name: sf.name })}>
+                    {sf.folderType === 'Personal' ? <Lock className="w-4 h-4 text-amber-500" /> : <Folder className="w-4 h-4 text-blue-500" />}
+                    <span className="text-sm text-gray-800 dark:text-gray-100 truncate">{sf.name}</span>
+                    <button title="Delete folder" onClick={(e) => { e.stopPropagation(); if (confirm(`Delete folder "${sf.name}"? It must be empty.`)) deleteFolder.mutate(sf.uuid); }}
+                      className="ml-auto opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3 h-3 text-red-500" /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {filesLoading ? (
             <div className="flex items-center justify-center h-48">
               <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />

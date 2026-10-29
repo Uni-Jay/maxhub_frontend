@@ -20,6 +20,8 @@ import { chatSocket } from '@services/chatSocket';
 import { useAuthStore } from '@store/authStore';
 import { uploadToCloudinaryWithProgress, withForcedDownload } from '@services/cloudinaryService';
 import { cn } from '@utils/cn';
+import { useCalls } from '@components/calls/CallProvider';
+import { Phone as PhoneIcon, Video as VideoIcon } from 'lucide-react';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
@@ -504,7 +506,7 @@ function MenuBtn({ icon: Icon, label, onClick, danger }: {
 function ConversationItem({ conv, isSelected, onClick, onlineUserIds }: {
   conv: Conversation; isSelected: boolean; onClick: () => void; onlineUserIds: Set<number>;
 }) {
-  const isGroup = conv.conversationType === 'Group' || conv.conversationType === 'Team';
+  const isGroup = conv.conversationType === 'Group' || conv.conversationType === 'Team' || conv.conversationType === 'Channel';
   const firstParticipantId = conv.participants?.find(p => p.userId)?.userId;
   const isOnline = firstParticipantId ? onlineUserIds.has(firstParticipantId) : false;
 
@@ -878,6 +880,7 @@ export default function MessagingPage() {
   const qc = useQueryClient();
   const currentUser = useAuthStore(s => s.user);
   const currentUserId = (currentUser as any)?.id ?? 0;
+  const { startCall } = useCalls();
   const token = useAuthStore(s => s.tokens?.accessToken);
 
   // ── UI state ───────────────────────────────────────────────────────────────
@@ -1154,7 +1157,7 @@ export default function MessagingPage() {
   const selectedConv = conversations.find(c => c.id === selectedId) ??
     allConversations.find(c => c.id === selectedId) ?? null;
 
-  const isGroup = selectedConv?.conversationType === 'Group' || selectedConv?.conversationType === 'Team';
+  const isGroup = selectedConv?.conversationType === 'Group' || selectedConv?.conversationType === 'Team' || selectedConv?.conversationType === 'Channel';
 
   const typingUserIds = selectedId ? Array.from(typingInConv[selectedId] ?? []) : [];
   const typingNames = typingUserIds
@@ -1683,7 +1686,7 @@ export default function MessagingPage() {
         <>
         {/* Filter chips */}
         <div className="flex gap-1.5 px-3 py-2 overflow-x-auto">
-          {['All', 'Direct', 'Group', 'Team'].map(t => (
+          {['All', 'Direct', 'Group', 'Channel'].map(t => (
             <button key={t} onClick={() => setTypeFilter(t === 'All' ? '' : t)}
               className={cn('flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors',
                 (t === 'All' ? !typeFilter : typeFilter === t)
@@ -1770,6 +1773,15 @@ export default function MessagingPage() {
               </div>
 
               <div className="flex items-center gap-0.5">
+                {/* Voice / video call (WebRTC) — whole conversation for groups & channels */}
+                <button onClick={() => startCall({ conversationId: Number(selectedConv.id), callType: 'Voice' })}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition" title="Voice call">
+                  <PhoneIcon className="h-4 w-4" />
+                </button>
+                <button onClick={() => startCall({ conversationId: Number(selectedConv.id), callType: 'Video' })}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition" title="Video call">
+                  <VideoIcon className="h-4 w-4" />
+                </button>
                 <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition" title="Search messages">
                   <Search className="h-4 w-4" />
                 </button>

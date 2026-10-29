@@ -12,7 +12,7 @@ import { apiClient } from '@services/apiClient';
 import { useAuthStore } from '@store/authStore';
 import { useCurrentRoles } from '@utils/role';
 import { cn } from '@utils/cn';
-import { format, nextFriday, isFriday, isAfter, setHours, setMinutes } from 'date-fns';
+import { format, previousFriday, isFriday, isMonday, isAfter, setHours, setMinutes, addDays } from 'date-fns';
 
 // ─── Types ─────────────────────────────────────────────────
 interface TaskStatus {
@@ -48,18 +48,25 @@ interface PastReport {
 
 
 // ─── Helpers ───────────────────────────────────────────────
+/**
+ * Reports are submitted on Monday morning for the week that just ended, so the
+ * reporting week is the most recent Friday on or before today. Must match
+ * getThisFridayISO() in the backend.
+ */
 function getThisFriday(): Date {
   const now = new Date();
-  return isFriday(now) ? now : nextFriday(now);
+  return isFriday(now) ? now : previousFriday(now);
+}
+
+/** Monday 12:00 noon after the reporting week — when missing reports are escalated. */
+function dueAt(friday: Date): Date {
+  return setMinutes(setHours(addDays(friday, 3), 12), 0);
 }
 
 function getDeadlineWarning(friday: Date): 'none' | 'warning' | 'critical' {
   const now = new Date();
-  if (!isFriday(now)) return 'none';
-  const warn = setMinutes(setHours(friday, 17), 0);
-  const critical = setMinutes(setHours(friday, 20), 0);
-  if (isAfter(now, critical)) return 'critical';
-  if (isAfter(now, warn)) return 'warning';
+  if (isAfter(now, dueAt(friday))) return 'critical';
+  if (isMonday(now)) return 'warning';
   return 'none';
 }
 
@@ -194,29 +201,29 @@ export default function WeeklyReportPage() {
           <ClipboardList className="h-6 w-6 text-indigo-600" /> Weekly Report
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Due every Friday by 5:00 PM WAT — {user?.email}
+          Due every Monday morning (before 12:00 noon WAT) for the week just ended — {user?.email}
         </p>
       </div>
 
       {/* Deadline warnings */}
       <AnimatePresence>
-        {warning === 'critical' && (
+        {warning === 'critical' && !data && !submitted && (
           <motion.div initial={{ opacity:0, y:-8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
             className="flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-2xl px-5 py-4">
             <FileWarning className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-red-700 dark:text-red-300 text-sm">Automatic query will be issued</p>
-              <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">It is past 8:00 PM. Submit your report immediately to prevent an automatic query.</p>
+              <p className="font-semibold text-red-700 dark:text-red-300 text-sm">Weekly report is late</p>
+              <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">It was due Monday at 12:00 noon and has been flagged to your HOD and Admin. Submit it now.</p>
             </div>
           </motion.div>
         )}
-        {warning === 'warning' && (
+        {warning === 'warning' && !data && !submitted && (
           <motion.div initial={{ opacity:0, y:-8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
             className="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-2xl px-5 py-4">
             <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-amber-700 dark:text-amber-300 text-sm">Weekly report overdue — submit now</p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Past 5:00 PM Friday. Query at 8:00 PM if not submitted.</p>
+              <p className="font-semibold text-amber-700 dark:text-amber-300 text-sm">Weekly report due this morning</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">It's Monday — please submit before 12:00 noon, when missing reports are sent to your HOD and Admin.</p>
             </div>
           </motion.div>
         )}
@@ -230,7 +237,7 @@ export default function WeeklyReportPage() {
           <div>
             <p className="font-semibold text-emerald-700 dark:text-emerald-300">Report submitted for week ending {form.weekEnding}</p>
             <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
-              Super Admin will review your report. Next report due {format(nextFriday(thisFriday), 'dd MMM yyyy')} by 5:00 PM.
+              Super Admin will review your report. Next report due Monday {format(dueAt(addDays(thisFriday, 7)), 'dd MMM yyyy')} by 12:00 noon.
             </p>
           </div>
         </motion.div>
@@ -243,7 +250,7 @@ export default function WeeklyReportPage() {
                 <p className="font-semibold text-white">Week Ending Report</p>
                 <div className="flex items-center gap-2 bg-white/20 text-white text-xs px-3 py-1.5 rounded-full">
                   <Clock className="h-3.5 w-3.5" />
-                  Due: {format(thisFriday, 'EEE dd MMM')} at 5:00 PM
+                  Week ending {format(thisFriday, 'EEE dd MMM')} · due {format(dueAt(thisFriday), 'EEE dd MMM')} by 12:00 noon
                 </div>
               </div>
             </div>

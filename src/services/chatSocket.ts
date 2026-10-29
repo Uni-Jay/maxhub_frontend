@@ -15,6 +15,9 @@ const SOCKET_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 
 class ChatSocketService {
   private socket: Socket | null = null;
+  // Listeners registered before the socket exists (or across reconnects) are
+  // kept here and attached whenever a socket is created.
+  private handlers = new Map<string, Set<(...args: any[]) => void>>();
   private token: string | null = null;
 
   connect(token: string): Socket {
@@ -40,9 +43,14 @@ class ChatSocketService {
       // Starting on polling and letting socket.io upgrade once the
       // connection is actually established is the standard, safe default.
       transports: ['polling', 'websocket'],
-      reconnectionAttempts: 5,
+      // Keep retrying (with backoff) so live notifications and calls recover
+      // after a network drop instead of silently stopping after 5 attempts.
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
     });
+
+    this.attachRegistered();
 
     this.socket.on('connect', () => {
       console.log('[Chat] Socket connected:', this.socket?.id);
@@ -160,12 +168,34 @@ class ChatSocketService {
   // ── On helpers ────────────────────────────────────────────────────────────
 
   on(event: string, handler: (...args: any[]) => void) {
+    if (!this.handlers.has(event)) this.handlers.set(event, new Set());
+    this.handlers.get(event)!.add(handler);
     this.socket?.on(event, handler);
-    return () => this.socket?.off(event, handler);
+    return () => this.off(event, handler);
   }
 
   off(event: string, handler?: (...args: any[]) => void) {
+    if (handler) this.handlers.get(event)?.delete(handler);
+    else this.handlers.delete(event);
     this.socket?.off(event, handler);
+  }
+
+  /** Emits and resolves with the server's acknowledgement (rejects after a timeout). */
+  emitAck<T = any>(event: string, data: any, timeoutMs = 10000): Promise<T> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket?.connected) return reject(new Error('Not connected — check your internet connection'));
+      const t = window.setTimeout(() => reject(new Error('The server did not respond')), timeoutMs);
+      this.socket.emit(event, data, (res: T) => { window.clearTimeout(t); resolve(res); });
+    });
+  }
+
+  emit(event: string, data: any) {
+    this.socket?.emit(event, data);
+  }
+
+  private attachRegistered() {
+    if (!this.socket) return;
+    for (const [event, set] of this.handlers) for (const h of set) this.socket.on(event, h);
   }
 }
 

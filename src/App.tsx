@@ -190,6 +190,23 @@ const VisaMaxHub = React.lazy(() => import('@modules/visamax/pages/VisaMaxHub'))
 // ─── Customer Reports ───
 const CustomerReportList = React.lazy(() => import('@modules/customerreports/pages/CustomerReportList'));
 
+// ─── ERP v2: brands, documents, receipts ───
+const BrandsHub = React.lazy(() => import('@modules/erp/pages/AdminPages').then((m) => ({ default: m.BrandsHub })));
+const PaymentsReceipts = React.lazy(() => import('@modules/erp/pages/AdminPages').then((m) => ({ default: m.PaymentsReceipts })));
+const WeeklySummary = React.lazy(() => import('@modules/erp/pages/AdminPages').then((m) => ({ default: m.WeeklySummary })));
+const CareersWidget = React.lazy(() => import('@modules/erp/pages/AdminPages').then((m) => ({ default: m.CareersWidget })));
+const DocumentsCenter = React.lazy(() => import('@modules/erp/pages/DocumentsCenter'));
+const VisaMaxCases = React.lazy(() => import('@modules/erp/pages/VisaMaxCases'));
+const VisaMaxBookings = React.lazy(() => import('@modules/erp/pages/VisaMaxCases').then((m) => ({ default: m.VisaMaxBookings })));
+const KuriosSolutions = React.lazy(() => import('@modules/erp/pages/BrandModules').then((m) => ({ default: m.KuriosSolutions })));
+const KuriosTraining = React.lazy(() => import('@modules/erp/pages/BrandModules').then((m) => ({ default: m.KuriosTraining })));
+const BeadMaxCustomOrders = React.lazy(() => import('@modules/erp/pages/BrandModules').then((m) => ({ default: m.BeadMaxCustomOrders })));
+const BeadMaxSchool = React.lazy(() => import('@modules/erp/pages/BrandModules').then((m) => ({ default: m.BeadMaxSchool })));
+const MaxfoodHub = React.lazy(() => import('@modules/erp/pages/BrandModules').then((m) => ({ default: m.MaxfoodHub })));
+// Customer-facing (no login)
+const SignDocumentPage = React.lazy(() => import('@pages/public/PublicPages').then((m) => ({ default: m.SignDocumentPage })));
+const TrackPage = React.lazy(() => import('@pages/public/PublicPages').then((m) => ({ default: m.TrackPage })));
+
 // ─── Not Found ───
 const NotFound = React.lazy(() => import('@pages/NotFound'));
 
@@ -204,6 +221,10 @@ function App() {
     <>
       <Suspense fallback={<PageLoader />}>
         <Routes>
+          {/* Customer-facing pages — no login, no redirects */}
+          <Route path="/sign/:token" element={<SignDocumentPage />} />
+          <Route path="/track" element={<TrackPage />} />
+
           {/* Public routes */}
           <Route element={<PublicRoute />}>
             <Route path="/auth/login" element={<LoginPage />} />
@@ -405,6 +426,19 @@ function App() {
               {/* VisaMax */}
               <Route path="/visamax" element={<VisaMaxHub />} />
 
+              {/* ERP v2 — brands */}
+              <Route path="/brands" element={<BrandsHub />} />
+              <Route path="/visamax/cases" element={<VisaMaxCases />} />
+              <Route path="/visamax/bookings" element={<VisaMaxBookings />} />
+              <Route path="/kurios/solutions" element={<KuriosSolutions />} />
+              <Route path="/kurios/training" element={<KuriosTraining />} />
+              <Route path="/beadmax/custom-orders" element={<BeadMaxCustomOrders />} />
+              <Route path="/beadmax/school" element={<BeadMaxSchool />} />
+              <Route path="/maxfood" element={<MaxfoodHub />} />
+              <Route path="/documents" element={<DocumentsCenter />} />
+              <Route path="/receipts" element={<PaymentsReceipts />} />
+              <Route path="/reports/weekly" element={<WeeklySummary />} />
+              <Route path="/hr/careers" element={<CareersWidget />} />
               {/* Customer Reports */}
               <Route path="/customer-reports" element={<CustomerReportList />} />
 

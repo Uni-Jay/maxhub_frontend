@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
 import { useThemeStore } from '@store/themeStore';
+import { CallProvider } from '@components/calls/CallProvider';
+import { toast } from '@components/ui/toaster';
 import { cn } from '@utils/cn';
 import { getPrimaryRole } from '@utils/role';
 import { getNavForRole, ALL_SIDEBAR_ITEMS } from '@config/sidebarConfig';
@@ -43,7 +45,7 @@ function SidebarNav({ onClose }: { onClose?: () => void }) {
         />
         <div>
           <p className="font-bold text-gray-900 dark:text-white text-sm tracking-tight">MaxHub ERP</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">Three Brands. One Vision.</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">Four Brands. One Vision.</p>
         </div>
         {onClose && (
           <button onClick={onClose} className="ml-auto p-1 text-gray-400 hover:text-gray-600 lg:hidden">
@@ -219,9 +221,14 @@ export function DashboardLayout() {
     if (!token) return;
     chatSocket.connect(token);
 
-    const onNewNotification = () => {
+    const onNewNotification = (n: any) => {
       qc.invalidateQueries({ queryKey: ['notification-unread-count'] });
       qc.invalidateQueries({ queryKey: ['notifications'] });
+      // Live pop-up so nobody misses an approval, assignment or alert.
+      if (n?.title) {
+        const url: string | undefined = n.actionUrl;
+        toast.info(n.title, n.message, url ? { label: 'Open', onClick: () => navigate(url) } : undefined);
+      }
     };
     chatSocket.on('notification:new', onNewNotification);
 
@@ -243,7 +250,7 @@ export function DashboardLayout() {
       chatSocket.off('notification:new', onNewNotification);
       chatSocket.off('chat:message', onNewMessage);
     };
-  }, [tokens?.accessToken, qc, user?.id, location.pathname]);
+  }, [tokens?.accessToken, qc, user?.id, location.pathname, navigate]);
 
   useEffect(() => {
     if (!tokens?.accessToken) chatSocket.disconnect();
@@ -270,6 +277,7 @@ export function DashboardLayout() {
   ).find(p => location.pathname.startsWith(p.path))?.label ?? 'Dashboard';
 
   return (
+    <CallProvider>
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex w-64 flex-shrink-0">
@@ -399,6 +407,7 @@ export function DashboardLayout() {
         )}
       </AnimatePresence>
     </div>
+    </CallProvider>
   );
 }
 

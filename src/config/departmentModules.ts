@@ -1,5 +1,5 @@
 import {
-  GraduationCap, Globe, ShoppingBag, Receipt, type LucideIcon,
+  GraduationCap, Globe, ShoppingBag, Wheat, type LucideIcon,
 } from 'lucide-react';
 
 export interface DepartmentModuleLink {
@@ -15,39 +15,65 @@ export interface DepartmentModuleGroup {
 }
 
 /**
- * Department-specific module access, keyed by Department.code. A staff
- * member (most often an HOD) linked to one of these departments — whether
- * primary or as secondary coverage via StaffDepartment — should see that
- * department's module links, since the generic role-based nav has no idea
- * which department-specific tools (LMS, VisaMax, BeadMax) are relevant.
+ * Brand (department) module navigation, keyed by Department.code. Brands are
+ * the top-level departments; divisions (KS-ICT, KS-TRN, BM-DSN, BM-VOC) map
+ * to their brand's menu. All staff currently work across all brands, so the
+ * sidebar shows every brand to everyone (see getNavForRole).
  */
-export const DEPARTMENT_MODULES: Record<string, DepartmentModuleGroup> = {
-  KS: {
-    label: 'Kurios SAT',
-    icon: GraduationCap,
-    links: [
-      { label: 'Courses', path: '/lms/courses', icon: GraduationCap },
-      { label: 'My Enrollments', path: '/lms/my-enrollments', icon: GraduationCap },
-      { label: 'Exams', path: '/lms/exams', icon: GraduationCap },
-      { label: 'Certificates', path: '/lms/certificates', icon: GraduationCap },
-      { label: 'Fee Receipts', path: '/lms/fee-receipts', icon: Receipt },
-    ],
-  },
-  VM: {
-    label: 'VisaMax',
-    icon: Globe,
-    links: [
-      { label: 'VisaMax', path: '/visamax', icon: Globe },
-    ],
-  },
-  BM: {
-    label: 'BeadMax',
-    icon: ShoppingBag,
-    links: [
-      { label: 'BeadMax', path: '/bead-max/sales', icon: ShoppingBag },
-    ],
-  },
+const VISAMAX: DepartmentModuleGroup = {
+  label: 'VisaMax',
+  icon: Globe,
+  links: [
+    { label: 'Customers & Applications', path: '/visamax/cases', icon: Globe },
+    { label: 'Bookings', path: '/visamax/bookings', icon: Globe },
+    { label: 'Service Catalogue', path: '/visamax', icon: Globe },
+  ],
 };
+
+const KURIOS: DepartmentModuleGroup = {
+  label: 'Kurios SAT',
+  icon: GraduationCap,
+  links: [
+    { label: 'ICT Solutions', path: '/kurios/solutions', icon: GraduationCap },
+    { label: 'Support Tickets', path: '/kurios/solutions?tab=tickets', icon: GraduationCap },
+    { label: 'ICT Training Center', path: '/kurios/training', icon: GraduationCap },
+    { label: 'Courses', path: '/lms/courses', icon: GraduationCap },
+    { label: 'Students', path: '/lms/students', icon: GraduationCap },
+    { label: 'Exams', path: '/lms/exams', icon: GraduationCap },
+    { label: 'Certificates', path: '/lms/certificates', icon: GraduationCap },
+    { label: 'Fee Receipts', path: '/lms/fee-receipts', icon: GraduationCap },
+  ],
+};
+
+const BEADMAX: DepartmentModuleGroup = {
+  label: 'BeadMax',
+  icon: ShoppingBag,
+  links: [
+    { label: 'Custom Orders', path: '/beadmax/custom-orders', icon: ShoppingBag },
+    { label: 'Shop Sales & Stock', path: '/bead-max/sales', icon: ShoppingBag },
+    { label: 'Vocational School', path: '/beadmax/school', icon: ShoppingBag },
+  ],
+};
+
+const MAXFOOD: DepartmentModuleGroup = {
+  label: 'Maxfood Farm',
+  icon: Wheat,
+  links: [
+    { label: 'Export Orders', path: '/maxfood', icon: Wheat },
+    { label: 'Products & Stock', path: '/maxfood?tab=products', icon: Wheat },
+    { label: 'Customer Issues', path: '/maxfood?tab=tickets', icon: Wheat },
+  ],
+};
+
+export const DEPARTMENT_MODULES: Record<string, DepartmentModuleGroup> = {
+  VM: VISAMAX,
+  KS: KURIOS, 'KS-ICT': KURIOS, 'KS-TRN': KURIOS,
+  BM: BEADMAX, 'BM-DSN': BEADMAX, 'BM-VOC': BEADMAX,
+  MF: MAXFOOD,
+};
+
+/** One entry per brand, in display order. */
+export const BRAND_CODES = ['VM', 'KS', 'BM', 'MF'];
 
 export function getDepartmentModule(code?: string | null): DepartmentModuleGroup | null {
   if (!code) return null;

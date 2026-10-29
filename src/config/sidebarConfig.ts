@@ -2,11 +2,12 @@ import {
   LayoutDashboard, Users, Calendar, Briefcase, CheckSquare, Settings,
   FileText, MessageSquare, BarChart3, HelpCircle, UserCircle, Send,
   GraduationCap, Video, DollarSign, Package, UserCheck, ShoppingCart,
-  FolderOpen, Receipt, BarChart2, Bot, ShoppingBag, Building2, Globe,
+  FolderOpen, Receipt, BarChart2, Bot, Building2, Globe,
   Award, ArrowUpCircle, Wallet, ClipboardList,
 } from 'lucide-react';
 import type { CanonicalRole } from '@utils/role';
-import { DEPARTMENT_MODULES } from './departmentModules';
+import { DEPARTMENT_MODULES, BRAND_CODES } from './departmentModules';
+import { FileSignature, CalendarCheck } from 'lucide-react';
 
 export interface SidebarChild {
   label: string;
@@ -35,6 +36,7 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
   ]},
   { label: 'HR', path: '/hr', icon: UserCheck, children: [
     { label: 'Recruitment', path: '/hr/jobs' },
+    { label: 'Careers on Websites', path: '/hr/careers' },
     { label: 'Attendance', path: '/attendance' },
     { label: 'Leave', path: '/leave/requests' },
     { label: 'Appraisals', path: '/hr/appraisals' },
@@ -68,16 +70,6 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
     { label: 'Items', path: '/inventory/items' },
     { label: 'Warehouses', path: '/inventory/warehouses' },
   ]},
-  { label: 'Kurios SAT', path: '/lms', icon: GraduationCap, children: [
-    { label: 'Courses', path: '/lms/courses' },
-    { label: 'My Enrollments', path: '/lms/my-enrollments' },
-    { label: 'Exams', path: '/lms/exams' },
-    { label: 'Certificates', path: '/lms/certificates' },
-    { label: 'Fee Receipts', path: '/lms/fee-receipts' },
-    { label: 'Students', path: '/lms/students' },
-  ]},
-  { label: 'VisaMax', path: '/visamax', icon: Globe },
-  { label: 'BeadMax', path: '/bead-max/sales', icon: ShoppingBag },
   { label: 'Finance', path: '/finance', icon: Receipt, children: [
     { label: 'Invoices', path: '/invoices' },
     { label: 'Audit Logs', path: '/audit-logs' },
@@ -155,6 +147,19 @@ const ADMIN_NAV: SidebarItem[] = [
     { label: 'Projects', path: '/reports/projects' },
   ]},
   { label: 'Weekly Reports', path: '/hr/weekly-report', icon: FileText },
+  { label: 'HR', path: '/hr', icon: UserCheck, children: [
+    { label: 'Recruitment', path: '/hr/jobs' },
+    { label: 'Careers on Websites', path: '/hr/careers' },
+    { label: 'Appraisals', path: '/hr/appraisals' },
+    { label: 'Promotions', path: '/hr/promotions' },
+    { label: 'Training', path: '/hr/training' },
+  ]},
+  { label: 'Payroll', path: '/payroll', icon: DollarSign, children: [
+    { label: 'Dashboard', path: '/payroll' },
+    { label: 'Periods', path: '/payroll/periods' },
+    { label: 'Pay Slips', path: '/payroll/slips' },
+    { label: 'My Payslip', path: '/payroll/my-slips' },
+  ]},
   { label: 'Communication', path: '/communication', icon: Send, children: [
     { label: 'Send Message', path: '/communication/send' },
     { label: 'Templates', path: '/communication/templates' },
@@ -166,13 +171,6 @@ const ADMIN_NAV: SidebarItem[] = [
     { label: 'Dashboard', path: '/inventory/dashboard' },
     { label: 'Items', path: '/inventory/items' },
     { label: 'Warehouses', path: '/inventory/warehouses' },
-  ]},
-  { label: 'Kurios SAT', path: '/lms', icon: GraduationCap, children: [
-    { label: 'Courses', path: '/lms/courses' },
-    { label: 'Exams', path: '/lms/exams' },
-    { label: 'Certificates', path: '/lms/certificates' },
-    { label: 'Fee Receipts', path: '/lms/fee-receipts' },
-    { label: 'Students', path: '/lms/students' },
   ]},
   { label: 'Finance', path: '/finance', icon: Receipt, children: [
     { label: 'Invoices', path: '/invoices' },
@@ -186,6 +184,7 @@ const HR_NAV: SidebarItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Employees', path: '/staff', icon: Users },
   { label: 'Recruitment', path: '/hr/jobs', icon: Briefcase },
+  { label: 'Careers on Websites', path: '/hr/careers', icon: Globe },
   { label: 'Attendance', path: '/attendance', icon: Calendar },
   { label: 'Leave', path: '/leave/requests', icon: FileText },
   { label: 'Appraisals', path: '/hr/appraisals', icon: Award },
@@ -300,6 +299,19 @@ function getDepartmentExtraNav(departmentCodes?: string[] | null): SidebarItem[]
   return extra;
 }
 
+/** Cross-brand ERP pages, shown after the brand menus. */
+function sharedErpNav(role: CanonicalRole): SidebarItem[] {
+  const items: SidebarItem[] = [
+    { label: 'Documents & Agreements', path: '/documents', icon: FileSignature },
+    { label: 'Payments & Receipts', path: '/receipts', icon: Receipt },
+  ];
+  if (role === 'superadmin' || role === 'admin' || role === 'hr' || role === 'hod') {
+    items.push({ label: 'Monday Report', path: '/reports/weekly', icon: CalendarCheck });
+  }
+  items.unshift({ label: 'Brands', path: '/brands', icon: Building2 });
+  return items;
+}
+
 export function getNavForRole(role: CanonicalRole, position?: string | null, departmentCodes?: string[] | null): SidebarItem[] {
   const base = SIDEBAR_CONFIG[role] ?? STAFF_NAV;
   // HR manages staff lifecycle across the whole company, not just their own
@@ -311,11 +323,12 @@ export function getNavForRole(role: CanonicalRole, position?: string | null, dep
   // them too would just duplicate those entries for any super admin who
   // also happens to be StaffDepartment-linked (e.g. a CEO record covering
   // all three business units).
-  const deptExtra = role === 'superadmin'
-    ? []
-    : role === 'hr'
-      ? getDepartmentExtraNav(Object.keys(DEPARTMENT_MODULES))
-      : getDepartmentExtraNav(departmentCodes);
+  // Every staff member currently works across all brands (VisaMax, Kurios SAT,
+  // BeadMax, Maxfood Farm), so every role gets every brand's menu. What each
+  // person can see/do inside a brand is still enforced by the backend
+  // (department scope for HOD/staff, full access for Admin/Super Admin).
+  void departmentCodes;
+  const deptExtra = [...getDepartmentExtraNav(BRAND_CODES), ...sharedErpNav(role)];
 
   if (role !== 'staff' || !position) return [...base, ...deptExtra];
   const pos = position.toLowerCase();
@@ -327,6 +340,8 @@ export function getNavForRole(role: CanonicalRole, position?: string | null, dep
 /** Every item across every role's config, deduped by path — used only for page-title/breadcrumb lookups. */
 export const ALL_SIDEBAR_ITEMS: SidebarItem[] = (() => {
   const seen = new Map<string, SidebarItem>();
+  // Brand + shared ERP items first so their (more specific) titles win.
+  for (const item of [...getDepartmentExtraNav(BRAND_CODES), ...sharedErpNav('superadmin')]) if (!seen.has(item.path)) seen.set(item.path, item);
   for (const nav of Object.values(SIDEBAR_CONFIG)) {
     for (const item of nav) if (!seen.has(item.path)) seen.set(item.path, item);
   }
