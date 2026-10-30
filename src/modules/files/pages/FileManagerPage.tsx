@@ -7,9 +7,9 @@ import {
   Upload, Search, Grid3X3, List, Download,
   Share2, Trash2, Edit3, ChevronRight, Home,
   X, Check, AlertCircle, Lock,
-  Eye, Copy,
+  Eye, Copy, FolderUp, FolderDown, Loader2,
 } from 'lucide-react';
-import { apiClient } from '@services/apiClient';
+import { apiClient, API_BASE_URL } from '@services/apiClient';
 import { uploadToCloudinary, withForcedDownload } from '@services/cloudinaryService';
 import FilePreviewModal, { type FilePreviewTarget } from '@components/ui/FilePreviewModal';
 
@@ -221,8 +221,8 @@ function ShareModal({ file, onClose }: { file: FileItem; onClose: () => void }) 
 
 // ─── Pending file row (with thumbnail) for the upload modal ───────────────────
 
-function PendingFileRow({ file, status, onRemove }: { file: File; status?: 'pending' | 'done' | 'error'; onRemove: () => void }) {
-  const isImage = file.type.startsWith('image/');
+function PendingFileRow({ file, label, status, onRemove }: { file: File; label?: string; status?: 'pending' | 'done' | 'error'; onRemove: () => void }) {
+  const isImage = file.type.startsWith('image/') && file.size < 8_000_000;
   const localUrl = useMemo(() => (isImage ? URL.createObjectURL(file) : null), [file, isImage]);
   useEffect(() => () => { if (localUrl) URL.revokeObjectURL(localUrl); }, [localUrl]);
 
@@ -234,7 +234,7 @@ function PendingFileRow({ file, status, onRemove }: { file: File; status?: 'pend
         <File className="w-4 h-4 text-gray-400 flex-shrink-0" />
       )}
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-gray-800 dark:text-white truncate">{file.name}</p>
+        <p className="text-xs font-medium text-gray-800 dark:text-white truncate" title={label || file.name}>{label || file.name}</p>
         <p className="text-xs text-gray-400">{formatBytes(file.size)}</p>
       </div>
       {status === 'done' && <Check className="w-4 h-4 text-green-500 flex-shrink-0" />}
@@ -248,6 +248,47 @@ function PendingFileRow({ file, status, onRemove }: { file: File; status?: 'pend
   );
 }
 
+// ─── Folder picking helpers ─────────────────────────────────────────────────
+
+/** A file plus where it sits inside the folder that was chosen ("" = loose file). */
+interface Picked { file: File; rel: string }
+const JUNK = /^(\.DS_Store|Thumbs\.db|desktop\.ini|\._.*)$/i;
+const dirOf = (rel: string) => rel.split('/').slice(0, -1).join('/');
+
+/** Reads a dropped folder (and everything inside it) using the browser's entry API. */
+async function readEntry(entry: any, prefix = ''): Promise<Picked[]> {
+  if (!entry) return [];
+  if (entry.isFile) {
+    const file: File = await new Promise((ok, bad) => entry.file(ok, bad));
+    return JUNK.test(file.name) ? [] : [{ file, rel: prefix + file.name }];
+  }
+  if (entry.isDirectory) {
+    const reader = entry.createReader();
+    const kids: any[] = [];
+    // readEntries returns at most ~100 at a time — keep reading until empty.
+    for (;;) { const batch: any[] = await new Promise((ok, bad) => reader.readEntries(ok, bad)); if (!batch.length) break; kids.push(...batch); }
+    const out: Picked[] = [];
+    for (const k of kids) out.push(...(await readEntry(k, `${prefix}${entry.name}/`)));
+    return out;
+  }
+  return [];
+}
+
+/** Asks the server for a one-time link and lets the browser download the ZIP. */
+export async function downloadFolderZip(uuid: string, name: string) {
+  try {
+    const r: any = await apiClient.post(`/files/folders/${uuid}/zip-link`, {});
+    const info = r?.token ? r : r?.data;
+    toast.success(`Preparing "${name}.zip"`, `${info.files} file(s) in ${info.folders + 1} folder(s), about ${formatBytes(info.totalSize)}. The download will start in a moment.`);
+    const a = document.createElement('a');
+    a.href = `${API_BASE_URL}/files/zip/${info.token}`;
+    a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } catch (e) {
+    toast.fromError(e, 'Could not download the folder');
+  }
+}
+
 // ─── Upload Zone ──────────────────────────────────────────────────────────────
 
 interface UploadZoneProps {
@@ -258,45 +299,90 @@ interface UploadZoneProps {
 
 function UploadZone({ folderId, onClose, onUploaded }: UploadZoneProps) {
   const [dragging, setDragging] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [items, setItems] = useState<Picked[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [reading, setReading] = useState(false);
   const [progress, setProgress] = useState<Record<string, 'pending' | 'done' | 'error'>>({});
   const inputRef = useRef<HTMLInputElement>(null);
+  const folderRef = useRef<HTMLInputElement>(null);
 
-  const handleDrop = (e: React.DragEvent) => {
+  useEffect(() => {
+    // Chrome, Edge, Firefox and Safari all support picking a whole folder this way.
+    folderRef.current?.setAttribute('webkitdirectory', '');
+    folderRef.current?.setAttribute('directory', '');
+  }, []);
+
+  const add = (more: Picked[]) => setItems(prev => {
+    const seen = new Set(prev.map(p => p.rel));
+    return [...prev, ...more.filter(p => !seen.has(p.rel))];
+  });
+
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
-    const dropped = Array.from(e.dataTransfer.files);
-    setFiles(prev => [...prev, ...dropped]);
+    const entries = Array.from(e.dataTransfer.items || []).map((it: any) => it.webkitGetAsEntry?.()).filter(Boolean);
+    if (entries.length) {
+      setReading(true);
+      try { const all: Picked[] = []; for (const en of entries) all.push(...(await readEntry(en))); add(all); } finally { setReading(false); }
+    } else {
+      add(Array.from(e.dataTransfer.files).map(file => ({ file, rel: file.name })));
+    }
   };
 
+  const folderCount = useMemo(() => new Set(items.map(i => dirOf(i.rel)).filter(Boolean)).size, [items]);
+  const totalSize = useMemo(() => items.reduce((n, i) => n + i.file.size, 0), [items]);
+  const doneCount = Object.values(progress).filter(v => v === 'done').length;
+  const failCount = Object.values(progress).filter(v => v === 'error').length;
+
   const handleUpload = async () => {
-    if (!files.length) return;
+    if (!items.length) return;
+    if (!folderId) { toast.error('Open a folder first', 'Choose where the files should go, then upload.'); return; }
     setUploading(true);
-    for (const file of files) {
-      try {
-        // Was base64-encoding the whole file into a JSON POST body, capped
-        // by Express's 10mb JSON limit (any real video blew straight past
-        // that) and saved to the backend's local disk — wiped on every
-        // Render redeploy. Cloudinary is the same direct-upload path
-        // already used for chat attachments and staff documents; the
-        // backend call here just records the resulting permanent URL.
-        const uploaded = await uploadToCloudinary(file, 'maxhub-files');
-        await apiClient.post('/files/upload', {
-          name: file.name,
-          url: uploaded.url,
-          folderId: folderId || undefined,
-          mimeType: file.type,
-          size: file.size,
-        });
-        setProgress(p => ({ ...p, [file.name]: 'done' }));
-      } catch {
-        setProgress(p => ({ ...p, [file.name]: 'error' }));
+    try {
+      // 1) Re-create the folder structure (existing folders with the same name are re-used).
+      const dirs = [...new Set(items.map(i => dirOf(i.rel)).filter(Boolean))];
+      let map: Record<string, string> = { '': folderId };
+      if (dirs.length) {
+        const r: any = await apiClient.post('/files/folders/tree', { parentId: folderId, paths: dirs });
+        map = { ...map, ...(r?.data && typeof r.data === 'object' && !r[''] ? r.data : r) };
       }
+      // 2) Upload the files, a few at a time.
+      const queue = [...items];
+      let failedHere = 0;
+      const worker = async () => {
+        for (let it = queue.shift(); it; it = queue.shift()) {
+          const { file, rel } = it;
+          try {
+            // Files go straight to Cloudinary (same as chat attachments and
+            // staff documents); the backend call just records the permanent URL.
+            const uploaded = await uploadToCloudinary(file, 'maxhub-files');
+            await apiClient.post('/files/upload', {
+              name: file.name, url: uploaded.url, folderId: map[dirOf(rel)] || folderId,
+              mimeType: file.type, size: file.size,
+            });
+            setProgress(p => ({ ...p, [rel]: 'done' }));
+          } catch {
+            failedHere++;
+            setProgress(p => ({ ...p, [rel]: 'error' }));
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(4, items.length) }, worker));
+      if (failedHere) {
+        setUploading(false);
+        toast.error(`${failedHere} file(s) did not upload`, 'They are marked with a red sign. Remove them or close and try them again.');
+        return;
+      }
+    } catch (e) {
+      toast.fromError(e, 'Could not create the folders');
+      setUploading(false);
+      return;
     }
     setUploading(false);
     onUploaded();
   };
+
+  const shown = items.slice(0, 150);
 
   return (
     <div className="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center z-50 p-4">
@@ -306,8 +392,8 @@ function UploadZone({ folderId, onClose, onUploaded }: UploadZoneProps) {
         className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
-          <h2 className="font-semibold text-gray-900 dark:text-white">Upload Files</h2>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Upload files or folders</h2>
+          <button onClick={onClose} disabled={uploading} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
@@ -317,37 +403,61 @@ function UploadZone({ folderId, onClose, onUploaded }: UploadZoneProps) {
             onDragOver={e => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
-            onClick={() => inputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition ${
-              dragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 dark:border-gray-600 hover:border-indigo-400'
+            className={`border-2 border-dashed rounded-xl p-6 text-center transition ${
+              dragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 dark:border-gray-600'
             }`}
           >
-            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Drag & drop files here, or <span className="text-indigo-600 font-medium">click to browse</span>
-            </p>
-            <p className="text-xs text-gray-400 mt-1">Any file type supported</p>
-            <input ref={inputRef} type="file" multiple className="hidden" onChange={e => setFiles(Array.from(e.target.files || []))} />
+            {reading ? <Loader2 className="w-8 h-8 text-indigo-500 mx-auto mb-3 animate-spin" /> : <Upload className="w-8 h-8 text-gray-400 mx-auto mb-3" />}
+            <p className="text-sm text-gray-600 dark:text-gray-400">{reading ? 'Reading the folder…' : 'Drag & drop files or whole folders here'}</p>
+            <p className="text-xs text-gray-400 mt-1">Folders keep their sub-folders, exactly as on your computer</p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <File className="w-4 h-4" /> Choose files
+              </button>
+              <button type="button" onClick={() => folderRef.current?.click()} disabled={uploading}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300 text-sm font-medium hover:bg-indigo-100">
+                <FolderUp className="w-4 h-4" /> Choose a folder
+              </button>
+            </div>
+            <input ref={inputRef} type="file" multiple className="hidden"
+              onChange={e => { add(Array.from(e.target.files || []).map(file => ({ file, rel: file.name }))); e.target.value = ''; }} />
+            <input ref={folderRef} type="file" multiple className="hidden"
+              onChange={e => { add(Array.from(e.target.files || []).filter(f => !JUNK.test(f.name)).map(file => ({ file, rel: (file as any).webkitRelativePath || file.name }))); e.target.value = ''; }} />
           </div>
 
-          {files.length > 0 && (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {files.map(f => {
-                const status = progress[f.name];
-                return <PendingFileRow key={f.name} file={f} status={status} onRemove={() => setFiles(prev => prev.filter(x => x !== f))} />;
-              })}
-            </div>
+          {items.length > 0 && (
+            <>
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>{items.length} file(s){folderCount ? ` in ${folderCount} folder(s)` : ''} · {formatBytes(totalSize)}</span>
+                {!uploading && !doneCount && <button onClick={() => { setItems([]); setProgress({}); }} className="text-red-500 hover:underline">Clear</button>}
+              </div>
+              {(uploading || doneCount > 0) && (
+                <div>
+                  <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                    <div className="h-full bg-indigo-600 transition-all" style={{ width: `${Math.round(((doneCount + failCount) / items.length) * 100)}%` }} />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Uploaded {doneCount} of {items.length}{failCount ? ` · ${failCount} failed` : ''}{uploading ? ' — keep this window open' : ''}</p>
+                </div>
+              )}
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {shown.map(p => (
+                  <PendingFileRow key={p.rel} file={p.file} label={p.rel} status={progress[p.rel]} onRemove={() => setItems(prev => prev.filter(x => x !== p))} />
+                ))}
+                {items.length > shown.length && <p className="text-xs text-gray-400 text-center py-1">…and {items.length - shown.length} more</p>}
+              </div>
+            </>
           )}
 
           <div className="flex justify-end gap-3">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
+            <button onClick={onClose} disabled={uploading} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
             <button
               onClick={handleUpload}
-              disabled={uploading || files.length === 0}
+              disabled={uploading || reading || items.length === 0}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
             >
               {uploading && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-              Upload {files.length > 0 ? `(${files.length})` : ''}
+              Upload {items.length > 0 ? `(${items.length})` : ''}
             </button>
           </div>
         </div>
@@ -393,6 +503,7 @@ export default function FileManagerPage() {
     onError: (e) => toast.fromError(e, 'Could not delete folder'),
   });
   const [previewFile, setPreviewFile] = useState<FilePreviewTarget | null>(null);
+  const [zipping, setZipping] = useState(false);
 
   // Fetch folders
   const { data: foldersRaw } = useQuery({
@@ -498,7 +609,7 @@ export default function FileManagerPage() {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Toolbar */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 py-3 flex items-center gap-4">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 py-3 flex flex-wrap items-center gap-3">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1 text-sm text-gray-500 mr-auto">
             {breadcrumbs.map((crumb, i) => (
@@ -545,14 +656,24 @@ export default function FileManagerPage() {
           {selectedFolderId && (
             <button
               onClick={() => { const name = prompt('Folder name'); if (name?.trim()) createFolder.mutate(name.trim()); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <Folder className="w-3.5 h-3.5" /> New folder
             </button>
           )}
+          {selectedFolderId && (
+            <button
+              onClick={async () => { setZipping(true); await downloadFolderZip(selectedFolderId, trail[trail.length - 1]?.name || 'Folder'); setZipping(false); }}
+              disabled={zipping}
+              title="Download this folder and everything inside it as one ZIP file"
+              className="flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+            >
+              {zipping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderDown className="w-3.5 h-3.5" />} Download folder
+            </button>
+          )}
           <button
             onClick={() => setShowUpload(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
+            className="flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
           >
             <Upload className="w-3.5 h-3.5" /> Upload
           </button>
@@ -569,8 +690,10 @@ export default function FileManagerPage() {
                     onClick={() => openFolder({ uuid: sf.uuid, name: sf.name })}>
                     {sf.folderType === 'Personal' ? <Lock className="w-4 h-4 text-amber-500" /> : <Folder className="w-4 h-4 text-blue-500" />}
                     <span className="text-sm text-gray-800 dark:text-gray-100 truncate">{sf.name}</span>
+                    <button title="Download as ZIP" onClick={(e) => { e.stopPropagation(); downloadFolderZip(sf.uuid, sf.name); }}
+                      className="ml-auto hidden group-hover:block p-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20"><FolderDown className="w-3 h-3 text-indigo-500" /></button>
                     <button title="Delete folder" onClick={(e) => { e.stopPropagation(); if (confirm(`Delete folder "${sf.name}"? It must be empty.`)) deleteFolder.mutate(sf.uuid); }}
-                      className="ml-auto opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3 h-3 text-red-500" /></button>
+                      className="hidden group-hover:block p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3 h-3 text-red-500" /></button>
                   </div>
                 ))}
               </div>
@@ -584,12 +707,12 @@ export default function FileManagerPage() {
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
               <Folder className="w-16 h-16 mb-4 opacity-20" />
               <p className="text-lg font-medium text-gray-500 dark:text-gray-400">No files yet</p>
-              <p className="text-sm mt-1">Upload files or create a folder to get started</p>
+              <p className="text-sm mt-1">Upload files, or a whole folder from your computer</p>
               <button
                 onClick={() => setShowUpload(true)}
                 className="mt-4 flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
               >
-                <Upload className="w-3.5 h-3.5" /> Upload Files
+                <Upload className="w-3.5 h-3.5" /> Upload files or a folder
               </button>
             </div>
           ) : viewMode === 'grid' ? (
@@ -700,8 +823,8 @@ export default function FileManagerPage() {
         {showUpload && (
           <UploadZone
             folderId={uploadTargetFolderId}
-            onClose={() => setShowUpload(false)}
-            onUploaded={() => { qc.invalidateQueries({ queryKey: ['files'] }); setShowUpload(false); }}
+            onClose={() => { setShowUpload(false); qc.invalidateQueries({ queryKey: ['files'] }); qc.invalidateQueries({ queryKey: ['file-subfolders'] }); }}
+            onUploaded={() => { qc.invalidateQueries({ queryKey: ['files'] }); qc.invalidateQueries({ queryKey: ['file-subfolders'] }); setShowUpload(false); toast.success('Upload finished'); }}
           />
         )}
 
