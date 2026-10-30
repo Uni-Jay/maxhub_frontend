@@ -8,6 +8,9 @@ import {
   Mail, Phone, MapPin, Calendar, Flag, Upload,
 } from 'lucide-react';
 import type { DocumentCategory, ClientStatus } from '@/types';
+import { ClientFilePicker } from '@components/erp/ClientFiles';
+import { useBrands } from '@hooks/useErp';
+import { saveFileToComputer } from '@services/downloadFile';
 
 const STATUS_COLORS: Record<ClientStatus, string> = {
   Active: 'bg-green-100 text-green-800',
@@ -30,6 +33,9 @@ export default function ClientProfile() {
   const [newNote, setNewNote] = useState('');
   const [docForm, setDocForm] = useState({ documentName: '', category: 'Other' as DocumentCategory, fileUrl: '', description: '' });
   const [showDocForm, setShowDocForm] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [pickedName, setPickedName] = useState('');
+  const { byDepartmentId } = useBrands();
 
   const { data: client } = useApiQuery(
     ['client', id],
@@ -67,7 +73,7 @@ export default function ClientProfile() {
     (data: typeof docForm) => clientService.uploadDocument(id!, data),
     {
       invalidateKeys: [['client-docs', id]],
-      onSuccess: () => { setDocForm({ documentName: '', category: 'Other', fileUrl: '', description: '' }); setShowDocForm(false); refetchDocs(); },
+      onSuccess: () => { setDocForm({ documentName: '', category: 'Other', fileUrl: '', description: '' }); setPickedName(''); setShowDocForm(false); refetchDocs(); },
     }
   );
 
@@ -228,13 +234,15 @@ export default function ClientProfile() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">File URL *</label>
-                <input
-                  value={docForm.fileUrl}
-                  onChange={(e) => setDocForm({ ...docForm, fileUrl: e.target.value })}
-                  className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="https://... (upload URL)"
-                />
+                <label className="block text-xs text-gray-500 mb-1">File *</label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => setPicking(true)}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <Upload className="h-4 w-4" />{docForm.fileUrl ? 'Change file' : 'Choose from MaxHub Files or computer'}
+                  </button>
+                  {docForm.fileUrl && <span className="text-sm text-emerald-700 dark:text-emerald-400 truncate max-w-[260px]">✓ {pickedName || 'File attached'}</span>}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">Also saved in Files › {({ VM: 'VisaMax', VMX: 'VisaMax', KS: 'Kurios SAT', BM: 'BeadMax', MF: 'Maxfood Farm' } as Record<string, string>)[String(byDepartmentId((client as any)?.departmentId)?.code || '').split('-')[0]] || 'Shared'} › {client?.fullName}</p>
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Description</label>
@@ -258,6 +266,17 @@ export default function ClientProfile() {
             </div>
           )}
 
+          {picking && client && (
+            <ClientFilePicker
+              brand={(byDepartmentId((client as any).departmentId) as any)?.code || ''}
+              client={client.fullName}
+              multiple={false}
+              title="Attach a client document"
+              onClose={() => setPicking(false)}
+              onPicked={(f) => { if (f[0]) { setPickedName(f[0].name); setDocForm((d) => ({ ...d, fileUrl: f[0].url, documentName: d.documentName || f[0].name.replace(/\.[^.]+$/, '') })); } }}
+            />
+          )}
+
           {!documents?.length ? (
             <div className="flex flex-col items-center justify-center h-40 text-gray-400 gap-2">
               <FileText className="h-8 w-8" />
@@ -278,9 +297,9 @@ export default function ClientProfile() {
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500">
+                    <button type="button" title="Download" onClick={() => saveFileToComputer(doc.fileUrl, doc.documentName)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500">
                       <Download className="h-4 w-4" />
-                    </a>
+                    </button>
                     <button onClick={() => { if (confirm('Delete document?')) deleteDocMutation.mutate(doc.id); }} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500">
                       <Trash2 className="h-4 w-4" />
                     </button>

@@ -3,8 +3,10 @@ import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users, Search, Plus, Phone, Mail, Building2,
-  X, Check,
+  X, Check, RefreshCw,
 } from 'lucide-react';
+import { apiClient } from '@services/apiClient';
+import { toast } from '@components/ui/toaster';
 import { crmService, type Contact } from '@services/crmService';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -51,6 +53,15 @@ export default function ContactList() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['crm-contacts'] }),
   });
 
+  const syncMutation = useMutation({
+    mutationFn: () => apiClient.post<{ added: number }>('/contacts/sync-clients', {}),
+    onSuccess: (r: any) => {
+      qc.invalidateQueries({ queryKey: ['crm-contacts'] }); qc.invalidateQueries({ queryKey: ['crm-stats'] });
+      toast.success(r?.added ? `${r.added} client(s) added` : 'Contacts are up to date');
+    },
+    onError: (e) => toast.fromError(e),
+  });
+
   const contacts: Contact[] = (data as any)?.data || [];
   const pagination = (data as any)?.pagination;
   const stats = statsRaw;
@@ -66,11 +77,17 @@ export default function ContactList() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">CRM Contacts</h1>
-          <p className="text-sm text-gray-500">Manage leads, prospects, and customers</p>
+          <p className="text-sm text-gray-500">Every registered client is added here automatically — plus any leads you add yourself</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <button onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending} title="Add any newly registered clients now"
+          className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium disabled:opacity-50">
+          <RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} /> Sync from clients
+        </button>
         <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium">
           <Plus className="h-4 w-4" /> Add Contact
         </button>
+        </div>
       </div>
 
       {/* Stats bar */}
