@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Printer, ChevronLeft, Loader2 } from 'lucide-react';
@@ -6,7 +7,7 @@ import { apiClient } from '@services/apiClient';
 interface Cert {
   certificateCode: string; certificateName: string; issuedDate: string; verificationCode: string; status: string; course: string; duration: number | null;
   studentName: string; studentNumber: string; instructorName: string | null;
-  brand: { name: string; logoUrl: string | null; color: string | null; tagline: string | null; address: string | null; website: string | null };
+  brand: { code?: string; name: string; logoUrl: string | null; color: string | null; tagline: string | null; address: string | null; website: string | null };
 }
 
 /** A printable certificate — "Print" lets you print it or save it as a PDF. */
@@ -18,6 +19,8 @@ export default function CertificatePage() {
   const color = c?.brand.color || '#4f46e5';
   if (q.isLoading) return <Loader2 className="h-6 w-6 animate-spin text-indigo-500 mx-auto my-24" />;
   if (!c) return <p className="text-center text-sm text-red-600 py-24">{(q.error as any)?.message || 'Certificate not found'}</p>;
+  // Kurios SAT uses its own official certificate design.
+  if ((c.brand.code || '').startsWith('KS')) return <TemplateCertificate c={c} template="/certificates/kurios-sat.html" onBack={() => navigate(-1)} />;
   return (
     <div className="max-w-5xl mx-auto space-y-4">
       <style>{`@media print { @page { size: A4 landscape; margin: 0; } body * { visibility: hidden !important; } #maxhub-cert, #maxhub-cert * { visibility: visible !important; } #maxhub-cert { position: fixed; inset: 0; margin: 0 !important; border-radius: 0 !important; box-shadow: none !important; } }`}</style>
@@ -46,6 +49,47 @@ export default function CertificatePage() {
           <p className="mt-[2%] text-[clamp(8px,0.9vw,11px)] text-gray-400">Certificate {c.certificateCode} · Verification code {c.verificationCode} · Student {c.studentNumber}{c.brand.website ? ` · ${c.brand.website.replace(/^https?:\/\//, '')}` : ''}</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+const esc = (v: any) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch] as string));
+const ddmmyyyy = (d: string) => { const x = new Date(d); return `${String(x.getDate()).padStart(2, '0')} / ${String(x.getMonth() + 1).padStart(2, '0')} / ${x.getFullYear()}`; };
+
+/** Fills the brand's own certificate (a 1200×800 design) and scales it to fit; printing uses the full size. */
+function TemplateCertificate({ c, template, onBack }: { c: Cert; template: string; onBack: () => void }) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const [html, setHtml] = useState<string | null>(null);
+  const [height, setHeight] = useState(600);
+  useEffect(() => {
+    fetch(template).then((r) => r.text()).then((t) => setHtml(t
+      .split('{{NAME}}').join(esc(c.studentName))
+      .split('{{COURSE}}').join(esc(c.course))
+      .split('{{DATE}}').join(esc(ddmmyyyy(c.issuedDate)))
+      .split('{{TITLE}}').join(esc(`Certificate — ${c.studentName}`))
+      .split('{{CODE}}').join(` &nbsp;—&nbsp; No. ${esc(c.certificateCode)}`)));
+  }, [template, c]);
+  const fit = () => {
+    const doc = frame.current?.contentDocument; const w = box.current?.clientWidth || 1200;
+    const cert = doc?.querySelector('.cert') as HTMLElement | null;
+    if (!cert) return;
+    const scale = Math.min(1, w / 1200);
+    cert.style.transform = `scale(${scale})`;
+    setHeight(Math.ceil(800 * scale));
+  };
+  useEffect(() => { const ro = new ResizeObserver(fit); if (box.current) ro.observe(box.current); return () => ro.disconnect(); }, [html]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="max-w-6xl mx-auto space-y-4">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800"><ChevronLeft className="h-5 w-5" /></button>
+        <p className="flex-1 text-sm text-gray-500">Certificate {c.certificateCode}{c.status !== 'Issued' ? ` · ${c.status}` : ''}</p>
+        <button onClick={() => frame.current?.contentWindow?.print()} disabled={!html} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50"><Printer className="h-4 w-4" />Print or save as PDF</button>
+      </div>
+      <div ref={box} className="w-full rounded-2xl overflow-hidden shadow-xl bg-white">
+        {html ? <iframe ref={frame} title="Certificate" srcDoc={html} onLoad={fit} className="w-full block border-0" style={{ height }} /> : <Loader2 className="h-6 w-6 animate-spin text-indigo-500 mx-auto my-24" />}
+      </div>
+      <p className="text-xs text-gray-500">Tip: in the print window choose <b>Landscape</b>, margins <b>None</b>, and turn on <b>Background graphics</b> so the colours print.</p>
     </div>
   );
 }
