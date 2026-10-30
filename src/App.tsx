@@ -111,6 +111,13 @@ const TrackingPage = React.lazy(() => import('@modules/tracking/pages/TrackingPa
 const CurrencyPage = React.lazy(() => import('@modules/erp/pages/CurrencyPage'));
 const TargetsPage = React.lazy(() => import('@modules/erp/pages/TargetsPage'));
 const PurchasesPage = React.lazy(() => import('@modules/erp/pages/PurchasesPage'));
+const AIWriterPage = React.lazy(() => import('@modules/ai/pages/AIWriterPage'));
+const StaffOfMonthPage = React.lazy(() => import('@modules/hr/pages/StaffOfMonthPage'));
+const SuggestionsPage = React.lazy(() => import('@modules/hr/pages/SuggestionsPage'));
+const MinutesPage = React.lazy(() => import('@modules/erp/pages/MinutesPage'));
+const BookingsPage = React.lazy(() => import('@modules/erp/pages/BookingsPage'));
+const StudentLessonsPage = React.lazy(() => import('@modules/student/pages/StudentLessonsPage'));
+const StudentCoursePlayer = React.lazy(() => import('@modules/student/pages/StudentLessonsPage').then((m) => ({ default: m.StudentCoursePlayer })));
 const RecruitmentPage = React.lazy(() => import('@modules/hr/pages/RecruitmentPage'));
 const PoliciesPage = React.lazy(() => import('@modules/hr/pages/PoliciesPage'));
 const TrainingRecordsPage = React.lazy(() => import('@modules/hr/pages/TrainingRecordsPage'));
@@ -249,6 +256,8 @@ function App() {
             <Route element={<StudentPortalLayout />}>
               <Route path="/student/dashboard"    element={<StudentDashboardPage />} />
               <Route path="/student/courses"      element={<StudentCoursesPage />} />
+              <Route path="/student/lessons"      element={<StudentLessonsPage />} />
+              <Route path="/student/lessons/:courseId" element={<StudentCoursePlayer />} />
               <Route path="/student/assignments"  element={<StudentAssignmentsPage />} />
               <Route path="/student/exams"        element={<StudentExamsPage />} />
               <Route path="/student/results"      element={<StudentResultsPage />} />
@@ -355,6 +364,12 @@ function App() {
               <Route path="/finance/currency" element={<CurrencyPage />} />
               <Route path="/targets" element={<TargetsPage />} />
               <Route path="/purchases" element={<PurchasesPage />} />
+              <Route path="/ai-writer" element={<AIWriterPage />} />
+              <Route path="/staff-of-the-month" element={<StaffOfMonthPage />} />
+              <Route path="/suggestions" element={<SuggestionsPage />} />
+              <Route path="/minutes" element={<MinutesPage />} />
+              <Route path="/bookings" element={<BookingsPage />} />
+              <Route path="/lms/lessons/:courseId" element={<StudentCoursePlayer />} />
               <Route path="/hr/recruitment" element={<RecruitmentPage />} />
               <Route path="/policies" element={<PoliciesPage />} />
               <Route path="/training-records" element={<TrainingRecordsPage />} />

@@ -8,9 +8,11 @@ import {
   GraduationCap, FileText, Trash2, X, Pencil,
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
+import LessonsManager from '../components/LessonsManager';
+import { PlayCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-type Tab = 'curriculum' | 'exams' | 'students' | 'certificates';
+type Tab = 'curriculum' | 'lessons' | 'exams' | 'students' | 'certificates';
 
 const STATUS_STYLES: Record<string, string> = {
   Ongoing: 'bg-emerald-100 text-emerald-700',
@@ -26,7 +28,7 @@ export function CourseDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, hasPermission } = useAuth();
-  const [tab, setTab] = useState<Tab>('curriculum');
+  const [tab, setTab] = useState<Tab>(() => (new URLSearchParams(window.location.search).get('tab') === 'lessons' ? 'lessons' : 'curriculum'));
   const [openModules, setOpenModules] = useState<Set<number>>(new Set());
 
   const { data: course, isLoading } = useQuery({
@@ -132,6 +134,7 @@ export function CourseDetail() {
       <div className="flex gap-2 border-b border-gray-100 dark:border-gray-700">
         {([
           { key: 'curriculum', label: 'Curriculum', icon: BookOpen },
+          ...(isAdminView ? [{ key: 'lessons' as Tab, label: 'Online Lessons', icon: PlayCircle }] : []),
           ...(isAdminView ? [{ key: 'exams' as Tab, label: 'Exams', icon: FileText }] : []),
           ...(isAdminView ? [{ key: 'students' as Tab, label: 'Students', icon: Users }] : []),
           ...(isAdminView ? [{ key: 'certificates' as Tab, label: 'Certificates', icon: Award }] : []),
@@ -159,6 +162,7 @@ export function CourseDetail() {
               toggleModule={toggleModule}
             />
           )}
+          {tab === 'lessons' && isAdminView && <LessonsManager courseId={Number(course.id)} />}
           {tab === 'exams' && isAdminView && (
             <ExamsTab courseId={course.id} canManage={canManageExams} />
           )}

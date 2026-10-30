@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  BookOpen, LayoutDashboard, ClipboardList, Calendar, BarChart2,
+  PlayCircle, BookOpen, LayoutDashboard, ClipboardList, Calendar, BarChart2,
   Award, Bell, User, LogOut, Menu, X, FileText, MessageSquare, Sun, Moon,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -11,6 +11,7 @@ import { useThemeStore } from '@store/themeStore';
 const NAV = [
   { to: '/student/dashboard',    icon: LayoutDashboard, label: 'Dashboard'   },
   { to: '/student/courses',      icon: BookOpen,         label: 'My Courses'  },
+  { to: '/student/lessons',      icon: PlayCircle,       label: 'Online Lessons' },
   { to: '/student/assignments',  icon: ClipboardList,    label: 'Assignments' },
   { to: '/student/exams',        icon: FileText,         label: 'Exams & CBT' },
   { to: '/student/results',      icon: BarChart2,        label: 'Results'     },

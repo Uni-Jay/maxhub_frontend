@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { BarChart3 } from 'lucide-react';
 import RecordBoard, { type RecordBoardConfig, btnGhost } from '@components/erp/RecordBoard';
 import { money } from '@services/erpService';
+import ScanReceipt from '@components/erp/ScanReceipt';
 
 const CATEGORIES = [
   'Rent', 'Stock & materials', 'Transport & logistics', 'Shipping & freight', 'Marketing & adverts', 'Utilities & internet',
@@ -33,6 +34,14 @@ const expenses: RecordBoardConfig = {
     { name: 'amountNgn', label: 'Naira value', type: 'money', hideInForm: true },
     { name: 'notes', label: 'Notes', type: 'textarea' },
   ],
+  formHeader: (form, set) => (
+    <ScanReceipt onScanned={(r) => set({
+      title: r.title || form.title, category: CATEGORIES.includes(r.category) ? r.category : form.category, amount: r.total ?? form.amount,
+      currency: r.currency || form.currency, paidAt: r.date || form.paidAt, vendor: r.vendor || form.vendor, method: r.method && ['Transfer', 'Cash', 'POS', 'Card', 'Cheque'].includes(r.method) ? r.method : form.method,
+      reference: r.reference || form.reference, receiptUrl: r.receiptUrl || form.receiptUrl,
+      notes: r.items?.length ? r.items.map((i) => `${i.name}${i.qty ? ` × ${i.qty}` : ''}${i.amount ? ` — ${i.amount}` : ''}`).join('\n') : form.notes,
+    })} />
+  ),
   headerExtras: <Link to="/finance/profit" className={btnGhost}><BarChart3 className="h-4 w-4" />Profit & Loss</Link>,
   columns: [
     { key: 'paidAt', label: 'Date', render: (r) => (r.paidAt ? new Date(r.paidAt).toLocaleDateString('en-GB') : '—') },

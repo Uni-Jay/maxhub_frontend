@@ -54,6 +54,8 @@ export interface RecordBoardConfig {
   allowBoard?: boolean;
   detailExtras?: (r: any, refresh: () => void) => ReactNode;
   formExtras?: (form: any, set: (patch: any) => void) => ReactNode;
+  /** Shown at the top of the form when creating a new record. */
+  formHeader?: (form: any, set: (patch: any) => void) => ReactNode;
   headerExtras?: ReactNode;
   /** Full-width block under the title (e.g. stock summary tiles). */
   summary?: ReactNode;
@@ -133,6 +135,7 @@ function RecordForm({ cfg, initial, onClose, onSaved }: { cfg: RecordBoardConfig
   return (
     <Modal title={initial ? `Edit ${cfg.singular} ${initial.code}` : `New ${cfg.singular}`} onClose={onClose} wide>
       <form onSubmit={(e) => { e.preventDefault(); if (missing.length) { toast.error('Please fill in the required fields', missing.join(', ')); return; } save.mutate(); }} className="space-y-4">
+        {!initial && cfg.formHeader?.(form, set)}
         {cfg.brandChoices && cfg.brandChoices.length > 1 && (
           <div>
             <label className={labelCls}>Brand / department</label>

@@ -6,6 +6,7 @@ import { apiClient } from '@services/apiClient';
 import { toast } from '@components/ui/toaster';
 import { cn } from '@utils/cn';
 import { CURRENCIES } from '@components/erp/RecordBoard';
+import ScanReceipt from '@components/erp/ScanReceipt';
 import { Modal, Drawer, Field, Pill, Stat, UploadLink, Empty, Tabs, inp, btnPrimary, btnGhost, btnDanger, card, money, fmtDate, fmtDateTime } from '@components/erp/Kit';
 
 interface Item { name: string; qty: number | string; unitPrice: number | string }
@@ -239,6 +240,8 @@ function BuyModal({ r, onClose, onDone }: { r: PR; onClose: () => void; onDone: 
   return (
     <Modal title="Record the purchase" sub={`${r.code} · ${r.title}`} onClose={onClose}
       footer={<><button onClick={onClose} className={btnGhost}>Cancel</button><button onClick={() => save.mutate()} disabled={save.isPending || !(Number(f.actualAmount) > 0)} className={btnPrimary}>{save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Save</button></>}>
+      <ScanReceipt onScanned={(x) => setF({ ...f, actualAmount: x.total ? String(x.total) : f.actualAmount, boughtAt: x.date || f.boughtAt, vendor: x.vendor || f.vendor,
+        method: x.method && ['Transfer', 'Cash', 'POS', 'Cheque', 'Card'].includes(x.method) ? x.method : f.method, receiptUrl: x.receiptUrl || f.receiptUrl })} />
       <div className="grid grid-cols-2 gap-3">
         <Field label={`Amount paid (${r.currency})`}><input className={cn(inp, 'text-right')} inputMode="decimal" value={f.actualAmount} onChange={(e) => setF({ ...f, actualAmount: e.target.value.replace(/[^\d.]/g, '') })} /></Field>
         <Field label="Date paid"><input type="date" className={inp} value={f.boughtAt} onChange={(e) => setF({ ...f, boughtAt: e.target.value })} /></Field>
