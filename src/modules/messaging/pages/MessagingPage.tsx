@@ -19,6 +19,7 @@ import {
 } from '@services/messagingService';
 import { chatSocket } from '@services/chatSocket';
 import { useAuthStore } from '@store/authStore';
+import { apiClient } from '@services/apiClient';
 import { uploadToCloudinaryWithProgress } from '@services/cloudinaryService';
 import { openSaveToFolder } from '@components/files/SaveToFolder';
 import { cn } from '@utils/cn';
@@ -503,12 +504,13 @@ function MenuBtn({ icon: Icon, label, onClick, danger }: {
 }
 
 // ─── Conversation item ────────────────────────────────────────────────────────
-function ConversationItem({ conv, isSelected, onClick, onlineUserIds }: {
-  conv: Conversation; isSelected: boolean; onClick: () => void; onlineUserIds: Set<number>;
+function ConversationItem({ conv, isSelected, onClick, onlineUserIds, currentUserId }: {
+  conv: Conversation; isSelected: boolean; onClick: () => void; onlineUserIds: Set<number>; currentUserId: number;
 }) {
   const isGroup = conv.conversationType === 'Group' || conv.conversationType === 'Team' || conv.conversationType === 'Channel';
-  const firstParticipantId = conv.participants?.find(p => p.userId)?.userId;
-  const isOnline = firstParticipantId ? onlineUserIds.has(firstParticipantId) : false;
+  // Green dot = someone else in this chat is on MaxHub right now. (IDs arrive
+  // as text from the server, so compare as numbers — and never count yourself.)
+  const isOnline = !!conv.participants?.some(p => p.userId && Number(p.userId) !== Number(currentUserId) && onlineUserIds.has(Number(p.userId)));
 
   const lastMsgPreview = conv.lastMessage
     ? conv.lastMessage.messageType !== 'Text'
@@ -967,11 +969,11 @@ export default function MessagingPage() {
     if (!token) return;
     const socket = chatSocket.connect(token);
 
-    const onOnlineList = (ids: number[]) => setOnlineUserIds(new Set(ids));
+    const onOnlineList = (ids: number[]) => setOnlineUserIds(new Set(ids.map(Number)));
     const onPresence = ({ userId, isOnline }: { userId: number; isOnline: boolean }) => {
       setOnlineUserIds(prev => {
         const next = new Set(prev);
-        if (isOnline) next.add(userId); else next.delete(userId);
+        if (isOnline) next.add(Number(userId)); else next.delete(Number(userId));
         return next;
       });
     };
@@ -1099,6 +1101,20 @@ export default function MessagingPage() {
   }, [token]);
 
   // ── Queries ────────────────────────────────────────────────────────────────
+  // Who is online right now. The live connection is opened on the dashboard, so
+  // its "who's online" list arrives before this page exists — ask for it here,
+  // then keep it fresh (live presence updates still come through the socket).
+  const { data: onlineRaw } = useQuery({
+    queryKey: ['chat-online'],
+    queryFn: () => apiClient.get<{ onlineUserIds: number[] }>('/messages/users/online'),
+    refetchInterval: 45_000,
+    staleTime: 15_000,
+  });
+  useEffect(() => {
+    const ids = (onlineRaw as any)?.onlineUserIds;
+    if (Array.isArray(ids)) setOnlineUserIds(new Set(ids.map(Number)));
+  }, [onlineRaw]);
+
   const { data: convsRaw } = useQuery({
     queryKey: ['conversations'],
     queryFn: () => messagingService.getConversations(),
@@ -1114,8 +1130,13 @@ export default function MessagingPage() {
   });
 
   // ── Derived data ───────────────────────────────────────────────────────────
+  // Most recent activity first — a new message moves that chat to the top.
+  const lastActivity = (c: any) => new Date(c.lastMessage?.createdAt || c.lastMessageAt || c.updatedAt || c.createdAt || 0).getTime();
   const conversations: Conversation[] = useMemo(() =>
-    ((convsRaw as Conversation[]) ?? []).filter(c => showArchived ? c.isArchived : !c.isArchived),
+    ((convsRaw as Conversation[]) ?? [])
+      .filter(c => showArchived ? c.isArchived : !c.isArchived)
+      .slice()
+      .sort((a, b) => lastActivity(b) - lastActivity(a)),
     [convsRaw, showArchived]
   );
 
@@ -1727,6 +1748,7 @@ export default function MessagingPage() {
                 isSelected={String(conv.id) === String(selectedId)}
                 onClick={() => selectConv(conv.id)}
                 onlineUserIds={onlineUserIds}
+                currentUserId={Number(currentUserId)}
               />
             ))
           )}

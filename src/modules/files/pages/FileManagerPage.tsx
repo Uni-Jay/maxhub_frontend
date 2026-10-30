@@ -10,7 +10,8 @@ import {
   Eye, Copy, FolderUp, FolderDown, Loader2,
 } from 'lucide-react';
 import { apiClient, API_BASE_URL } from '@services/apiClient';
-import { uploadToCloudinary, withForcedDownload } from '@services/cloudinaryService';
+import { uploadToCloudinary } from '@services/cloudinaryService';
+import { saveFileToComputer } from '@services/downloadFile';
 import FilePreviewModal, { type FilePreviewTarget } from '@components/ui/FilePreviewModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -533,21 +534,7 @@ export default function FileManagerPage() {
   }, []);
 
   const handleDownload = (file: FileItem) => {
-    if (!file.url) return;
-    // The HTML `download` attribute is ignored by browsers for cross-origin
-    // URLs like Cloudinary's — window.open or a plain <a> just opens the
-    // file inline instead of saving it. withForcedDownload appends
-    // Cloudinary's fl_attachment flag, which makes Cloudinary itself send
-    // Content-Disposition: attachment, the only thing that reliably forces
-    // a real download cross-origin.
-    const a = document.createElement('a');
-    a.href = withForcedDownload(file.url);
-    a.download = file.name;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    if (file.url) saveFileToComputer(file.url, file.name);
   };
 
   const handleDelete = (file: FileItem) => {

@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Folder, FolderPlus, Lock, Loader2, X, Check, Download } from 'lucide-react';
 import { toast } from '@components/ui/toaster';
 import { apiClient } from '@services/apiClient';
-import { withForcedDownload } from '@services/cloudinaryService';
+import { saveFileToComputer } from '@services/downloadFile';
 import { cn } from '@utils/cn';
 
 export interface SaveTarget { url: string; name?: string; mimeType?: string; size?: number }
@@ -15,14 +15,7 @@ export function openSaveToFolder(target: SaveTarget) {
 }
 
 export function downloadToComputer(url: string, name?: string) {
-  const a = document.createElement('a');
-  a.href = withForcedDownload(url);
-  a.download = name || 'download';
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  return saveFileToComputer(url, name);
 }
 
 interface FolderRow { uuid: string; name: string; icon?: string; folderType?: string | null }
@@ -44,6 +37,7 @@ function Picker({ target, onClose }: { target: SaveTarget; onClose: () => void }
   const [path, setPath] = useState<FolderRow[]>([]);
   const [alsoDownload, setAlsoDownload] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [newName, setNewName] = useState<string | null>(null);
   const current = path[path.length - 1];
 
@@ -69,7 +63,7 @@ function Picker({ target, onClose }: { target: SaveTarget; onClose: () => void }
       await apiClient.post('/files/upload', { url: target.url, name: target.name || target.url.split('/').pop(), mimeType: target.mimeType, size: target.size, folderId: current.uuid });
       qc.invalidateQueries({ queryKey: ['files'] });
       toast.success(`Saved to ${path.map((p) => p.name).join(' › ')}`);
-      if (alsoDownload) downloadToComputer(target.url, target.name);
+      if (alsoDownload) await downloadToComputer(target.url, target.name);
       onClose();
     } catch (e: any) {
       toast.error(e?.message || 'Could not save the file');
@@ -132,7 +126,7 @@ function Picker({ target, onClose }: { target: SaveTarget; onClose: () => void }
             <Download className="h-4 w-4 text-gray-400" /> Also download to my computer
           </label>
           <div className="flex items-center gap-2 ml-auto">
-          <button onClick={() => { downloadToComputer(target.url, target.name); onClose(); }} className="px-3 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Download only</button>
+          <button disabled={downloading} onClick={async () => { setDownloading(true); const ok = await downloadToComputer(target.url, target.name); setDownloading(false); if (ok) onClose(); }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">{downloading && <Loader2 className="h-4 w-4 animate-spin" />}Download only</button>
           <button onClick={save} disabled={!current || saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50">
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}{current ? `Save in ${current.name}` : 'Choose a folder'}
           </button>
