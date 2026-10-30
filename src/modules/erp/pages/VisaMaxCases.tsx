@@ -5,7 +5,7 @@ import { CheckCircle2, Circle, UserCheck, RotateCcw, Loader2, Paperclip } from '
 import RecordBoard, { type RecordBoardConfig, btnGhost, inputCls } from '@components/erp/RecordBoard';
 import { ERP_PATHS, erpService, money } from '@services/erpService';
 import { toast } from '@components/ui/toaster';
-import { cloudinaryService } from '@services/cloudinaryService';
+import { ClientFilePicker } from '@components/erp/ClientFiles';
 import { cn } from '@utils/cn';
 import { BrandTheme } from '@components/erp/BrandTheme';
 
@@ -21,14 +21,9 @@ function Checklist({ r, refresh }: { r: any; refresh: () => void }) {
   const update = (i: number, patch: any) => { const next = items.map((c, j) => (j === i ? { ...c, ...patch } : c)); setItems(next); save.mutate(next); };
   const received = items.filter((c) => c.received).length;
 
-  const upload = async (i: number, file?: File) => {
-    if (!file) return;
-    setUploading(i);
-    try {
-      const res = await cloudinaryService.upload(file, `visamax/${r.code}`);
-      update(i, { received: true, fileUrl: res.url });
-    } catch (e) { toast.fromError(e, 'Upload failed'); } finally { setUploading(null); }
-  };
+  // Paperclip: pick the scan from MaxHub Files or the computer — either way it
+  // is also filed in Files › VisaMax › <client name>.
+  const client = String(r.customerName || '').trim();
 
   return (
     <div className="space-y-3">
@@ -50,13 +45,17 @@ function Checklist({ r, refresh }: { r: any; refresh: () => void }) {
               <button onClick={() => update(i, { received: !c.received })} className={cn(c.received ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600')}>{c.received ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5" />}</button>
               <span className={cn('flex-1 text-sm', c.received ? 'text-gray-500 line-through' : 'text-gray-800 dark:text-gray-200')}>{c.item}</span>
               {c.fileUrl && <a href={c.fileUrl} target="_blank" rel="noreferrer" className="text-xs brand-text hover:underline">View</a>}
-              <label className="cursor-pointer text-gray-400 hover:brand-text" title="Upload scan">
-                {uploading === i ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
-                <input type="file" className="hidden" accept="image/*,.pdf" onChange={(e) => upload(i, e.target.files?.[0])} />
-              </label>
+              <button type="button" className="text-gray-400 hover:brand-text" title={client ? 'Attach scan — from MaxHub Files or your computer' : 'Add the customer name first'}
+                onClick={() => client ? setUploading(i) : toast.error('Add the customer name first', 'Documents are filed in a folder with the client’s name.')}>
+                <Paperclip className="h-4 w-4" />
+              </button>
             </li>
           ))}
         </ul>
+        {uploading !== null && items[uploading] && (
+          <ClientFilePicker brand="VM" client={client} multiple={false} title={`Attach: ${items[uploading].item}`}
+            onClose={() => setUploading(null)} onPicked={(f) => { if (f[0]) update(uploading, { received: true, fileUrl: f[0].url }); }} />
+        )}
         <AddItem onAdd={(item) => { const next = [...items, { item, required: false, received: false, fileUrl: null }]; setItems(next); save.mutate(next); }} />
       </div>
     </div>

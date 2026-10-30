@@ -12,6 +12,7 @@ import { apiClient } from '@services/apiClient';
 import { useBrands, useLiveRefresh, useRole } from '@hooks/useErp';
 import { toast } from '@components/ui/toaster';
 import { printReceipt, printRecord, printSignedDocument } from './print';
+import { ClientFilesTab } from './ClientFiles';
 import { cn } from '@utils/cn';
 import { useBrandStyle } from './BrandTheme';
 
@@ -329,7 +330,7 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
   const key = [`erp:${cfg.entity}:detail`, id];
   const { data: r, isLoading, refetch } = useQuery({ queryKey: key, queryFn: () => erpService.get(cfg.base, id) });
   const docsQ = useQuery({ queryKey: ['erp:signature_request', cfg.entity, id], queryFn: () => erpService.requests({ relatedType: cfg.entity, relatedId: id }), enabled: !!cfg.allowDocuments });
-  const [tab, setTab] = useState<'overview' | 'timeline' | 'payments' | 'documents' | 'message'>('overview');
+  const [tab, setTab] = useState<'overview' | 'timeline' | 'payments' | 'documents' | 'message' | 'files'>('overview');
   const [note, setNote] = useState('');
   const [msg, setMsg] = useState({ channel: 'WhatsApp' as 'WhatsApp' | 'Email' | 'Both', subject: '', message: '' });
   const [payOpen, setPayOpen] = useState(false);
@@ -411,7 +412,7 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
                 </div>
               )}
               <div className="mt-3 flex gap-1 overflow-x-auto text-sm">
-                {(['overview', 'timeline', ...(cfg.allowMessage !== false ? ['message'] : []), ...(cfg.allowPayments ? ['payments'] : []), ...(cfg.allowDocuments ? ['documents'] : [])] as const).map((t) => (
+                {(['overview', 'timeline', ...(cfg.allowMessage !== false ? ['message'] : []), ...(cfg.allowPayments ? ['payments'] : []), ...(cfg.allowDocuments ? ['documents'] : []), 'files'] as const).map((t) => (
                   <button key={t} onClick={() => setTab(t as any)} className={cn('px-3 py-1.5 rounded-lg capitalize whitespace-nowrap', tab === t ? 'brand-bg' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800')}>{t}{t === 'timeline' ? ` (${r.activities?.length || 0})` : ''}</button>
                 ))}
               </div>
@@ -501,6 +502,9 @@ function Detail({ cfg, id, stages, onClose, onEdit }: { cfg: RecordBoardConfig; 
                 </div>
               )}
 
+              {tab === 'files' && (
+                <ClientFilesTab brand={brand?.code || cfg.brandCode} client={String(r.customerName || r.clientName || r.companyName || cfg.titleOf(r) || '').trim()} />
+              )}
               {tab === 'documents' && (
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
