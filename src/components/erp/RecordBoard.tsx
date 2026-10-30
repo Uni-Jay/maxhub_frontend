@@ -13,6 +13,7 @@ import { useBrands, useLiveRefresh, useRole } from '@hooks/useErp';
 import { toast } from '@components/ui/toaster';
 import { printReceipt, printRecord, printSignedDocument } from './print';
 import { ClientFilesTab } from './ClientFiles';
+import ExistingClientPicker, { clientToForm, loadClient, type ClientLite } from './ExistingClientPicker';
 import { cn } from '@utils/cn';
 import { useBrandStyle } from './BrandTheme';
 
@@ -107,7 +108,7 @@ function toInput(v: any, type?: string) {
 export const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'CAD', 'AED', 'QAR', 'SAR', 'GHS', 'ZAR', 'CNY', 'KES'];
 
 // ─── Form modal ─────────────────────────────────────────────────────────────
-function RecordForm({ cfg, initial, onClose, onSaved }: { cfg: RecordBoardConfig; initial: any | null; onClose: () => void; onSaved: (r: any) => void }) {
+function RecordForm({ cfg, initial, onClose, onSaved, prefillClientId }: { cfg: RecordBoardConfig; initial: any | null; onClose: () => void; onSaved: (r: any) => void; prefillClientId?: string | null }) {
   const { data: people = [] } = usePeople();
   const { departments } = useBrands();
   const [form, setForm] = useState<any>(() => {
@@ -122,6 +123,18 @@ function RecordForm({ cfg, initial, onClose, onSaved }: { cfg: RecordBoardConfig
     return f;
   });
   const set = (patch: any) => setForm((f: any) => ({ ...f, ...patch }));
+  // New customer records can start from a registered client: their known
+  // details are filled in and the record is linked to them (clientId).
+  const takesCustomer = !initial && cfg.fields.some((f) => f.name === 'customerName');
+  const [linked, setLinked] = useState<{ name: string; code?: string } | null>(null);
+  const useClient = (c: ClientLite) => {
+    set(clientToForm(c, cfg.fields.map((f) => f.name)));
+    setLinked({ name: c.fullName, code: c.clientId });
+  };
+  useEffect(() => {
+    if (!takesCustomer || !prefillClientId) return;
+    loadClient(prefillClientId).then((c) => { if (c) useClient(c); });
+  }, [prefillClientId]); // eslint-disable-line react-hooks/exhaustive-deps
   const save = useMutation({
     mutationFn: () => {
       const payload: any = { ...form };
@@ -136,6 +149,7 @@ function RecordForm({ cfg, initial, onClose, onSaved }: { cfg: RecordBoardConfig
   return (
     <Modal title={initial ? `Edit ${cfg.singular} ${initial.code}` : `New ${cfg.singular}`} onClose={onClose} wide>
       <form onSubmit={(e) => { e.preventDefault(); if (missing.length) { toast.error('Please fill in the required fields', missing.join(', ')); return; } save.mutate(); }} className="space-y-4">
+        {takesCustomer && <ExistingClientPicker linked={linked} onPick={useClient} onClear={() => { setLinked(null); set({ clientId: null }); }} />}
         {!initial && cfg.formHeader?.(form, set)}
         {cfg.brandChoices && cfg.brandChoices.length > 1 && (
           <div>
@@ -545,6 +559,10 @@ export default function RecordBoard({ cfg }: { cfg: RecordBoardConfig }) {
   const [brandFilter, setBrandFilter] = useState(cfg.brandCode);
   const [editing, setEditing] = useState<any | null | undefined>(undefined);
   const openId = params.get('open') ? Number(params.get('open')) : null;
+  const prefillClientId = params.get('client');
+  useEffect(() => {
+    if (params.get('new') === '1') setEditing(null);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const stageField = cfg.stageField || 'stage';
   useLiveRefresh([cfg.entity, 'payment', 'signature_request']);
 
@@ -669,10 +687,11 @@ export default function RecordBoard({ cfg }: { cfg: RecordBoardConfig }) {
         {openId && <Detail key={openId} cfg={cfg} id={openId} stages={stages} onClose={() => open(null)} onEdit={(r) => setEditing(r)} />}
       </AnimatePresence>
       {editing !== undefined && (
-        <RecordForm cfg={cfg} initial={editing} onClose={() => setEditing(undefined)} onSaved={(r) => {
+        <RecordForm cfg={cfg} initial={editing} prefillClientId={editing === null ? prefillClientId : null} onClose={() => { setEditing(undefined); if (params.get('new')) { params.delete('new'); params.delete('client'); setParams(params, { replace: true }); } }} onSaved={(r) => {
           setEditing(undefined);
+          params.delete('new'); params.delete('client');
           qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith(`erp:${cfg.entity}`) });
-          if (r?.id) open(Number(r.id));
+          if (r?.id) open(Number(r.id)); else setParams(params, { replace: true });
         }} />
       )}
     </div>

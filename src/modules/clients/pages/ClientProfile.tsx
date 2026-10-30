@@ -115,7 +115,15 @@ export default function ClientProfile() {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link to={`/visamax/cases?new=1&client=${id}`} title="Start a VisaMax customer case with this client's details filled in"
+            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm font-medium text-white transition">
+            <Plus className="h-4 w-4" /> Customer case
+          </Link>
+          <Link to={`/visamax/bookings?new=1&client=${id}`} title="Start a flight / hotel / package booking for this client"
+            className="flex items-center gap-1.5 px-3 py-2 border border-indigo-200 dark:border-indigo-800 rounded-lg text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition">
+            <Plus className="h-4 w-4" /> Booking
+          </Link>
           <Link
             to={`/clients/${id}/edit`}
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
