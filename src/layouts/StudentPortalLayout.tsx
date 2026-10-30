@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  PlayCircle, BookOpen, LayoutDashboard, ClipboardList, Calendar, BarChart2,
+  PlayCircle, LifeBuoy, BookOpen, LayoutDashboard, ClipboardList, Calendar, BarChart2,
   Award, Bell, User, LogOut, Menu, X, FileText, MessageSquare, Sun, Moon,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -20,6 +20,7 @@ const NAV = [
   { to: '/student/certificates', icon: Award,            label: 'Certificates'},
   { to: '/student/messages',     icon: MessageSquare,    label: 'Messages'    },
   { to: '/student/profile',      icon: User,             label: 'My Profile'  },
+  { to: '/student/help',         icon: LifeBuoy,         label: 'Help & Guide' },
 ];
 
 export const StudentPortalLayout: React.FC = () => {

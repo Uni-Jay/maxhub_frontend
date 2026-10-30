@@ -4,7 +4,7 @@ import {
   GraduationCap, DollarSign, Package, UserCheck, ShoppingCart,
   FolderOpen, Receipt, Bot, Building2, Award, Wallet, Route, ShieldCheck,
   FileSignature, ClipboardList, Network, Target, ShoppingBag, ScrollText,
-  PenLine, Trophy, Lightbulb, BookOpenCheck, CalendarCheck,
+  PenLine, Trophy, Lightbulb, BookOpenCheck, CalendarCheck, LifeBuoy,
 } from 'lucide-react';
 import type { CanonicalRole } from '@utils/role';
 import { DEPARTMENT_MODULES, BRAND_CODES } from './departmentModules';
@@ -41,6 +41,7 @@ const TRACKING: SidebarItem = { label: 'Tracking', path: '/tracking', icon: Rout
 const TARGETS: SidebarItem = { label: 'Targets', path: '/targets', icon: Target };
 const PURCHASES: SidebarItem = { label: 'Purchase Requests', path: '/purchases', icon: ShoppingBag };
 const POLICIES: SidebarItem = { label: 'Company Policies', path: '/policies', icon: ScrollText };
+const HELP: SidebarItem = { label: 'Help & User Guide', path: '/help', icon: LifeBuoy };
 const AI_WRITER: SidebarItem = { label: 'AI Writing Help', path: '/ai-writer', icon: PenLine };
 const STAFF_OF_MONTH: SidebarItem = { label: 'Staff of the Month', path: '/staff-of-the-month', icon: Trophy };
 const SUGGESTIONS: SidebarItem = { label: 'Suggestion Box', path: '/suggestions', icon: Lightbulb };
@@ -158,7 +159,7 @@ const SUPER_ADMIN_NAV: SidebarItem[] = [
   ...s('Finance', [FINANCE_FULL, PURCHASES, PAYROLL_FULL, INVENTORY]),
   ...s('Sales', [CRM, BOOKINGS]),
   ...s('Communication', [MESSAGES, BROADCAST_FULL, AI, AI_WRITER]),
-  ...s('Administration', [ORGANIZATION, AUDIT, SYSTEM_SETTINGS]),
+  ...s('Administration', [ORGANIZATION, AUDIT, HELP, SYSTEM_SETTINGS]),
 ];
 
 const ADMIN_NAV: SidebarItem[] = [
@@ -168,7 +169,7 @@ const ADMIN_NAV: SidebarItem[] = [
   ...s('Finance', [FINANCE_FULL, PURCHASES, PAYROLL_FULL, INVENTORY]),
   ...s('Sales', [CRM, BOOKINGS]),
   ...s('Communication', [MESSAGES, BROADCAST_FULL, AI, AI_WRITER]),
-  ...s('Administration', [AUDIT, MY_SETTINGS]),
+  ...s('Administration', [AUDIT, HELP, MY_SETTINGS]),
 ];
 
 const HR_NAV: SidebarItem[] = [
@@ -178,7 +179,7 @@ const HR_NAV: SidebarItem[] = [
   ...s('Finance', [PAYROLL_FULL, RECEIPTS, PURCHASES]),
   ...s('Sales', [CRM, BOOKINGS]),
   ...s('Communication', [MESSAGES, BROADCAST_FULL, AI, AI_WRITER]),
-  ...s('Administration', [AUDIT, MY_SETTINGS]),
+  ...s('Administration', [AUDIT, HELP, MY_SETTINGS]),
 ];
 
 const HOD_NAV: SidebarItem[] = [
@@ -197,7 +198,7 @@ const HOD_NAV: SidebarItem[] = [
   ...s('Finance', [RECEIPTS, { label: 'Business Expenses', path: '/finance/expenses', icon: Wallet }, PURCHASES, MY_PAYSLIP]),
   ...s('Sales', [CRM, BOOKINGS]),
   ...s('Communication', [MESSAGES, BROADCASTS, AI, AI_WRITER]),
-  ...s('Administration', [MY_SETTINGS]),
+  ...s('Administration', [HELP, MY_SETTINGS]),
 ];
 
 const ACCOUNTANT_NAV: SidebarItem[] = [
@@ -207,7 +208,7 @@ const ACCOUNTANT_NAV: SidebarItem[] = [
   ...s('Finance', [FINANCE_FULL, PURCHASES, PAYROLL_FULL, INVENTORY]),
   ...s('Sales', [CRM, BOOKINGS]),
   ...s('Communication', [MESSAGES, AI, AI_WRITER]),
-  ...s('Administration', [MY_SETTINGS]),
+  ...s('Administration', [HELP, MY_SETTINGS]),
 ];
 
 const STAFF_NAV: SidebarItem[] = [
@@ -217,7 +218,7 @@ const STAFF_NAV: SidebarItem[] = [
   ...s('Finance', [RECEIPTS, PURCHASES, MY_PAYSLIP]),
   ...s('Sales', [CRM, BOOKINGS]),
   ...s('Communication', [MESSAGES, AI, AI_WRITER]),
-  ...s('Administration', [MY_SETTINGS]),
+  ...s('Administration', [HELP, MY_SETTINGS]),
 ];
 
 export const SIDEBAR_CONFIG: Record<CanonicalRole, SidebarItem[]> = {

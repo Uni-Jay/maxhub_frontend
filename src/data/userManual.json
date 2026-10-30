@@ -1,0 +1,386 @@
+{
+  "version": "October 2026",
+  "staff": {
+    "title": "MaxHub Staff User Manual",
+    "intro": "MaxHub is the private workspace for VisaMax, Kurios SAT, BeadMax and Maxfood Farm. It is for staff only — clients and the public never see it. This manual shows you how to find your way around and do your everyday work. What you see in the menu depends on your role, so some chapters are only for HR, Accounts, heads of department or management.",
+    "chapters": [
+      {
+        "id": "start", "title": "Getting started", "audience": ["all"],
+        "summary": "Signing in, the menu, notifications and staying secure.",
+        "topics": [
+          { "title": "Signing in for the first time", "steps": [
+            "Open www.maxhubng.company in your browser (Chrome is best) — on a computer or phone.",
+            "Use the email address and temporary password from your welcome email.",
+            "MaxHub asks you to choose your own password straight away. Use at least 8 characters with letters and numbers.",
+            "If two-step sign-in is turned on for you, enter the code sent to your email."
+          ], "tips": ["Forgot your password? On the sign-in page click “Forgot password”, enter your email and follow the link we send you."] },
+          { "title": "Finding your way around", "steps": [
+            "The menu on the left is grouped into sections: Brands, Work, People, Finance, Sales, Communication and Administration.",
+            "Click a heading with an arrow to open its sub-pages.",
+            "Use the search box at the top (or press Ctrl + K / ⌘ + K) to jump to any page, person or record.",
+            "The sun/moon button at the top switches between light and dark mode.",
+            "On a phone, tap the menu button at the top left to open the menu."
+          ] },
+          { "title": "Notifications", "steps": [
+            "The bell at the top shows new notifications — approvals, assignments, reminders and announcements. Click one to go straight to it.",
+            "Allow pop-up notifications when your browser asks, so you hear about urgent things even when MaxHub is in the background.",
+            "Change what you are notified about under Settings → Notifications."
+          ] },
+          { "title": "Staying secure", "steps": [
+            "MaxHub signs you out automatically after 30 minutes without activity. Just sign in again.",
+            "Never share your password. Change it any time under Settings → Security.",
+            "Always sign out (bottom of the menu) on a shared computer."
+          ] }
+        ]
+      },
+      {
+        "id": "dashboard", "title": "Your dashboard", "audience": ["all"],
+        "summary": "The first page you see: your day at a glance.",
+        "topics": [
+          { "title": "“Your day”", "steps": [
+            "The “Your day” card lists what needs you today: tasks due (overdue ones in red), meetings, interviews, consultations, approvals waiting, policies to accept and reviews to complete.",
+            "Click any line to open it.",
+            "The same list arrives as a notification at 7:30 every morning, Monday to Saturday. Use “Morning message on/off” on the card to turn it off or on."
+          ] },
+          { "title": "Birthdays and targets", "steps": [
+            "The birthday strip shows today’s and this week’s birthdays. Click “Send a wish” to message the person.",
+            "Management, HR, heads of department and Accounts also see the company and brand targets with live progress."
+          ] }
+        ]
+      },
+      {
+        "id": "work", "title": "Everyday work", "audience": ["all"],
+        "summary": "Tasks, projects, weekly reports, calendar, files and documents.",
+        "topics": [
+          { "title": "Tasks and projects", "where": "Work → Projects & Tasks (staff: My Tasks / My Projects)", "steps": [
+            "Open a task to see the details, update its status (To do → In progress → Done) and add comments or files.",
+            "Create your own personal task with “New task”.",
+            "Managers create projects, add tasks and assign them to people; the person assigned is notified."
+          ] },
+          { "title": "Weekly reports", "where": "Work → Weekly Reports", "steps": [
+            "Each week, write what you did, what is next and any problems, then submit.",
+            "Your head of department can read your reports."
+          ] },
+          { "title": "Calendar", "where": "Work → Calendar", "steps": [
+            "The calendar shows Nigerian public holidays, celebrations, birthdays, interviews, consultations and events.",
+            "Click a day to add an event. Events stay on the calendar until you delete them."
+          ] },
+          { "title": "Files, documents and agreements", "where": "Work → Files / Documents & Agreements", "steps": [
+            "Files: upload documents and keep them organised in folders.",
+            "Documents & Agreements: create letters and agreements from templates and send them for signing."
+          ] },
+          { "title": "Meeting minutes", "where": "Work → Meeting Minutes", "steps": [
+            "Click “Write minutes”. Choose a MaxHub meeting to fill in the people automatically, or add them yourself.",
+            "Type the discussion. You can paste rough notes and click “Tidy with AI and find decisions & actions”.",
+            "Add decisions and action points — each with an owner and a due date.",
+            "Click “Share & create tasks”. Everyone gets the minutes, and each action point becomes a task for its owner.",
+            "Use “My open action points” to see what you still owe."
+          ] }
+        ]
+      },
+      {
+        "id": "communication", "title": "Messages, meetings and AI", "audience": ["all"],
+        "summary": "Chat, calls, screen sharing, announcements and the AI tools.",
+        "topics": [
+          { "title": "Messages and meetings", "where": "Communication → Messages & Meetings", "steps": [
+            "Start a chat with a colleague or a group, or use the company channels (for example General).",
+            "Attach files and pictures; click a file to download it.",
+            "Start a voice or video call from a chat, or schedule a meeting. During a call you can share your screen.",
+            "Unread messages show a number on the chat icon at the top."
+          ] },
+          { "title": "AI Assistant", "where": "Communication → AI Assistant", "steps": [
+            "Ask questions about your work in plain English, for example “How much did VisaMax receive this month?” or “Which of my tasks are overdue?”.",
+            "The assistant only shows information your role is allowed to see."
+          ] },
+          { "title": "AI Writing Help", "where": "Communication → AI Writing Help", "steps": [
+            "Choose the brand and what you are writing (client email, reply, proposal, job advert, social post, WhatsApp message and more).",
+            "Write the facts — names, amounts, dates. To reply to a client, paste their message.",
+            "Click “Write it”. Edit the draft, then Copy, open it in email or send it on WhatsApp.",
+            "Always read it before sending. The AI leaves [blanks] instead of inventing prices or dates."
+          ] }
+        ]
+      },
+      {
+        "id": "people", "title": "Attendance, leave and your growth", "audience": ["all"],
+        "summary": "Check-in, leave, payslips, reviews, training, policies and recognition.",
+        "topics": [
+          { "title": "Attendance", "where": "People → Attendance", "steps": [
+            "Click “Check in” when you arrive and “Check out” when you leave.",
+            "Your attendance history and late days are shown on the same page."
+          ] },
+          { "title": "Leave", "where": "People → Leave", "steps": [
+            "Apply for Leave: choose the type and dates, give a reason and attach a document if needed.",
+            "My Requests shows the status; you are notified when it is approved or declined.",
+            "Balance shows the days you have left."
+          ] },
+          { "title": "Payslips", "where": "Finance → My Payslip", "steps": [
+            "Open a month to see your earnings and deductions on a payslip with your brand’s logo.",
+            "Download or print it."
+          ] },
+          { "title": "My growth: reviews, onboarding and training", "where": "People → My Growth", "steps": [
+            "My Reviews: when a performance review starts, score yourself, add a comment and submit. Your manager then completes it.",
+            "My Onboarding: new staff tick off their first-weeks checklist here.",
+            "My Training & Certificates: add courses and certificates with the certificate file and expiry date. HR verifies them, and you are reminded 30 days before anything expires."
+          ] },
+          { "title": "Company policies", "where": "People → Company Policies", "steps": [
+            "Policies waiting for you show on your dashboard.",
+            "Open each one, read it, tick the box and click “I have read and accept”."
+          ] },
+          { "title": "Staff of the Month", "where": "People → Staff of the Month", "steps": [
+            "Click “Nominate a colleague”, choose them and say what they did. You can change your nomination until the winner is chosen.",
+            "Management announces the winner to everyone; past winners appear in the hall of fame."
+          ] },
+          { "title": "Suggestion Box", "where": "People → Suggestion Box", "steps": [
+            "Click “Make a suggestion”. Your name is never saved — nobody, including management, can see who sent it.",
+            "Management replies on the board. Give a thumbs-up to suggestions you support."
+          ] },
+          { "title": "Staff queries", "where": "People → Staff Queries", "steps": [
+            "Reply to any query issued to you before the deadline shown."
+          ] }
+        ]
+      },
+      {
+        "id": "purchases", "title": "Purchase requests", "audience": ["all"],
+        "summary": "Asking before buying anything for work.",
+        "topics": [
+          { "title": "Asking to buy something", "where": "Finance → Purchase Requests", "steps": [
+            "Click “New request”. Say what you are buying, add the items with quantities and prices, and say why it is needed. Attach a quote if you have one.",
+            "MaxHub shows whether it fits this month’s budget.",
+            "Your head of department approves it. Bigger amounts (above the approval limit) or anything over budget then go to management.",
+            "When it is approved, Accounts buys it and records the receipt. You are notified at each step."
+          ] },
+          { "title": "Approving (heads of department and management)", "steps": [
+            "Requests waiting for you are under “Needs my action” and on your dashboard.",
+            "Open one, check the amount and budget, then Approve or Turn down (a reason is required to turn down)."
+          ] }
+        ]
+      },
+      {
+        "id": "brands", "title": "Brand work", "audience": ["all"],
+        "summary": "Each brand’s own pages, in the Brands section of the menu.",
+        "topics": [
+          { "title": "VisaMax", "steps": [
+            "Customers & Applications: every client’s visa or travel case from enquiry to travel, with documents, payments and progress.",
+            "Bookings: flights, hotels and tours."
+          ] },
+          { "title": "Kurios SAT", "steps": [
+            "ICT Solutions: client projects and services; Support Tickets for client issues.",
+            "ICT Training Center: courses, students and fees (see the Schools chapter)."
+          ] },
+          { "title": "BeadMax", "steps": [
+            "Custom Orders, Online Shop Orders (from beadmax.net), Inventory & Products and the Vocational School."
+          ] },
+          { "title": "Maxfood Farm", "steps": [
+            "Export Orders from enquiry to delivery, Inventory & Products, and Customer Issues."
+          ] },
+          { "title": "Consultation bookings", "where": "Sales → Consultation Bookings", "steps": [
+            "Clients book a free time on the VisaMax and Kurios SAT websites. You get a notification and a calendar entry; the client gets an email and a reminder the day before.",
+            "Open a booking to call, email or WhatsApp the client, add notes, and mark it Done or “Did not come”.",
+            "Heads of brand and management set the services, opening hours and consultants under “Booking settings”."
+          ] },
+          { "title": "Customers and sales (CRM)", "where": "Sales → CRM", "steps": [
+            "Clients, Contacts & Leads, the sales Pipeline, Forecast, Proposals and Customer Reports.",
+            "Website bookings and job applicants are added as leads automatically."
+          ] }
+        ]
+      },
+      {
+        "id": "schools", "title": "Schools: courses, online lessons and graduation", "audience": ["hod", "hr", "admin", "superadmin", "staff"],
+        "summary": "For teachers and school staff at Kurios SAT and BeadMax.",
+        "topics": [
+          { "title": "Courses", "where": "Kurios SAT → ICT Training Center / BeadMax → Vocational School", "steps": [
+            "Choose the school at the top (Kurios SAT or BeadMax).",
+            "Each course card shows class progress, students studying, students finished and online lessons.",
+            "Open a course to manage its curriculum, exams, students and certificates."
+          ] },
+          { "title": "Online lessons", "where": "Course page → Online Lessons tab", "steps": [
+            "Click “Add lesson”. Give it a title and section (for example “Week 1”), paste a YouTube, Vimeo or Google Drive link or upload a video, write notes and add handouts.",
+            "On the Quiz tab, add questions and tick the right answer. Students must reach the pass mark to complete the lesson.",
+            "Click “Publish to students” — enrolled students are notified.",
+            "“Student progress” shows each student’s progress lesson by lesson. “Preview as student” shows what they see."
+          ] },
+          { "title": "Graduating students", "where": "Students page (school menu)", "steps": [
+            "The “Ready to graduate” tab lists students who have finished every course they are on.",
+            "Click “Graduate” on one student, tick several and click “Graduate”, or use “Graduate all who finished”.",
+            "Choose the graduation date, keep “Issue a certificate” ticked, and add a personal message if you like.",
+            "MaxHub completes their courses, issues the certificates, marks them Graduated and congratulates them by email and in their portal.",
+            "Graduated by mistake? Open the student and click “Set back to studying”."
+          ] },
+          { "title": "Certificates", "steps": [
+            "Open a student and click their certificate to view it. Kurios SAT certificates use the official KuriosSat design.",
+            "Click “Print or save as PDF”. In the print window choose Landscape, margins None, and turn on Background graphics."
+          ] }
+        ]
+      },
+      {
+        "id": "accounts", "title": "For Accounts", "audience": ["accountant", "admin", "superadmin"],
+        "summary": "Receipts, expenses, payroll, budgets and currencies.",
+        "topics": [
+          { "title": "Payments, receipts and invoices", "where": "Finance → Accounts", "steps": [
+            "Payments & Receipts: record money received and send branded receipts.",
+            "Invoices: create invoices, record part-payments and follow up what is owed.",
+            "School Fee Receipts: fees paid by students."
+          ] },
+          { "title": "Business expenses", "where": "Finance → Accounts → Business Expenses", "steps": [
+            "Click “New expense”. To save typing, click “Scan a receipt” and take a photo — MaxHub fills in the amount, date, supplier and type of spending. Check them, then save.",
+            "Choose the brand, or leave it as Head Office. Set “Repeats: Monthly” for rent, internet and similar costs."
+          ] },
+          { "title": "Buying approved purchases", "where": "Finance → Purchase Requests", "steps": [
+            "Approved requests show “Ready to buy”. Open one and click “Record purchase”.",
+            "Scan or attach the receipt and enter what was paid. It is saved as a business expense automatically."
+          ] },
+          { "title": "Profit & Loss and budgets", "steps": [
+            "Profit & Loss: money in, costs and profit per brand per month.",
+            "Purchase Requests → Budgets: set each brand’s monthly budget (and limits per type of spending). It carries forward until changed."
+          ] },
+          { "title": "Payroll", "where": "Finance → Payroll", "steps": [
+            "Staff Pay: set each person’s salary, allowances and deductions, and their bank account.",
+            "Pay Periods: create the month, click Process to make everyone’s payslip, then Mark Paid once salaries are paid — every payslip becomes Paid too.",
+            "Payslips: view and print any payslip."
+          ] },
+          { "title": "Currencies", "where": "Finance → Accounts → Currencies & Rates", "steps": [
+            "Foreign payments (USD, GBP, EUR, QAR, AED and more) are converted to naira at that day’s rate.",
+            "Set your own rate for any currency if you do not want the market rate."
+          ] }
+        ]
+      },
+      {
+        "id": "hr", "title": "For HR", "audience": ["hr", "admin", "superadmin"],
+        "summary": "Staff records, hiring, onboarding, reviews, training and policies.",
+        "topics": [
+          { "title": "Adding staff", "where": "People → Staff → Add staff", "steps": [
+            "Fill in the form (personal details, position, department, pay, bank account).",
+            "MaxHub emails them their position, salary and a temporary login, adds them to every brand and starts their onboarding checklist."
+          ] },
+          { "title": "Recruitment", "where": "People → HR → Recruitment", "steps": [
+            "Create job adverts under Job Adverts; open adverts appear on the brand websites automatically.",
+            "Applications land on the Recruitment board: New → Shortlisted → Interview → Offer → Hired. Add CVs from email or referrals with “Add applicant”.",
+            "Book an interview (it goes on the calendar and the panel is notified), collect panel feedback, then make an offer.",
+            "Click “Hire” to create their staff account — welcome email, pay and onboarding are done for you."
+          ] },
+          { "title": "Onboarding and performance reviews", "steps": [
+            "Onboarding: follow each new person’s checklist and tick steps as they are done.",
+            "Performance Reviews: start reviews for a period. Each review is built from the person’s real work record; they score themselves, then the manager completes it."
+          ] },
+          { "title": "Training records and policies", "steps": [
+            "Training Records: add or verify courses and certificates; expired and expiring ones are highlighted.",
+            "Company Policies: write or upload a policy and publish it. See who has accepted, send reminders, and save an important change as a new version so everyone accepts again."
+          ] },
+          { "title": "Attendance, leave and queries", "steps": [
+            "Attendance: see everyone’s attendance and mark attendance by hand when needed.",
+            "Leave: approve or decline requests.",
+            "Staff Queries: issue a query and follow the reply."
+          ] },
+          { "title": "Recognition and suggestions", "steps": [
+            "Staff of the Month: read the nominations (only HR and management see them). Management chooses the winner.",
+            "Suggestion Box: reply, set the status and choose whether to show it on the board."
+          ] }
+        ]
+      },
+      {
+        "id": "hod", "title": "For heads of department", "audience": ["hod", "admin", "superadmin"],
+        "summary": "Your team, approvals and reviews.",
+        "topics": [
+          { "title": "Your team", "where": "People → My Team", "steps": [
+            "See your team members and their details.",
+            "Read their weekly reports under Work → Weekly Reports."
+          ] },
+          { "title": "Approvals", "steps": [
+            "Approve leave and purchase requests from your dashboard or the notification.",
+            "You can fully approve purchases up to the approval limit when they are within budget; larger ones go to management after you."
+          ] },
+          { "title": "Reviews, recruitment and training", "steps": [
+            "Complete performance reviews for your team.",
+            "On the Recruitment board you see applicants for your department’s jobs and can give interview feedback.",
+            "Training Records shows your team’s certificates."
+          ] }
+        ]
+      },
+      {
+        "id": "management", "title": "For management", "audience": ["admin", "superadmin"],
+        "summary": "Targets, tracking, audit logs and settings.",
+        "topics": [
+          { "title": "Targets and tracking", "steps": [
+            "Targets: set money-in, profit, customers, orders, students and other targets for the company or a brand, by month, quarter or year. Progress updates by itself.",
+            "Tracking: follow any task, case or order and who did what."
+          ] },
+          { "title": "Approvals and limits", "steps": [
+            "Approve large or over-budget purchase requests.",
+            "Purchase Requests → Budgets → Approval limit: set how much heads of department can approve on their own."
+          ] },
+          { "title": "Audit logs and settings", "steps": [
+            "Audit Logs: every sign-in and change, with who did it and when. (The anonymous Suggestion Box is never logged.)",
+            "Organization: branches, departments, designations and roles & permissions.",
+            "Settings → System Settings: company-wide settings."
+          ] },
+          { "title": "Staff of the Month", "steps": [
+            "Read the nominations and click “Choose” next to the winner. Write a short citation and an optional prize — everyone is told and it is posted in the General channel."
+          ] }
+        ]
+      },
+      {
+        "id": "help", "title": "Tips and troubleshooting", "audience": ["all"],
+        "summary": "Quick answers to common problems.",
+        "topics": [
+          { "title": "Common questions", "steps": [
+            "A pop-up form is longer than my screen — scroll inside the pop-up to reach the Save button.",
+            "I was signed out — MaxHub signs you out after 30 minutes without activity. Sign in again.",
+            "The AI says it is unavailable — try again in a minute; if it continues, tell the administrator.",
+            "I cannot see a page my colleague can see — menus depend on your role. Ask HR or management if you need access.",
+            "Printing certificates or payslips — choose Landscape (certificates) and turn on Background graphics."
+          ] },
+          { "title": "Getting help", "steps": [
+            "Use this Help page any time (Help & User Guide in the menu).",
+            "For access, password or account problems, contact HR or the MaxHub administrator."
+          ] }
+        ]
+      }
+    ]
+  },
+  "student": {
+    "title": "MaxHub Student Guide",
+    "intro": "Welcome to the student portal for Kurios SAT ICT Training Center and BeadMax Vocational School. This guide shows you how to follow your courses, take lessons and quizzes, and get your certificate.",
+    "chapters": [
+      { "id": "s-start", "title": "Getting started", "audience": ["student"], "summary": "Signing in and finding your way.", "topics": [
+        { "title": "Signing in", "steps": [
+          "Go to www.maxhubng.company and sign in with the email and temporary password your school gave you.",
+          "Choose your own password when asked. Forgot it? Click “Forgot password” on the sign-in page."
+        ] },
+        { "title": "The menu", "steps": [
+          "Dashboard, My Courses, Online Lessons, Assignments, Exams & CBT, Results, Attendance, Schedule, Certificates, Messages and My Profile.",
+          "On a phone, tap the menu button at the top."
+        ] }
+      ] },
+      { "id": "s-learn", "title": "Learning", "audience": ["student"], "summary": "Courses, online lessons and quizzes.", "topics": [
+        { "title": "My Courses", "steps": [ "See every course you are enrolled in and your progress." ] },
+        { "title": "Online Lessons", "steps": [
+          "Choose a course. Lessons are listed on the right, grouped by week or section.",
+          "Watch the video, read the notes and download any handouts.",
+          "If the lesson has a quiz, answer every question and click “Check my answers”. You need the pass mark to complete the lesson — you can try again.",
+          "Lessons without a quiz: click “Mark as done”. Then click “Next lesson”.",
+          "Your progress bar fills up as you go. When every lesson is done, your teacher is told."
+        ] },
+        { "title": "Assignments, exams and results", "steps": [
+          "Assignments: see what is due and submit your work.",
+          "Exams & CBT: take computer-based exams when they open. Do not leave the exam page during an exam.",
+          "Results: see your scores and grades."
+        ] },
+        { "title": "Attendance and schedule", "steps": [ "Attendance shows the classes you attended; Schedule shows your timetable." ] }
+      ] },
+      { "id": "s-grad", "title": "Graduation and certificates", "audience": ["student"], "summary": "Getting and printing your certificate.", "topics": [
+        { "title": "Your certificate", "steps": [
+          "When your school graduates you, you get an email and a notification.",
+          "Open Certificates and click your certificate.",
+          "Click “Print or save as PDF”. Choose Landscape, margins None and turn on Background graphics."
+        ] }
+      ] },
+      { "id": "s-help", "title": "Help", "audience": ["student"], "summary": "Messages and getting help.", "topics": [
+        { "title": "Messages and help", "steps": [
+          "Use Messages to contact your teacher or the school office.",
+          "Change your password and details in My Profile.",
+          "For sign-in problems, contact your school office."
+        ] }
+      ] }
+    ]
+  }
+}

@@ -317,6 +317,9 @@ export const LoginPage: React.FC = () => {
               <p className="mt-10 text-xs text-gray-400 leading-relaxed">
                 New staff receive their sign-in details from HR by email. Having trouble? Contact HR or your head of department.
               </p>
+              <p className="mt-3 text-xs text-gray-500">
+                New to MaxHub? Download the <a href="/manuals/MaxHub-Staff-Manual.pdf" download className="text-indigo-600 hover:underline font-medium">Staff User Manual</a> or the <a href="/manuals/MaxHub-Student-Guide.pdf" download className="text-indigo-600 hover:underline font-medium">Student Guide</a> (PDF).
+              </p>
             </>
           )}
         </div>
