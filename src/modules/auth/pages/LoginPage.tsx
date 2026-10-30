@@ -102,6 +102,7 @@ export const LoginPage: React.FC = () => {
 
       store.setUser(response.user);
       store.setTokens({ accessToken: response.accessToken, refreshToken: response.refreshToken });
+      try { sessionStorage.setItem('maxhub-ask-notifications', '1'); } catch { /* ignore */ }
       navigate(getDestination(response.accessToken), { replace: true });
     } catch (error: any) {
       setApiError(
@@ -148,6 +149,7 @@ export const LoginPage: React.FC = () => {
       const result = await authApi.verifyOTPLogin(mfaState.sessionId, otpCode);
       store.setUser(result.user);
       store.setTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken });
+      try { sessionStorage.setItem('maxhub-ask-notifications', '1'); } catch { /* ignore */ }
       navigate(getDestination(result.accessToken), { replace: true });
     } catch (err: any) {
       setOtpError(

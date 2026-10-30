@@ -6,6 +6,7 @@ import {
   Award, Bell, User, LogOut, Menu, X, FileText, MessageSquare, Sun, Moon,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { NotificationPrompt } from '@components/notifications/NotificationPrompt';
 import { useThemeStore } from '@store/themeStore';
 
 const NAV = [
@@ -146,6 +147,7 @@ export const StudentPortalLayout: React.FC = () => {
 
         {/* Page content */}
         <main className="flex-1 p-6 overflow-auto">
+          <NotificationPrompt />
           <Outlet />
         </main>
       </div>

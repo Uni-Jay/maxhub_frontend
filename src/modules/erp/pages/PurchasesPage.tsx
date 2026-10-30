@@ -21,7 +21,7 @@ interface Meta { categories: string[]; settings: { hodLimit: number }; brands: A
 const TONE: Record<string, 'amber' | 'blue' | 'green' | 'red' | 'gray' | 'indigo'> = {
   'Waiting for head of department': 'amber', 'Waiting for management': 'blue', Approved: 'indigo', Bought: 'green', Rejected: 'red', Cancelled: 'gray',
 };
-const SHORT: Record<string, string> = { 'Waiting for head of department': 'Waiting — head of dept', 'Waiting for management': 'Waiting — management' };
+const SHORT: Record<string, string> = { 'Waiting for head of department': 'Waiting — head of dept', 'Waiting for management': 'Waiting — management', Approved: 'Approved — with Accounts', Bought: 'Paid out' };
 const prMoney = (r: Pick<PR, 'currency'>, n: any) => money(n, r.currency);
 
 export default function PurchasesPage() {
@@ -51,15 +51,15 @@ export default function PurchasesPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Purchase Requests</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Ask before buying. Your head of department approves, management approves bigger amounts, then Accounts buys it.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Ask before buying. Your head of department approves, management approves bigger amounts, then it goes straight to Accounts to pay out — and into the month’s expenses.</p>
         </div>
         <button onClick={() => setCreating(true)} className={btnPrimary}><Plus className="h-4 w-4" />New request</button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat icon={Clock} label="Waiting for your approval" value={toApprove.length} tone={toApprove.length ? 'text-amber-600' : undefined} />
-        <Stat icon={ShoppingCart} label={meta?.canSeeAll ? 'Approved, not yet bought' : 'My open requests'} value={meta?.canSeeAll ? toBuy.length || rows.filter((r) => r.status === 'Approved').length : rows.filter((r) => r.mine && ['Waiting for head of department', 'Waiting for management', 'Approved'].includes(r.status)).length} />
-        <Stat icon={CheckCircle2} label="Bought this month" value={money(rows.filter((r) => r.status === 'Bought' && r.boughtAt && r.boughtAt.slice(0, 7) === new Date().toISOString().slice(0, 7)).reduce((t, r) => t + Number(r.currency === 'NGN' ? r.actualAmount ?? r.total : (r.amountNgn ?? 0) * (r.actualAmount && r.total ? r.actualAmount / r.total : 1)), 0))} tone="text-emerald-600" />
+        <Stat icon={ShoppingCart} label={meta?.canSeeAll ? 'Approved, waiting to be paid out' : 'My open requests'} value={meta?.canSeeAll ? toBuy.length || rows.filter((r) => r.status === 'Approved').length : rows.filter((r) => r.mine && ['Waiting for head of department', 'Waiting for management', 'Approved'].includes(r.status)).length} />
+        <Stat icon={CheckCircle2} label="Paid out this month" value={money(rows.filter((r) => r.status === 'Bought' && r.boughtAt && r.boughtAt.slice(0, 7) === new Date().toISOString().slice(0, 7)).reduce((t, r) => t + Number(r.currency === 'NGN' ? r.actualAmount ?? r.total : (r.amountNgn ?? 0) * (r.actualAmount && r.total ? r.actualAmount / r.total : 1)), 0))} tone="text-emerald-600" />
         <Stat icon={Wallet} label="Head of department can approve up to" value={money(meta?.settings.hodLimit ?? 100000)} />
       </div>
 
@@ -84,7 +84,7 @@ export default function PurchasesPage() {
                   </div>
                   <p className="font-semibold tabular-nums text-gray-900 dark:text-white">{prMoney(r, r.total)}</p>
                   <Pill tone={TONE[r.status] || 'gray'}>{SHORT[r.status] || r.status}</Pill>
-                  {(r.canApprove || r.canBuy) && <Pill tone="violet">{r.canApprove ? 'Your approval' : 'Ready to buy'}</Pill>}
+                  {(r.canApprove || r.canBuy) && <Pill tone="violet">{r.canApprove ? 'Your approval' : 'To pay out'}</Pill>}
                 </button>
               ))}
             </div>
@@ -177,7 +177,7 @@ function RequestDrawer({ r, meta, onClose, onChanged }: { r: PR; meta: Meta; onC
       footer={<>
         {r.canDelete && <button onClick={() => { if (confirm('Delete this request for good?')) del.mutate(); }} className={btnDanger}><Trash2 className="h-4 w-4" />Delete</button>}
         {r.canCancel && <button onClick={() => { if (confirm('Cancel this request?')) cancel.mutate(); }} className={btnGhost}>Cancel request</button>}
-        {r.canBuy && <button onClick={() => setBuying(true)} className={btnPrimary}><ShoppingCart className="h-4 w-4" />Record purchase</button>}
+        {r.canBuy && <button onClick={() => setBuying(true)} className={btnPrimary}><ShoppingCart className="h-4 w-4" />Pay out & record</button>}
       </>}>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
         <div><p className="text-xs text-gray-500">Amount</p><p className="font-bold tabular-nums">{prMoney(r, r.total)}</p>{r.currency !== 'NGN' && r.amountNgn != null && <p className="text-xs text-gray-500">≈ {money(r.amountNgn)}</p>}</div>
@@ -196,7 +196,8 @@ function RequestDrawer({ r, meta, onClose, onChanged }: { r: PR; meta: Meta; onC
       <div className="flex flex-wrap gap-3 text-sm">
         {r.quoteUrl && <a href={r.quoteUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline inline-flex items-center gap-1">Quote <ExternalLink className="h-3 w-3" /></a>}
         {r.receiptUrl && <a href={r.receiptUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline inline-flex items-center gap-1">Receipt <ExternalLink className="h-3 w-3" /></a>}
-        {r.status === 'Bought' && <span className="text-emerald-700 dark:text-emerald-400">Paid {prMoney(r, r.actualAmount)} on {fmtDate(r.boughtAt)} — recorded as a business expense</span>}
+        {r.status === 'Approved' && <span className="text-amber-700 dark:text-amber-400">With Accounts for payment — already counted in this month’s expenses</span>}
+        {r.status === 'Bought' && <span className="text-emerald-700 dark:text-emerald-400">Paid {prMoney(r, r.actualAmount)} on {fmtDate(r.boughtAt)} — in business expenses as Paid</span>}
       </div>
       {b?.hasBudget && ['Waiting for head of department', 'Waiting for management', 'Approved'].includes(r.status) && (
         <div className={cn('rounded-xl p-3 text-sm', b.over ? 'bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200' : 'bg-gray-50 dark:bg-gray-800/60')}>
@@ -234,11 +235,11 @@ function BuyModal({ r, onClose, onDone }: { r: PR; onClose: () => void; onDone: 
   const [f, setF] = useState({ actualAmount: String(r.total), boughtAt: new Date().toISOString().slice(0, 10), method: 'Transfer', vendor: r.vendor || '', receiptUrl: null as string | null });
   const save = useMutation({
     mutationFn: () => apiClient.post(`/erp/purchases/${r.id}/bought`, f),
-    onSuccess: () => { toast.success('Purchase recorded', 'Added to business expenses'); onDone(); },
+    onSuccess: () => { toast.success('Payment recorded', 'The expense is now marked Paid'); onDone(); },
     onError: (e: any) => toast.fromError(e, 'Could not record the purchase'),
   });
   return (
-    <Modal title="Record the purchase" sub={`${r.code} · ${r.title}`} onClose={onClose}
+    <Modal title="Pay out this purchase" sub={`${r.code} · ${r.title}`} onClose={onClose}
       footer={<><button onClick={onClose} className={btnGhost}>Cancel</button><button onClick={() => save.mutate()} disabled={save.isPending || !(Number(f.actualAmount) > 0)} className={btnPrimary}>{save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Save</button></>}>
       <ScanReceipt onScanned={(x) => setF({ ...f, actualAmount: x.total ? String(x.total) : f.actualAmount, boughtAt: x.date || f.boughtAt, vendor: x.vendor || f.vendor,
         method: x.method && ['Transfer', 'Cash', 'POS', 'Cheque', 'Card'].includes(x.method) ? x.method : f.method, receiptUrl: x.receiptUrl || f.receiptUrl })} />
@@ -249,7 +250,7 @@ function BuyModal({ r, onClose, onDone }: { r: PR; onClose: () => void; onDone: 
         <Field label="Supplier"><input className={inp} value={f.vendor} onChange={(e) => setF({ ...f, vendor: e.target.value })} /></Field>
       </div>
       <Field label="Receipt"><UploadLink value={f.receiptUrl} onChange={(u) => setF({ ...f, receiptUrl: u })} label="Attach receipt" folder="maxhub-receipts" /></Field>
-      <p className="text-xs text-gray-500">This is saved as a business expense for the brand, so it shows in Profit & Loss and against the budget.</p>
+      <p className="text-xs text-gray-500">This request is already in this month’s business expenses as “Awaiting payment”. Saving marks it Paid with the amount you actually paid.</p>
     </Modal>
   );
 }

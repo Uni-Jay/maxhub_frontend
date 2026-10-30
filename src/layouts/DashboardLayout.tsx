@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, Bell, Search, LogOut, Home, ChevronRight,
   MessageSquare, Sun, Moon,
+  BellOff,
 } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
 import { useThemeStore } from '@store/themeStore';
@@ -15,6 +16,7 @@ import { CallProvider } from '@components/calls/CallProvider';
 import { SaveToFolderHost } from '@components/files/SaveToFolder';
 import { BirthdayStrip } from '@components/dashboard/BirthdayStrip';
 import { TodayCard } from '@components/dashboard/TodayCard';
+import { NotificationPrompt, pushStatus } from '@components/notifications/NotificationPrompt';
 import { TargetsCard } from '@modules/erp/pages/TargetsPage';
 import { toast } from '@components/ui/toaster';
 import { pushSupported, registerServiceWorker, enablePush, chime } from '@services/pushService';
@@ -250,8 +252,13 @@ export function DashboardLayout() {
 
   // Pop-up notifications: register the service worker, re-subscribe silently
   // if already allowed, and let clicks on a pop-up navigate this tab.
-  const [pushState, setPushState] = useState<string>(() => (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'));
-  const [pushDismissed, setPushDismissed] = useState(() => { try { return localStorage.getItem('maxhub-push-dismissed') === '1'; } catch { return false; } });
+  const [pushState, setPushState] = useState<string>(() => pushStatus());
+  useEffect(() => {
+    // Keep the "Turn on alerts" hint in step when notifications are switched on or off.
+    const sync = () => setPushState(pushStatus());
+    window.addEventListener('focus', sync); window.addEventListener('maxhub-push-changed', sync);
+    return () => { window.removeEventListener('focus', sync); window.removeEventListener('maxhub-push-changed', sync); };
+  }, []);
   useEffect(() => {
     if (!tokens?.accessToken || !pushSupported()) return;
     registerServiceWorker();
@@ -369,6 +376,12 @@ export function DashboardLayout() {
             </button>
 
             {/* Notifications */}
+            {['default', 'denied', 'ios-install'].includes(pushState) && (
+              <NavLink to="/settings/notifications" title="Pop-up notifications are off on this device — click to turn them on"
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 dark:text-amber-300 dark:bg-amber-500/10">
+                <BellOff className="h-3.5 w-3.5" />Turn on alerts
+              </NavLink>
+            )}
             <NavLink to="/notifications" className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition">
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -392,19 +405,7 @@ export function DashboardLayout() {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
-          {pushSupported() && pushState === 'default' && !pushDismissed && (
-            <div className="mx-6 mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-950/40 px-4 py-3 text-sm">
-              <Bell className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-              <span className="flex-1 min-w-[200px] text-gray-700 dark:text-gray-300">Turn on pop-up notifications so you see new messages, calls and approvals even when MaxHub is in the background.</span>
-              <button className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700" onClick={async () => {
-                const r = await enablePush(true).catch(() => 'denied');
-                setPushState(r);
-                if (r === 'granted') toast.success('Pop-up notifications are on');
-                else if (r === 'denied') toast.error('Notifications are blocked', 'Allow them for this site in your browser settings.');
-              }}>Turn on</button>
-              <button className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200" onClick={() => { setPushDismissed(true); try { localStorage.setItem('maxhub-push-dismissed', '1'); } catch { /* */ } }}>Not now</button>
-            </div>
-          )}
+          <NotificationPrompt />
           <div className="p-6 max-w-7xl mx-auto">
             {location.pathname.startsWith('/dashboard') && <TodayCard />}
             {location.pathname.startsWith('/dashboard') && <BirthdayStrip />}
