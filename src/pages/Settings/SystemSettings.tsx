@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@services/apiClient';
 import { cn } from '@utils/cn';
+import TestAccountsCard from './TestAccountsCard';
 
 type Tab = 'company' | 'branding' | 'email' | 'security' | 'rbac' | 'integrations';
 
@@ -318,6 +319,8 @@ export default function SystemSettings() {
           )}
         </motion.div>
       </div>
+
+      <TestAccountsCard />
     </div>
   );
 }
