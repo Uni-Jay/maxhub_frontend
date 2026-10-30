@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { studentPortalApi, StudentEnrollment } from '@/services/studentService';
 import { Award, Download, Share2, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { apiClient } from '@services/apiClient';
 
 export const StudentCertificatesPage: React.FC = () => {
   const { data, isLoading } = useQuery({
@@ -23,6 +25,8 @@ export const StudentCertificatesPage: React.FC = () => {
           Your earned certificates and awards
         </p>
       </div>
+
+      <MyPrintableCertificates />
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
@@ -127,5 +131,20 @@ export const StudentCertificatesPage: React.FC = () => {
     </div>
   );
 };
+
+function MyPrintableCertificates() {
+  const { data = [] } = useQuery({ queryKey: ['my-certificates'], queryFn: () => apiClient.get<any[]>('/erp/school/my-certificates') });
+  if (!data.length) return null;
+  return (
+    <div className="grid sm:grid-cols-2 gap-3">
+      {data.map((c: any) => (
+        <Link key={c.certificateCode} to={`/student/certificate/${c.certificateCode}`} className="flex items-center gap-3 rounded-2xl border border-violet-200 dark:border-violet-900 bg-violet-50 dark:bg-violet-500/10 p-4 hover:shadow-sm">
+          <Award className="h-8 w-8 text-violet-600 shrink-0" />
+          <div className="min-w-0"><p className="font-semibold text-gray-900 dark:text-white truncate">{c.course}</p><p className="text-xs text-gray-500">Issued {new Date(c.issuedDate).toLocaleDateString('en-GB')} · View, print or save as PDF</p></div>
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 export default StudentCertificatesPage;

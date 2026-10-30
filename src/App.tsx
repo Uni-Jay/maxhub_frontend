@@ -116,6 +116,7 @@ const StaffOfMonthPage = React.lazy(() => import('@modules/hr/pages/StaffOfMonth
 const SuggestionsPage = React.lazy(() => import('@modules/hr/pages/SuggestionsPage'));
 const MinutesPage = React.lazy(() => import('@modules/erp/pages/MinutesPage'));
 const BookingsPage = React.lazy(() => import('@modules/erp/pages/BookingsPage'));
+const CertificatePage = React.lazy(() => import('@modules/lms/pages/CertificatePage'));
 const StudentLessonsPage = React.lazy(() => import('@modules/student/pages/StudentLessonsPage'));
 const StudentCoursePlayer = React.lazy(() => import('@modules/student/pages/StudentLessonsPage').then((m) => ({ default: m.StudentCoursePlayer })));
 const RecruitmentPage = React.lazy(() => import('@modules/hr/pages/RecruitmentPage'));
@@ -257,6 +258,7 @@ function App() {
               <Route path="/student/dashboard"    element={<StudentDashboardPage />} />
               <Route path="/student/courses"      element={<StudentCoursesPage />} />
               <Route path="/student/lessons"      element={<StudentLessonsPage />} />
+              <Route path="/student/certificate/:code" element={<CertificatePage />} />
               <Route path="/student/lessons/:courseId" element={<StudentCoursePlayer />} />
               <Route path="/student/assignments"  element={<StudentAssignmentsPage />} />
               <Route path="/student/exams"        element={<StudentExamsPage />} />
@@ -369,6 +371,7 @@ function App() {
               <Route path="/suggestions" element={<SuggestionsPage />} />
               <Route path="/minutes" element={<MinutesPage />} />
               <Route path="/bookings" element={<BookingsPage />} />
+              <Route path="/certificate/:code" element={<CertificatePage />} />
               <Route path="/lms/lessons/:courseId" element={<StudentCoursePlayer />} />
               <Route path="/hr/recruitment" element={<RecruitmentPage />} />
               <Route path="/policies" element={<PoliciesPage />} />

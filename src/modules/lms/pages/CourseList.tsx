@@ -46,6 +46,11 @@ export function CourseList() {
   });
 
   const courses: any[] = (coursesData as any)?.data ?? [];
+  const { data: live } = useQuery({ queryKey: ['school-courses', school], queryFn: () => apiClient.get<any[]>('/erp/school/courses', { school }) });
+  const liveById = new Map((live || []).map((c: any) => [Number(c.id), c]));
+  const studying = (live || []).reduce((t: number, c: any) => t + c.active, 0);
+  const finished = (live || []).reduce((t: number, c: any) => t + c.completed, 0);
+  const certs = (live || []).reduce((t: number, c: any) => t + c.certificates, 0);
 
   const categories = ['All', ...Array.from(new Set(courses.map(c => c.department?.name ?? 'General').filter(Boolean)))];
 
@@ -89,10 +94,10 @@ export function CourseList() {
       {/* Stats strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Total Courses', value: stats?.total?.toString() ?? '—', icon: BookOpen, color: 'text-indigo-600 bg-indigo-50' },
-          { label: 'Total Enrollments', value: stats?.totalEnrollments?.toString() ?? '—', icon: Users, color: 'text-violet-600 bg-violet-50' },
-          { label: 'Ongoing', value: stats?.ongoing?.toString() ?? '—', icon: Clock, color: 'text-amber-600 bg-amber-50' },
-          { label: 'Completed', value: stats?.completed?.toString() ?? '—', icon: Award, color: 'text-emerald-600 bg-emerald-50' },
+          { label: 'Courses', value: stats?.total?.toString() ?? String(courses.length), icon: BookOpen, color: 'text-indigo-600 bg-indigo-50' },
+          { label: 'Students studying now', value: live ? String(studying) : '—', icon: Users, color: 'text-violet-600 bg-violet-50' },
+          { label: 'Course completions', value: live ? String(finished) : '—', icon: Clock, color: 'text-amber-600 bg-amber-50' },
+          { label: 'Certificates issued', value: live ? String(certs) : '—', icon: Award, color: 'text-emerald-600 bg-emerald-50' },
         ].map((s) => (
           <div key={s.label} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${s.color}`}>
@@ -145,6 +150,7 @@ export function CourseList() {
                 : 'Unknown Instructor');
           const initials = instructor.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
           const deptName = course.department?.name ?? 'General';
+          const lv: any = liveById.get(Number(course.id));
 
           return (
             <motion.div
@@ -175,23 +181,26 @@ export function CourseList() {
                       </div>
                       <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{instructor}</p>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5" />
-                        {course.enrollmentCount ?? 0} students
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        {course.duration ?? 'TBD'}
-                      </span>
-                      <span>{Number(course.fee) > 0 ? `₦${Number(course.fee).toLocaleString()}` : 'Free'}</span>
-                    </div>
-                    {(course.status === 'Published' || course.status === 'Draft') && (
-                      <button className={`w-full mt-3 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r ${color} flex items-center justify-center gap-2 hover:opacity-90 transition`}>
-                        <Play className="w-3.5 h-3.5" />
-                        {course.status === 'Draft' ? 'Preview' : 'Enroll Now'}
-                      </button>
+                    {lv && (
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1"><span>Class progress</span><span className="tabular-nums">{lv.avgProgress}%</span></div>
+                        <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden"><div className={`h-full bg-gradient-to-r ${color}`} style={{ width: `${lv.avgProgress}%` }} /></div>
+                      </div>
                     )}
+                    <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                      <div className="rounded-xl bg-gray-50 dark:bg-gray-900/40 py-1.5"><p className="text-sm font-bold text-gray-900 dark:text-white">{lv?.active ?? course.enrollmentCount ?? 0}</p><p className="text-[10px] text-gray-500">studying</p></div>
+                      <div className="rounded-xl bg-gray-50 dark:bg-gray-900/40 py-1.5"><p className="text-sm font-bold text-gray-900 dark:text-white">{lv?.completed ?? 0}</p><p className="text-[10px] text-gray-500">finished</p></div>
+                      <div className="rounded-xl bg-gray-50 dark:bg-gray-900/40 py-1.5"><p className="text-sm font-bold text-gray-900 dark:text-white">{lv?.lessons ?? 0}</p><p className="text-[10px] text-gray-500">online lessons</p></div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{course.duration ? `${course.duration} hrs` : 'TBD'}</span>
+                      <span>{Number(course.fee) > 0 ? `₦${Number(course.fee).toLocaleString()}` : 'Free'}</span>
+                      {lv?.certificates ? <span className="flex items-center gap-1"><Award className="w-3.5 h-3.5" />{lv.certificates}</span> : null}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      <span className="py-2 rounded-xl text-xs font-semibold text-center border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 group-hover:border-indigo-300">Open course</span>
+                      <span className={`py-2 rounded-xl text-xs font-semibold text-white text-center bg-gradient-to-r ${color} flex items-center justify-center gap-1.5`}><Play className="w-3.5 h-3.5" />{lv?.lessons ? 'Lessons & progress' : 'Add lessons'}</span>
+                    </div>
                   </div>
                 </div>
               </Link>
